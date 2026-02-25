@@ -4,6 +4,7 @@ HOST=0.0.0.0
 
 # URLs de conexão para seleção
 DATABASE_URL_LOCAL="mysql://root:saguides%40123@localhost:3306/appBarCash"
+DATABASE_URL_MARIADB="mysql://root:saguides%40123@localhost:3307/appBar"
 
 # Observação:
 # A variável DATABASE_URL efetiva será definida automaticamente pelo start-api.sh
@@ -11,8 +12,14 @@ DATABASE_URL_LOCAL="mysql://root:saguides%40123@localhost:3306/appBarCash"
 
 DATABASE_URL_RAILWAY="mysql://root:EcNHsXSBfTPvATYnaVMSGHKIOjDMZnZx@shuttle.proxy.rlwy.net:17474/railway"
 
-DATABASE_URL_RAILWAY="mysql://root:EcNHsXSBfTPvATYnaVMSGHKIOjDMZnZx@shuttle.proxy.rlwy.net:17474/railway"
-
 chave api google AIzaSyASIOxutlTLjG13n_p_MJw5rh1UiWm2mgE
 
 instalar agentes:  npx @vudovn/ag-kit init
+
+JWT_SECRET=thunder
+PORT=4000
+HOST=0.0.0.0
+
+# URLs de conexão para seleção
+DATABASE_URL_LOCAL="mysql://root:saguides%40123@127.0.0.1:3306/appBar"
+DATABASE_URL_MARIADB="mysql://root:saguides%40123@127.0.0.1:3307/appBar"

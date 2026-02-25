@@ -398,14 +398,12 @@ router.get("/list", async (req, res) => {
       const w = idsFilter ? { ...where, id: { in: idsFilter } } : where;
       products = await prisma.product.findMany({ 
         where: w, 
-        include: { tamanhos: true },
         orderBy: { dataInclusao: 'desc' } 
       });
     } catch (e) {
       const w = idsFilter ? { ...where, id: { in: idsFilter } } : where;
       products = await prisma.product.findMany({ 
         where: w, 
-        include: { tamanhos: true },
         orderBy: { id: 'desc' } 
       });
     }

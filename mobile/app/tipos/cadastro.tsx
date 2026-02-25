@@ -128,9 +128,10 @@ export default function CadastroTipoScreen() {
         await typeService.create(typeData);
         showMessage('success', 'Tipo cadastrado com sucesso!');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar tipo:', error);
-      showMessage('error', 'Erro ao salvar tipo. Verifique sua conexão.');
+      const msg = error?.response?.data?.error || error?.response?.data?.details || error?.message || 'Erro ao salvar tipo. Verifique sua conexão.';
+      showMessage('error', msg);
     } finally {
       setLoading(false);
     }

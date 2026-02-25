@@ -363,7 +363,7 @@ export async function testApiConnection(baseUrl, apiKey) {
 }
 
 // Novo helper: alternar DB_TARGET no servidor atual (local/railway)
-export async function switchServerDbTarget(baseUrl, target) {
+export async function switchServerDbTarget(baseUrl, target, vendor) {
   try {
     const baseCandidate = baseUrl || api.defaults.baseURL || ENV_BASE_URL || initialBaseUrl || '';
     const effectiveBase = String(baseCandidate).replace(/\/$/, '');
@@ -371,7 +371,7 @@ export async function switchServerDbTarget(baseUrl, target) {
 
     const res = await axios.post(
       url,
-      { target },
+      { target, vendor },
       { timeout: 15000, headers: { 'Content-Type': 'application/json' } }
     );
     return { ok: true, status: res.status, data: res.data };

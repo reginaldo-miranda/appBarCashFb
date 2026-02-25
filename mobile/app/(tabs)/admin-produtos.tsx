@@ -489,6 +489,11 @@ export default function AdminProdutosScreen() {
           key={viewMode + (isLargeScreen ? '_large' : '_small')}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={7}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews={Platform.OS !== 'web'}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={loadInitialData} colors={['#2196F3']} />
           }

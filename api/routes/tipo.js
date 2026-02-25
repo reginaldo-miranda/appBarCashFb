@@ -33,7 +33,7 @@ router.post('/create', async (req, res) => {
     if (error && error.code === 'P2002') {
       res.status(400).json({ error: 'Tipo já existe' });
     } else {
-      res.status(500).json({ error: 'Erro ao cadastrar tipo' });
+      res.status(500).json({ error: 'Erro ao cadastrar tipo', details: error.message });
     }
   }
 });

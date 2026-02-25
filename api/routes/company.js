@@ -135,6 +135,8 @@ router.post("/", async (req, res) => {
       const { 
         deliveryRanges, 
         id, createdAt, updatedAt, products, users, sales, 
+        cashbackTransactions,
+        Nfce,
         ...otherData 
       } = data;
 
@@ -190,51 +192,47 @@ router.post("/", async (req, res) => {
         updatedAt, 
         products, 
         users, 
-        sales, 
+        sales,
+        cashbackTransactions,
+        Nfce,
         ...companyData 
       } = data;
       
-      const updatePayload = {
-        ...companyData, 
-        updatedAt: new Date()
+      const createPayload = {
+        ...companyData,
+        pointsPerCurrency: companyData.pointsPerCurrency || 1,
+        // Garantir que campos obrigatórios tenham valor
+        razaoSocial: companyData.razaoSocial || "Empresa Padrão",
+        nomeFantasia: companyData.nomeFantasia || "Empresa Padrão",
+        cnpj: companyData.cnpj || "00000000000000"
       };
-      
-      console.log('Update Payload:', JSON.stringify(updatePayload, null, 2));
 
-      // Se for a primeira criação (via tela de delivery), pode faltar dados obrigatórios da empresa
-      // Preencher com defaults para não quebrar
-      const payload = {
-         razaoSocial: "Minha Empresa (Configurar)",
-         nomeFantasia: "Minha Empresa",
-         cnpj: "00.000.000/0000-00", // Placeholder inicial
-         ...companyData
-      };
-      
-      // Garantir CNPJ único se for placeholder (caso já exista um placeholder, o que não deveria ocorrer pois cairia no update, mas por segurança)
-      if (payload.cnpj === "00.000.000/0000-00") {
-          const count = await prisma.company.count();
-          if (count > 0) payload.cnpj = `00.000.000/0000-${count + 1}`;
-      }
-
-      const created = await prisma.company.create({
-        data: {
-          ...payload,
-          deliveryRanges: {
+      if (deliveryRanges !== undefined) {
+          createPayload.deliveryRanges = {
             create: Array.isArray(deliveryRanges) ? deliveryRanges.map(r => ({
               minDist: Number(r.minDist),
               maxDist: Number(r.maxDist),
               price: Number(r.price)
             })) : []
-          }
-        },
+          };
+      }
+
+      console.log('Final Create Payload:', JSON.stringify(createPayload, null, 2));
+
+      const created = await prisma.company.create({
+        data: createPayload,
         include: { deliveryRanges: true }
       });
-      return res.status(201).json({ message: "Empresa cadastrada com sucesso", company: created });
+      return res.json({ message: "Empresa criada com sucesso", company: created });
     }
   } catch (error) {
-    console.error("Erro ao salvar dados da empresa:", error);
-    // Retornar a mensagem exata do erro para facilitar o debug no frontend
-    res.status(500).json({ error: "Erro ao salvar empresa: " + (error.message || error) });
+    console.error("Erro ao salvar empresa:", error);
+    // Retornar erro detalhado para o cliente (mobile/web) entender o que houve
+    res.status(500).json({ 
+        error: "Erro ao salvar empresa", 
+        details: error.message,
+        meta: error.meta // Prisma error metadata (ex: qual campo falhou)
+    });
   }
 });
 
@@ -246,7 +244,24 @@ router.put("/", async (req, res) => {
   // Melhor expor a rota e deixar o frontend chamar POST ou PUT.
   // Vamos implementar PUT igual Update.
   const data = req.body;
-  if (data.valorMensalidade) data.valorMensalidade = Number(data.valorMensalidade);
+  
+  // Helpers de conversão (mesma lógica do POST)
+  const toDec = (val) => {
+      if (val === null || val === undefined || val === '') return null;
+      const n = Number(val);
+      return isNaN(n) ? null : n;
+  };
+  const toInt = (val, def = null) => {
+      if (val === null || val === undefined || val === '') return def;
+      const n = Number(val);
+      return isNaN(n) ? def : n;
+  };
+
+  if (data.valorMensalidade) data.valorMensalidade = toDec(data.valorMensalidade);
+  if (data.cashbackPercent) data.cashbackPercent = toDec(data.cashbackPercent);
+  if (data.pointsPerCurrency) data.pointsPerCurrency = toDec(data.pointsPerCurrency);
+  if (data.valorResgate) data.valorResgate = toDec(data.valorResgate);
+  if (data.pontosParaResgate) data.pontosParaResgate = toInt(data.pontosParaResgate, 0);
 
   try {
     const existing = await prisma.company.findFirst();
@@ -254,15 +269,75 @@ router.put("/", async (req, res) => {
       return res.status(404).json({ message: "Cadastro não encontrado para atualização" });
     }
 
+    // Helper seguro para números
+    const safeNum = (val, isInt = false) => {
+         if (val === undefined || val === null || val === '') return undefined;
+         if (typeof val === 'string') {
+             val = val.replace(',', '.');
+         }
+         const n = Number(val);
+         if (isNaN(n)) return undefined;
+         return isInt ? parseInt(n) : n;
+    };
+
+    const cashbackPercent = safeNum(data.cashbackPercent);
+    const pointsPerCurrencyRaw = safeNum(data.pointsPerCurrency);
+    const pointsPerCurrency = pointsPerCurrencyRaw !== undefined ? pointsPerCurrencyRaw : 1; 
+      
+    const pontosParaResgate = safeNum(data.pontosParaResgate, true);
+    const valorResgate = safeNum(data.valorResgate);
+
+    // Sanitização e Preparação do Payload
+    const { 
+      deliveryRanges, 
+      id, createdAt, updatedAt, products, users, sales, 
+      cashbackTransactions,
+      Nfce,
+      ...otherData 
+    } = data;
+
+    const updatePayload = {
+      ...otherData,
+      pointsPerCurrency: otherData.pointsPerCurrency || 1, 
+      updatedAt: new Date(),
+    };
+
+    if (cashbackPercent !== undefined) updatePayload.cashbackPercent = cashbackPercent;
+    
+    if (data.pointsPerCurrency !== undefined) {
+       updatePayload.pointsPerCurrency = pointsPerCurrency;
+    } else if (!updatePayload.pointsPerCurrency) {
+       updatePayload.pointsPerCurrency = 1;
+    }
+
+    if (pontosParaResgate !== undefined) updatePayload.pontosParaResgate = pontosParaResgate;
+    if (valorResgate !== undefined) updatePayload.valorResgate = valorResgate;
+
+    if (deliveryRanges !== undefined) {
+        updatePayload.deliveryRanges = {
+          deleteMany: {},
+          create: Array.isArray(deliveryRanges) ? deliveryRanges.map(r => ({
+            minDist: Number(r.minDist),
+            maxDist: Number(r.maxDist),
+            price: Number(r.price)
+          })) : []
+        };
+    }
+
     const updated = await prisma.company.update({
         where: { id: existing.id },
-        data: { ...data, updatedAt: new Date() }
+        data: updatePayload,
+        include: { deliveryRanges: true }
     });
     res.json({ message: "Dados atualizados com sucesso", company: updated });
 
   } catch (error) {
     console.error("Erro ao atualizar empresa:", error);
-    res.status(500).json({ error: "Erro interno" });
+    res.status(500).json({ 
+        error: "Erro ao salvar empresa", 
+        details: error.message,
+        meta: error.meta 
+    });
   }
 });
 

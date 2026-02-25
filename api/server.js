@@ -86,7 +86,7 @@ app.get('/dev/start-api', (req, res) => {
   res.json({ ok: true, message: 'API já está rodando' });
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   // Determina alvo do banco (local vs railway) com base nas variáveis atuais
   const dbTarget = process.env.DB_TARGET || (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') ? 'local' : 'railway');
 
@@ -109,7 +109,15 @@ app.get('/api/health', (req, res) => {
   };
 
   const db = getDbInfo();
-  res.json({ ok: true, status: 'healthy', timestamp: Date.now(), dbTarget, db });
+  let vendor = db.provider || 'unknown';
+  try {
+    // Detecta MySQL ou MariaDB via versão
+    const rows = await prisma.$queryRawUnsafe(`SELECT VERSION() AS v`);
+    const ver = Array.isArray(rows) ? (rows[0]?.v || rows[0]?.VERSION || rows[0]?.version) : (rows?.v || rows?.VERSION || rows?.version);
+    const s = String(ver || '').toLowerCase();
+    vendor = /mariadb/i.test(s) ? 'mariadb' : 'mysql';
+  } catch {}
+  res.json({ ok: true, status: 'healthy', timestamp: Date.now(), dbTarget, db: { ...db, vendor } });
 });
 
 // DESABILITADO - Sempre usar base local
@@ -118,15 +126,15 @@ import prisma, { switchDbTarget, getProductsForTarget, getSchemaSummaryForTarget
 import { getSaleUpdates, onSaleUpdate } from "./lib/events.js";
 app.post('/api/admin/db-target', async (req, res) => {
   try {
-    const { target } = req.body || {};
+    const { target, vendor } = req.body || {};
     const next = String(target || '').toLowerCase() === 'railway' ? 'railway' : 'local';
-    const result = await switchDbTarget(next);
+    const result = await switchDbTarget(next, vendor);
     if (!result.ok) {
-      return res.status(500).json({ ok: false, message: 'Falha ao alternar DB_TARGET' });
+      return res.status(500).json({ ok: false, message: result.reason || 'Falha ao alternar DB_TARGET e vendor' });
     }
-    return res.json({ ok: true, target: result.target });
+    return res.json({ ok: true, target: result.target, vendor: result.vendor });
   } catch (err) {
-    console.error('Erro ao alternar DB_TARGET:', err);
+    console.error('Erro ao alternar DB_TARGET e vendor:', err);
     return res.status(500).json({ ok: false, message: 'Erro interno' });
   }
 });

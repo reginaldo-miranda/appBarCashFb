@@ -942,7 +942,7 @@ export default function AdminConfiguracoesScreen() {
 
             <Text style={styles.sectionHeader}>2. Endereço Fiscal</Text>
             <View style={{ marginBottom: 12 }}>
-                <Text style={styles.inputLabel}>CEP *</Text>
+                <Text style={styles.inputLabel}>CEP <Text style={{color: 'red'}}>*</Text></Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <View style={{ flex: 1 }}>
                         <TextInput 
