@@ -26,12 +26,12 @@ const getEnvBaseUrl = () => {
   }
 };
 
-// Helper para detectar URLs locais inválidas em dispositivos
 function isLocalUrl(url) {
   try {
     if (!url) return false;
     const u = new URL(String(url));
-    return LOCAL_HOSTNAMES.has(u.hostname);
+    if (LOCAL_HOSTNAMES.has(u.hostname)) return true;
+    return false;
   } catch {
     return false;
   }
@@ -128,10 +128,10 @@ function resolveApiBaseUrl() {
 
   if (Platform.OS === 'android') {
     // Fallback prioritário para IP da LAN real (físico)
-    return `http://192.168.1.145:${DEFAULT_PORT}/api`;
+    return `http://192.168.0.176:${DEFAULT_PORT}/api`;
     // return `http://10.0.2.2:${DEFAULT_PORT}/api`; // Emulator
   }
-    return `http://192.168.1.145:${DEFAULT_PORT}/api`; // Remote Server Fallback
+    return `http://192.168.0.176:${DEFAULT_PORT}/api`; // Remote Server Fallback
 }
 
 // Primeiro: variável de ambiente pública
@@ -148,17 +148,16 @@ const api = axios.create({
   headers: { },
 });
 
-// Configurar retry-axios na instância
+// Configurar retry-axios na instância (Reduzido para não travar event loop)
 api.defaults.raxConfig = {
   instance: api,
-  retry: 3,
-  noResponseRetries: 2,
+  retry: 0,
+  noResponseRetries: 0,
   backoffType: 'exponential',
   httpMethodsToRetry: ['GET', 'HEAD', 'OPTIONS', 'DELETE', 'PUT', 'POST'],
   statusCodesToRetry: [[100, 199], [429, 429], [500, 599]],
   onRetryAttempt: (err) => {
-    const cfg = getConfig(err);
-    console.log(`🔁 Retry #${cfg?.currentRetryAttempt} para:`, err?.config?.url);
+    // silenced
   },
 };
 attach(api);
@@ -190,6 +189,7 @@ api.interceptors.request.use(
         const storedBaseUrl = await AsyncStorage.getItem(STORAGE_KEYS.API_BASE_URL);
         if (storedBaseUrl) {
           const isLocal = isLocalUrl(storedBaseUrl);
+          // Apenas apaga se for estritamente localhost no mobile
           if (isLocal && Platform.OS !== 'web') {
             await AsyncStorage.removeItem(STORAGE_KEYS.API_BASE_URL);
           } else {
@@ -363,7 +363,7 @@ export async function testApiConnection(baseUrl, apiKey) {
 }
 
 // Novo helper: alternar DB_TARGET no servidor atual (local/railway)
-export async function switchServerDbTarget(baseUrl, target, vendor) {
+export async function switchServerDbTarget(baseUrl, target) {
   try {
     const baseCandidate = baseUrl || api.defaults.baseURL || ENV_BASE_URL || initialBaseUrl || '';
     const effectiveBase = String(baseCandidate).replace(/\/$/, '');
@@ -371,7 +371,7 @@ export async function switchServerDbTarget(baseUrl, target, vendor) {
 
     const res = await axios.post(
       url,
-      { target, vendor },
+      { target },
       { timeout: 15000, headers: { 'Content-Type': 'application/json' } }
     );
     return { ok: true, status: res.status, data: res.data };
@@ -448,8 +448,8 @@ export const customerService = {
 };
 
 export const productService = {
-  list: () => api.get('/product/list'),
-  getAll: () => api.get('/product/list'),
+  list: () => api.get(`/product/list?t=${Date.now()}`),
+  getAll: () => api.get(`/product/list?t=${Date.now()}`),
   getById: (id) => api.get(`/product/${id}`),
   create: (data) => api.post('/product/create', data),
   createBulk: (products) => api.post('/product/bulk-create', { products }),

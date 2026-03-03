@@ -9,7 +9,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   SafeAreaView,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -482,11 +481,6 @@ export default function ListagemProdutos() {
         showsVerticalScrollIndicator={true}
         bounces={true}
         alwaysBounceVertical={false}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        windowSize={7}
-        updateCellsBatchingPeriod={50}
-        removeClippedSubviews={Platform.OS !== 'web'}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="cube-outline" size={64} color="#ccc" />

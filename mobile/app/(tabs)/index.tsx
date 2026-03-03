@@ -47,18 +47,21 @@ export default function HomeScreen() {
         setStats({ totalSales: 0, totalRevenue: 0, openTables: 0, openComandas: 0 });
         return;
       }
-      const [salesResponse, mesasResponse] = await Promise.all([
-        saleService.getAll(),
+      
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const [salesHojeRes, openSalesRes, mesasResponse] = await Promise.all([
+        saleService.list({ dataInicio: startOfDay.toISOString(), dataFim: endOfDay.toISOString() }),
+        saleService.list({ status: 'aberta' }),
         mesaService.list(),
       ]);
 
-      const today = new Date().toDateString();
-      
-      // Filtrar todas as vendas/comandas de hoje
-      const todaySales = (salesResponse?.data || []).filter(
-        (sale: any) =>
-          new Date(sale.createdAt).toDateString() === today
-      );
+      const todaySales = salesHojeRes?.data || [];
+      const openSales = openSalesRes?.data || [];
 
       // Contar mesas ocupadas
       const openTables = (mesasResponse?.data || []).filter(
@@ -66,12 +69,8 @@ export default function HomeScreen() {
       ).length;
 
       // Contar TODAS as comandas abertas (não apenas do dia)
-      const allComandas = (salesResponse?.data || []).filter((sale: any) => 
-        sale.tipoVenda === 'comanda'
-      );
-      
-      const openComandas = allComandas.filter(
-        (comanda: any) => comanda.status === 'aberta'
+      const openComandas = openSales.filter(
+        (sale: any) => sale.tipoVenda === 'comanda'
       ).length;
 
       // Calcular vendas finalizadas (todas as vendas fechadas do dia)
@@ -79,7 +78,7 @@ export default function HomeScreen() {
         sale.status === 'finalizada' || sale.status === 'fechada'
       );
 
-      // Calcular receita total (sem duplicação)
+      // Calcular receita total sem duplicação
       const totalRevenue = finalizedSales.reduce((sum: number, sale: any) => {
         return sum + (parseFloat(sale.total) || 0);
       }, 0);

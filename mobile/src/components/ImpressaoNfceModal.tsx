@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Linking, Image, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Linking, Image, Platform, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import NfceService from '../services/NfceService';
 
 interface Props {
   visible: boolean;
@@ -11,6 +13,10 @@ interface Props {
 }
 
 export default function ImpressaoNfceModal({ visible, onClose, status, message, nfceData }: Props) {
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
   const handleOpenUrl = () => {
     if (nfceData?.urlConsulta) {
       Linking.openURL(nfceData.urlConsulta);
@@ -26,6 +32,49 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
        }, 500);
     }
   }, [status, nfceData]);
+
+  const extractSaleId = () => {
+      if (nfceData?.nfce?.saleId) return nfceData.nfce.saleId;
+      if (nfceData?.pdfUrl) {
+          const match = nfceData.pdfUrl.match(/\/api\/nfce\/(\d+)\/pdf/);
+          if (match && match[1]) return match[1];
+      }
+      return null;
+  };
+
+  const showAlert = (title: string, msg: string) => {
+      if (Platform.OS === 'web') {
+          window.alert(`${title}: ${msg}`);
+      } else {
+          Alert.alert(title, msg);
+      }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailInput || !emailInput.includes('@')) {
+        showAlert('Aviso', 'Por favor, insira um e-mail válido.');
+        return;
+    }
+    
+    const saleId = extractSaleId();
+    if (!saleId) {
+        showAlert('Erro', 'Não foi possível identificar o ID da venda associado à NFC-e.');
+        return;
+    }
+
+    try {
+        setSendingEmail(true);
+        await NfceService.sendNfceEmail(saleId, emailInput);
+        
+        setShowEmailModal(false);
+        showAlert('Sucesso', 'Cupom enviado para o e-mail com sucesso!');
+    } catch (error: any) {
+        console.error("Erro ao enviar email", error);
+        showAlert('Erro', error.message || 'Falha ao enviar e-mail.');
+    } finally {
+        setSendingEmail(false);
+    }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -91,6 +140,13 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
                         </TouchableOpacity>
                     )}
 
+                    {nfceData?.pdfUrl && (
+                        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#009688' }]} onPress={() => setShowEmailModal(true)}>
+                            <Ionicons name="mail" size={20} color="#fff" />
+                            <Text style={styles.actionText}>Enviar por E-mail</Text>
+                        </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity style={styles.actionButton} onPress={() => {
                        const url = nfceData?.qrCode?.url || nfceData?.nfce?.qrCode || nfceData?.urlConsulta;
                        if(url) Linking.openURL(url);
@@ -117,6 +173,49 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
           </View>
         </View>
       </View>
+
+      {/* Modal para inserção de E-mail */}
+      <Modal visible={showEmailModal} transparent animationType="slide">
+          <View style={styles.overlay}>
+              <View style={styles.emailContainer}>
+                  <View style={styles.header}>
+                      <Text style={styles.title}>Enviar PDF por E-mail</Text>
+                      <TouchableOpacity onPress={() => setShowEmailModal(false)} disabled={sendingEmail}>
+                          <Ionicons name="close" size={24} color="#666" />
+                      </TouchableOpacity>
+                  </View>
+                  <View style={styles.content}>
+                      <Text style={styles.subText}>Digite o e-mail do cliente abaixo para encaminhar o cupom fiscal (NFC-e):</Text>
+                      
+                      <TextInput
+                          style={styles.input}
+                          placeholder="cliente@email.com"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={emailInput}
+                          onChangeText={setEmailInput}
+                          editable={!sendingEmail}
+                      />
+
+                      <TouchableOpacity 
+                          style={[styles.actionButton, { backgroundColor: sendingEmail ? '#B0BEC5' : '#009688', marginTop: 16 }]} 
+                          onPress={handleSendEmail}
+                          disabled={sendingEmail}
+                      >
+                          {sendingEmail ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                              <>
+                                <Ionicons name="send" size={20} color="#fff" />
+                                <Text style={styles.actionText}>Confirmar e Enviar</Text>
+                              </>
+                          )}
+                      </TouchableOpacity>
+                  </View>
+              </View>
+          </View>
+      </Modal>
+
     </Modal>
   );
 }
@@ -149,5 +248,11 @@ const styles = StyleSheet.create({
   actionText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   qrCodeContainer: { alignItems: 'center', marginVertical: 8 },
   qrCodeImage: { width: 120, height: 120 },
-  qrCodeLabel: { fontSize: 12, color: '#888', marginTop: 4 }
+  qrCodeLabel: { fontSize: 12, color: '#888', marginTop: 4 },
+  emailContainer: {
+    width: '90%', maxWidth: 350, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', elevation: 10
+  },
+  input: {
+    borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16, marginTop: 16, backgroundColor: '#FAFAFA'
+  }
 });

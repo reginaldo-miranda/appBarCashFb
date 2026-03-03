@@ -52,7 +52,6 @@ export default function LoginScreen() {
   const [dbOption, setDbOption] = useState<"lan" | "railway" | "custom" | "">(
     "lan"
   );
-  const [dbVendor, setDbVendor] = useState<'mysql' | 'mariadb'>('mysql');
   const [apiUrl, setApiUrl] = useState("");
 
   const [showError, setShowError] = useState(false);
@@ -86,20 +85,29 @@ export default function LoginScreen() {
         if (initial) {
           setApiUrl(initial);
           const fromStored = Boolean(stored);
-          setDbOption("lan");
+          setDbOption(
+            initial.includes("railway.app")
+              ? "railway"
+              : fromStored
+              ? "custom"
+              : "lan"
+          );
           setBaseStatus("testing");
           setBaseMessage("Testando base...");
-          const res = await retryTestApi(initial, 4, 800);
+          const res = await retryTestApi(initial, 8, 1500);
           if (res.ok) {
             setBaseStatus("ok");
             const dbTarget =
               res?.data?.dbTarget ||
               (initial.includes("railway") ? "railway" : "local");
             const host = new URL(initial).hostname;
-            const vendor = String(res?.data?.db?.vendor || res?.data?.db?.provider || 'mysql').toUpperCase();
-            setActiveDbLabel(`API • ${host} | DB • ${String(dbTarget).toUpperCase()} • ${vendor}`);
+            setActiveDbLabel(
+              `API • ${host} | DB • ${String(dbTarget).toUpperCase()}`
+            );
             setBaseMessage(
-              `Sucesso: API • ${host} • DB • ${String(dbTarget).toUpperCase()} • ${vendor}`
+              `Sucesso: Conexão validada! API: ${host} • DB: ${String(
+                dbTarget
+              ).toUpperCase()}`
             );
             setShowDbModal(false);
           } else {
@@ -121,13 +129,6 @@ export default function LoginScreen() {
         try { await handleSelectLanAuto(); } catch {}
       }
     })();
-  }, []);
-  
-  useEffect(() => {
-    try {
-      setDbOption("lan");
-      setShowDbModal(true);
-    } catch {}
   }, []);
   const [baseStatus, setBaseStatus] = useState<
     "idle" | "testing" | "ok" | "error"
@@ -226,16 +227,20 @@ export default function LoginScreen() {
       try {
         const base = getLanBaseUrl();
         if (!base) return;
-        const res = await retryTestApi(base, 2, 900);
-        if (res.ok) {
-          setApiUrl(base);
-          setBaseStatus("ok");
-          const host = new URL(base).hostname;
-          const dbTarget = String(res?.data?.dbTarget || "local").toUpperCase();
-          const vendor = String(res?.data?.db?.vendor || res?.data?.db?.provider || 'mysql').toUpperCase();
-          setActiveDbLabel(`API • ${host} | DB • ${dbTarget} • ${vendor}`);
-          setBaseMessage(`Sucesso: API • ${host} • DB • ${dbTarget} • ${vendor}`);
-          setShowDbModal(false);
+        for (let i = 0; i < 3; i++) {
+          try { await startLocalApi('local', base); } catch {}
+          const res = await retryTestApi(base, 1, 900);
+          if (res.ok) {
+            setApiUrl(base);
+            setBaseStatus("ok");
+            const host = new URL(base).hostname;
+            const dbTarget = String(res?.data?.dbTarget || "local").toUpperCase();
+            setActiveDbLabel(`API • ${host} | DB • ${dbTarget}`);
+            setBaseMessage(`Sucesso: API • ${host} | DB • ${dbTarget}`);
+            setShowDbModal(false);
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 900));
         }
       } catch {}
     })();
@@ -287,7 +292,10 @@ export default function LoginScreen() {
       setApiUrl(autoUrl);
       await setApiBaseUrl(autoUrl);
 
-      
+      try {
+        await startLocalApi('local', autoUrl);
+        await new Promise((r) => setTimeout(r, 600));
+      } catch {}
 
       // Alternar explicitamente o servidor para DB_TARGET=local antes de validar
       setBaseMessage("Alternando servidor para DB • LOCAL...");
@@ -303,16 +311,15 @@ export default function LoginScreen() {
       }
 
       // Validar saúde com tentativas/backoff
-      const res = await retryTestApi(autoUrl, 4, 800);
+      const res = await retryTestApi(autoUrl, 8, 1000);
       const apiHost = new URL(autoUrl).hostname;
       if (res.ok) {
         const detectedDbTarget = String(
           res?.data?.dbTarget || "local"
         ).toUpperCase();
         setBaseStatus("ok");
-        const vendor = String(res?.data?.db?.vendor || res?.data?.db?.provider || 'mysql').toUpperCase();
-        setActiveDbLabel(`API • ${apiHost} | DB • ${detectedDbTarget} • ${vendor}`);
-        setBaseMessage(`Sucesso: API • ${apiHost} • DB • ${detectedDbTarget} • ${vendor}`);
+        setActiveDbLabel(`API • ${apiHost} | DB • ${detectedDbTarget}`);
+        setBaseMessage(`Sucesso: API • ${apiHost} | DB • ${detectedDbTarget}`);
         Alert.alert("Sucesso", "Conexão local validada e DB • LOCAL ativo!");
         setShowDbModal(false);
       } else {
@@ -357,12 +364,11 @@ export default function LoginScreen() {
             const detectedDbTarget = String(
               res?.data?.dbTarget || "local"
             ).toUpperCase();
-            const vendor = String(res?.data?.db?.vendor || res?.data?.db?.provider || 'mysql').toUpperCase();
-            setActiveDbLabel(`API • ${apiHost} | DB • ${detectedDbTarget} • ${vendor}`);
+            setActiveDbLabel(`API • ${apiHost} | DB • ${detectedDbTarget}`);
             setBaseStatus(res.ok ? "ok" : "error");
             setBaseMessage(
               res.ok
-                ? `Sucesso: API • ${apiHost} • DB • ${detectedDbTarget} • ${vendor}`
+                ? `Sucesso: API • ${apiHost} | DB • ${detectedDbTarget}`
                 : `Falha ao validar após alternar (status ${
                     res.status || "N/A"
                   })`
@@ -465,7 +471,7 @@ export default function LoginScreen() {
       if (!dbOption) {
         Alert.alert(
           "Seleção obrigatória",
-          "Escolha a base Local (LAN) antes de salvar."
+          "Escolha uma opção de base antes de salvar: Local (LAN), API Pública ou URL Personalizada."
         );
         return;
       }
@@ -542,30 +548,30 @@ export default function LoginScreen() {
 
       // Alternar DB_TARGET conforme opção escolhida e validar saúde da API
       if (dbOption === "railway") {
-      const sw = await switchServerDbTarget(targetUrl!, "railway", dbVendor);
-      if (!sw.ok) {
-        setBaseStatus("error");
-        const reason = String(sw.reason || "Falha ao alternar para Railway");
-        setBaseMessage(reason);
-        Alert.alert("Erro", reason);
-        setSaveLoading(false);
-        return;
+        const sw = await switchServerDbTarget(targetUrl!, "railway");
+        if (!sw.ok) {
+          setBaseStatus("error");
+          const reason = String(sw.reason || "Falha ao alternar para Railway");
+          setBaseMessage(reason);
+          Alert.alert("Erro", reason);
+          setSaveLoading(false);
+          return;
+        }
+      } else if (dbOption === "lan") {
+        const swLocal = await switchServerDbTarget(targetUrl!, "local");
+        if (!swLocal.ok) {
+          setBaseStatus("error");
+          const reason = String(
+            swLocal.reason || "Falha ao alternar para base local"
+          );
+          setBaseMessage(reason);
+          Alert.alert("Erro", reason);
+          setSaveLoading(false);
+          return;
+        }
       }
-    } else if (dbOption === "lan") {
-      const swLocal = await switchServerDbTarget(targetUrl!, "local", dbVendor);
-      if (!swLocal.ok) {
-        setBaseStatus("error");
-        const reason = String(
-          swLocal.reason || "Falha ao alternar para base local"
-        );
-        setBaseMessage(reason);
-        Alert.alert("Erro", reason);
-        setSaveLoading(false);
-        return;
-      }
-    }
 
-      const result = await retryTestApi(targetUrl!, 4, 800);
+      const result = await retryTestApi(targetUrl!, 8, 1500);
 
       if (result.ok) {
         setBaseStatus("ok");
@@ -574,11 +580,10 @@ export default function LoginScreen() {
           (result as any)?.data?.dbTarget ||
           (dbOption === "railway" ? "railway" : "local");
         const dbTarget = String(dbTargetRaw).toUpperCase();
-        const vendor = String(result?.data?.db?.vendor || result?.data?.db?.provider || 'mysql').toUpperCase();
-        setActiveDbLabel(`API • ${host} | DB • ${dbTarget} • ${vendor}`);
+        setActiveDbLabel(`API • ${host} | DB • ${dbTarget}`);
         setApiUrl(targetUrl!);
         setBaseMessage(
-          `Sucesso: API • ${host} • DB • ${dbTarget} • ${vendor}`
+          `Sucesso: Conexão validada! API: ${host} • DB: ${dbTarget}`
         );
         Alert.alert("Sucesso", "Base salva e conexão validada!");
         setShowDbModal(false);
@@ -592,9 +597,8 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       setBaseStatus("error");
-      const errorMsg = err?.response?.data?.message || err?.message || "Erro inesperado ao salvar/testar a base.";
-      setBaseMessage(errorMsg);
-      Alert.alert("Erro", errorMsg);
+      setBaseMessage("Erro inesperado ao salvar/testar a base.");
+      Alert.alert("Erro", "Erro inesperado ao salvar/testar a base.");
     } finally {
       setSaveLoading(false);
     }
@@ -662,7 +666,7 @@ export default function LoginScreen() {
             >
               <View style={[styles.connectionDot, { backgroundColor: baseStatus === 'ok' ? '#4CAF50' : '#FF9800' }]} />
               <Text style={styles.connectionText}>
-                {activeDbLabel ? activeDbLabel : "Conexão"}
+                {activeDbLabel ? 'Conectado' : "Conexão"}
               </Text>
               <SafeIcon name="chevron-down" size={14} color="#666" fallbackText="▼" />
             </TouchableOpacity>
@@ -806,7 +810,7 @@ export default function LoginScreen() {
               </View>
 
               <Text style={styles.modalDesc}>
-                Apenas Local (LAN). Para usar no celular com Expo Go, inicie com npx expo start --host lan e conecte ao mesmo Wi‑Fi.
+                Selecione onde o servidor da API está sendo executado.
               </Text>
 
               <View style={styles.selectorRow}>
@@ -817,24 +821,39 @@ export default function LoginScreen() {
                   <SafeIcon name="wifi" size={24} color={dbOption === "lan" ? "#fff" : "#666"} fallbackText="Lan" />
                   <Text style={[styles.selText, dbOption === "lan" && styles.selTextActive]}>Local (LAN)</Text>
                 </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.selOption, dbOption === "railway" && styles.selOptionActive]}
+                  onPress={() => handleQuickSelect("railway")}
+                >
+                   <SafeIcon name="cloud" size={24} color={dbOption === "railway" ? "#fff" : "#666"} fallbackText="Cloud" />
+                   <Text style={[styles.selText, dbOption === "railway" && styles.selTextActive]}>Nuvem</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.selOption, dbOption === "custom" && styles.selOptionActive]}
+                  onPress={() => handleQuickSelect("custom")}
+                >
+                   <SafeIcon name="code-slash" size={24} color={dbOption === "custom" ? "#fff" : "#666"} fallbackText="Custom" />
+                   <Text style={[styles.selText, dbOption === "custom" && styles.selTextActive]}>Custom</Text>
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionTitle}>Banco de Dados</Text>
-              <View style={styles.vendorSelectorRow}>
-                <TouchableOpacity
-                  style={[styles.vendorOption, dbVendor === 'mysql' && styles.vendorOptionActive]}
-                  onPress={() => setDbVendor('mysql')}
-                >
-                  <Text style={[styles.vendorText, dbVendor === 'mysql' && styles.vendorTextActive]}>MySQL</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.vendorOption, dbVendor === 'mariadb' && styles.vendorOptionActive]}
-                  onPress={() => setDbVendor('mariadb')}
-                >
-                  <Text style={[styles.vendorText, dbVendor === 'mariadb' && styles.vendorTextActive]}>MariaDB</Text>
-                </TouchableOpacity>
-              </View>
-              
+              {(dbOption === "railway" || dbOption === "custom") && (
+                <View style={styles.modalInputBox}>
+                  <Text style={styles.modalLabel}>URL da API</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="http://..."
+                    value={apiUrl}
+                    onChangeText={setApiUrl}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                  />
+                </View>
+              )}
+
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.actionBtnSec]}
@@ -852,10 +871,6 @@ export default function LoginScreen() {
                   {saveLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.actionBtnPriText}>Salvar e Conectar</Text>}
                 </TouchableOpacity>
               </View>
-              
-              <Text style={styles.modalDesc}>
-                Recomendado: LAN para Expo Go. O banco (MySQL/MariaDB) é definido no .env da API.
-              </Text>
               
               <Text style={styles.modalStatus}>{baseMessage}</Text>
             </View>
@@ -909,45 +924,6 @@ const styles = StyleSheet.create({
     color: "#444",
     fontWeight: "600",
     marginRight: 4,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-    marginTop: 16,
-    width: "100%",
-  },
-  vendorSelectorRow: {
-    flexDirection: "row",
-    backgroundColor: "#f0f0f0",
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 16,
-    width: "100%",
-  },
-  vendorOption: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 6,
-  },
-  vendorOptionActive: {
-    backgroundColor: "#fff",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  vendorText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  vendorTextActive: {
-    color: "#007AFF",
-    fontWeight: "bold",
   },
   loginCard: {
     width: "100%",

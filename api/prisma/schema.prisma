@@ -141,6 +141,7 @@ model Customer {
   fone           String?
   cep            String?
   cpf            String?   @unique
+  email          String?
   rg             String?
   dataNascimento DateTime?
   ativo          Boolean   @default(true)

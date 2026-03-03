@@ -32,15 +32,15 @@ DB_TARGET="${1:-local}"
 if ! grep -q "^DATABASE_URL_LOCAL=" .env; then
   echo "DATABASE_URL_LOCAL=\"mysql://root:saguides%40123@localhost:3306/appBar\"" >> .env
 fi
-if ! grep -q "^DATABASE_URL_RAILWAY=" .env; then
-  # Se já existir DATABASE_URL em .env, use como Railway
-  if grep -q "^DATABASE_URL=" .env; then
-    RAIL=$(grep "^DATABASE_URL=" .env | sed 's/^DATABASE_URL=//')
-    echo "DATABASE_URL_RAILWAY=${RAIL}" >> .env
-  else
-    echo "DATABASE_URL_RAILWAY=\"mysql://root:EcNHsXSBfTPvATYnaVMSGHKIOjDMZnZx@shuttle.proxy.rlwy.net:17474/railway\"" >> .env
-  fi
-fi
+# if ! grep -q "^DATABASE_URL_RAILWAY=" .env; then
+#   # Se já existir DATABASE_URL em .env, use como Railway
+#   if grep -q "^DATABASE_URL=" .env; then
+#     RAIL=$(grep "^DATABASE_URL=" .env | sed 's/^DATABASE_URL=//')
+#     echo "DATABASE_URL_RAILWAY=${RAIL}" >> .env
+#   else
+#     echo "DATABASE_URL_RAILWAY=\"mysql://root:EcNHsXSBfTPvATYnaVMSGHKIOjDMZnZx@shuttle.proxy.rlwy.net:17474/railway\"" >> .env
+#   fi
+# fi
 
 # Recarregar variáveis
 set -a

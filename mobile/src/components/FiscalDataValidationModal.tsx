@@ -53,27 +53,38 @@ export default function FiscalDataValidationModal({
       });
       setFormData(initial);
 
-      // Fetch fresh product data from backend to get existing fiscal info that might not be in the cart snapshot
+      // Fetch fresh product data from backend to get existing fiscal info
       const fetchFreshData = async () => {
         try {
-          const fetchPromises = products.map(p => api.get(`/product/${p.productId}`).catch(e => null));
+          // Busca individualmente cada produto para garantir que todos os itens com erro sejam encontrados
+          const fetchPromises = products.map(p => 
+             api.get(`/product/${p.productId}`).catch(err => null)
+          );
+          
           const responses = await Promise.all(fetchPromises);
           
           if (!mounted) return;
 
           setFormData(prev => {
              const updated = { ...prev };
+             
              responses.forEach((res, index) => {
-                 const pid = products[index].productId;
                  if (res && res.data) {
                      const pData = res.data;
+                     const pid = products[index].productId;
+                     
+                     const pNcm = pData.ncm ? String(pData.ncm).replace(/\D/g, '') : '';
+                     const pCfop = pData.cfop ? String(pData.cfop).replace(/\D/g, '') : '';
+                     const pCsosn = pData.csosn ? String(pData.csosn).replace(/\D/g, '') : '';
+                     
                      updated[pid] = {
-                         ncm: (pData.ncm || prev[pid]?.ncm || '').replace(/\D/g, ''),
-                         cfop: (pData.cfop || prev[pid]?.cfop || '5102').replace(/\D/g, ''),
-                         csosn: String(pData.csosn || prev[pid]?.csosn || '102')
+                         ncm: prev[pid]?.ncm ? prev[pid].ncm : (pNcm || ''),
+                         cfop: prev[pid]?.cfop ? prev[pid].cfop : (pCfop || '5102'),
+                         csosn: prev[pid]?.csosn ? prev[pid].csosn : (pCsosn || '102')
                      };
                  }
              });
+             
              return updated;
           });
 
@@ -108,8 +119,8 @@ export default function FiscalDataValidationModal({
         Alert.alert('Atenção', `Preencha todos os campos fiscais para o produto: ${p.nomeProduto}`);
         return;
       }
-      if (data.ncm.replace(/\D/g, '').length !== 8) {
-        Alert.alert('Atenção', `O NCM do produto ${p.nomeProduto} deve ter exatamente 8 dígitos.`);
+      if (data.ncm.replace(/\D/g, '').length !== 8 || data.ncm === '00000000' || data.ncm === '99998888') {
+        Alert.alert('Atenção', `O NCM do produto ${p.nomeProduto} é inválido ou dummy. Informe um NCM real com 8 dígitos.`);
         return;
       }
       if (data.cfop.replace(/\D/g, '').length !== 4) {

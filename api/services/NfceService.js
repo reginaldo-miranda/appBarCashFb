@@ -245,7 +245,7 @@ class NfceService {
     let totalProdutosCalculado = 0;
 
     itens.forEach((item, index) => {
-        const prod = item.product || {};
+        const prod = item.product || item.produto || {};
         const nItem = index + 1;
         // Assegurar casas decimais corretas
         const qCom = Number(item.quantidade);
@@ -288,11 +288,15 @@ class NfceService {
         }
         
         prodEle.ele('xProd').txt(xProdText).up();
-        prodEle.ele('NCM').txt(prod.ncm || '00000000').up(); // Agora usa NCM real
-        if (prod.cest && prod.cest.length > 0) {
-           prodEle.ele('CEST').txt(prod.cest.replace(/\D/g, '')).up();
+
+        const ncmVal = (prod.ncm || item.ncm || '00000000').replace(/\D/g, '');
+        prodEle.ele('NCM').txt(ncmVal.length === 8 ? ncmVal : '00000000').up(); // Agora usa NCM real
+        if (prod.cest && String(prod.cest).replace(/\D/g, '').length > 0) {
+           prodEle.ele('CEST').txt(String(prod.cest).replace(/\D/g, '')).up();
         }
-        prodEle.ele('CFOP').txt(prod.cfop || '5102').up();
+        
+        const cfopVal = (prod.cfop || item.cfop || '5102').replace(/\D/g, '');
+        prodEle.ele('CFOP').txt(cfopVal || '5102').up();
         prodEle.ele('uCom').txt('UN').up();
         prodEle.ele('qCom').txt(qCom.toFixed(4)).up();
         prodEle.ele('vUnCom').txt(vUnCom.toFixed(10)).up();
@@ -314,7 +318,9 @@ class NfceService {
         const imposto = det.ele('imposto');
         const icms = imposto.ele('ICMS');
         // Simples Nacional (CSOSN)
-        const csosnCode = String(prod.csosn || '102');
+        let csosnRaw = String(prod.csosn || item.csosn || '102').replace(/\D/g, '');
+        if (csosnRaw.length < 3) csosnRaw = '102';
+        const csosnCode = csosnRaw;
         let icmsSn;
         
         if (csosnCode === '500') {

@@ -28,6 +28,7 @@ interface Customer {
   fone: string;
   cep?: string;
   cpf: string;
+  email?: string;
   rg: string;
   dataNascimento: Date;
   ativo: boolean;
@@ -61,6 +62,7 @@ export default function AdminClientesScreen() {
     fone: '',
     cep: '',
     cpf: '',
+    email: '',
     rg: '',
     dataNascimento: '',
     ativo: true,
@@ -177,6 +179,7 @@ export default function AdminClientesScreen() {
       fone: customer.fone || '',
       cep: customer.cep || '',
       cpf: customer.cpf || '',
+      email: customer.email || '',
       rg: customer.rg || '',
       dataNascimento: customer.dataNascimento ? 
         new Date(customer.dataNascimento).toISOString().split('T')[0] : '',
@@ -222,6 +225,7 @@ export default function AdminClientesScreen() {
       fone: '',
       cep: '',
       cpf: '',
+      email: '',
       rg: '',
       dataNascimento: '',
       ativo: true,
@@ -306,6 +310,13 @@ export default function AdminClientesScreen() {
           <View style={styles.infoRow}>
             <SafeIcon name="call" size={16} color="#666" fallbackText="📞" />
             <Text style={styles.infoText}>{formatPhone(item.fone)}</Text>
+          </View>
+        )}
+        
+        {item.email && (
+          <View style={styles.infoRow}>
+            <SafeIcon name="mail" size={16} color="#666" fallbackText="✉️" />
+            <Text style={styles.infoText}>{item.email}</Text>
           </View>
         )}
         
@@ -492,6 +503,20 @@ export default function AdminClientesScreen() {
                 />
               </View>
 
+              <View style={[styles.formGroup, styles.halfWidth]}>
+                <Text style={styles.label}>E-mail</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.email}
+                  onChangeText={(text) => setFormData({ ...formData, email: text })}
+                  placeholder="email@exemplo.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
               <View style={[styles.formGroup, styles.halfWidth]}>
                 <Text style={styles.label}>Data de Nascimento</Text>
                 <TextInput

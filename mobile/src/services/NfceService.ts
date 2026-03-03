@@ -16,12 +16,26 @@ export interface NfceConfig {
 import { Platform } from 'react-native';
 
 export const NfceService = {
-    emitir: async (saleId: number | string) => {
+    emitir: async (saleId: number | string, itemsOverlay?: any[]) => {
         try {
-            const response = await api.post('/nfce/emitir', { saleId });
+            const response = await api.post('/nfce/emitir', { saleId, itemsOverlay });
             return response.data;
         } catch (error: any) {
             throw error.response?.data?.error || 'Erro ao emitir NFC-e';
+        }
+    },
+
+    sendNfceEmail: async (saleId: number | string, emailTo: string) => {
+        try {
+            // Desabilita retries e aumenta o timeout só para essa requisição, 
+            // já que a geração do PDF via Puppeteer e envio de E-mail pode demorar > 15s
+            const response = await api.post(`/nfce/${saleId}/send-email`, { emailTo }, {
+                timeout: 30000, // 30 segundos
+                raxConfig: { retry: 0 } // Desativa retry-axios para não gerar múltiplos envios
+            });
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data?.message || 'Erro ao enviar e-mail';
         }
     },
 
@@ -102,7 +116,6 @@ export const NfceService = {
                 serie: company.serieNfce ? String(company.serieNfce) : '1',
                 numeroInicial: company.numeroInicialNfce ? String(company.numeroInicialNfce) : '',
                 certificadoSenha: company.certificadoSenha || '',
-                certificadoPath: company.certificadoPath || null,
                 certificadoPath: company.certificadoPath || null,
                 xmlFolder: company.xmlFolder || '',
                 chavePix: company.chavePix || '',

@@ -433,7 +433,7 @@ const getEnvApiUrl = (): string | undefined => {
           // However, configuracoes might be accessible. 
           // *CRITICAL*: The user mentioned "not saving path", so maybe they aren't logged in properly?
           // We will use the stored JWT if available.
-          const userToken = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+          const userToken = await AsyncStorage.getItem('userToken'); // Assuming standard storage
           if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
           
           const res = await fetch(endpoint, { headers });
@@ -510,9 +510,7 @@ const getEnvApiUrl = (): string | undefined => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>
-            URL da API <Text style={{ color: 'red' }}>*</Text>
-          </Text>
+          <Text style={styles.label}>URL da API</Text>
           <TextInput
             placeholder="http://192.168.0.10:4000/api"
             style={styles.input}

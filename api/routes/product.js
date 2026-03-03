@@ -398,12 +398,14 @@ router.get("/list", async (req, res) => {
       const w = idsFilter ? { ...where, id: { in: idsFilter } } : where;
       products = await prisma.product.findMany({ 
         where: w, 
+        include: { tamanhos: true },
         orderBy: { dataInclusao: 'desc' } 
       });
     } catch (e) {
       const w = idsFilter ? { ...where, id: { in: idsFilter } } : where;
       products = await prisma.product.findMany({ 
         where: w, 
+        include: { tamanhos: true },
         orderBy: { id: 'desc' } 
       });
     }
@@ -575,15 +577,15 @@ router.put("/update/:id", async (req, res) => {
     const updateData = {
       nome,
       descricao,
-      precoCusto: precoCusto !== undefined ? String(Number((precoCusto ?? preco) ?? 0).toFixed(2)) : undefined,
-      precoVenda: precoVenda !== undefined ? String(Number((precoVenda ?? preco) ?? 0).toFixed(2)) : undefined,
+      precoCusto: (precoCusto !== undefined || preco !== undefined) ? String(Number((precoCusto ?? preco) ?? 0).toFixed(2)) : undefined,
+      precoVenda: (precoVenda !== undefined || preco !== undefined) ? String(Number((precoVenda ?? preco) ?? 0).toFixed(2)) : undefined,
       categoria,
       tipo,
       grupo,
       unidade,
       ativo,
       dadosFiscais,
-      quantidade: quantidade !== undefined ? Number(quantidade ?? estoque ?? 0) : undefined,
+      quantidade: (quantidade !== undefined || estoque !== undefined) ? Number(quantidade ?? estoque ?? 0) : undefined,
       imagem,
       tempoPreparoMinutos,
       disponivel,

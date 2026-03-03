@@ -42,6 +42,10 @@ interface Product {
   ativo: boolean;
   quantidade: number;
   disponivel: boolean;
+  ncm?: string;
+  cest?: string;
+  cfop?: string;
+  origem?: number;
 }
 
 interface Categoria {
@@ -133,6 +137,10 @@ export default function AdminProdutosScreen() {
     ativo: true,
     quantidade: '0',
     disponivel: true,
+    ncm: '',
+    cest: '',
+    cfop: '',
+    origem: '0',
   });
 
   useEffect(() => {
@@ -190,7 +198,7 @@ export default function AdminProdutosScreen() {
   const loadCategorias = async () => {
     try {
       const response = await categoryService.getAll();
-      setCategorias(response.data || []);
+      setCategorias(Array.isArray(response) ? response : []);
     } catch (error: any) {
       console.error('❌ Erro ao carregar categorias:', error);
     }
@@ -232,18 +240,27 @@ export default function AdminProdutosScreen() {
 
     setLoading(true);
     try {
+      const parseValue = (val: any) => {
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(',', '.')) || 0;
+      };
+
       const productData: any = {
         nome: formData.nome,
         descricao: formData.descricao,
-        precoCusto: parseFloat(formData.precoCusto) || 0,
-        precoVenda: parseFloat(formData.precoVenda),
+        precoCusto: parseValue(formData.precoCusto),
+        precoVenda: parseValue(formData.precoVenda),
         categoria: formData.categoria,
         tipo: formData.tipo,
         grupo: formData.grupo,
         unidade: formData.unidade,
         ativo: formData.ativo,
-        quantidade: parseInt(formData.quantidade) || 0,
-        disponivel: formData.disponivel
+        quantidade: parseValue(formData.quantidade),
+        disponivel: formData.disponivel,
+        ncm: formData.ncm,
+        cest: formData.cest,
+        cfop: formData.cfop,
+        origem: parseInt(formData.origem) || 0,
       };
 
       if (selectedSetores !== null) {
@@ -270,17 +287,21 @@ export default function AdminProdutosScreen() {
 
   const handleEditProduct = async (product: Product) => {
     setFormData({
-      nome: product.nome,
-      descricao: product.descricao,
-      precoCusto: product.precoCusto.toString(),
-      precoVenda: product.precoVenda.toString(),
-      categoria: product.categoria,
-      tipo: product.tipo,
-      grupo: product.grupo,
-      unidade: product.unidade,
-      ativo: product.ativo,
-      quantidade: product.quantidade.toString(),
-      disponivel: product.disponivel,
+      nome: product.nome || '',
+      descricao: product.descricao || '',
+      precoCusto: (product.precoCusto ?? 0).toString(),
+      precoVenda: (product.precoVenda ?? 0).toString(),
+      categoria: product.categoria || '',
+      tipo: product.tipo || '',
+      grupo: product.grupo || '',
+      unidade: product.unidade || 'un',
+      ativo: product.ativo !== undefined ? product.ativo : true,
+      quantidade: (product.quantidade ?? 0).toString(),
+      disponivel: product.disponivel !== undefined ? product.disponivel : true,
+      ncm: product.ncm || '',
+      cest: product.cest || '',
+      cfop: product.cfop || '',
+      origem: (product.origem ?? 0).toString(),
     });
     setEditingProduct(product);
     setSelectedSetores(null);
@@ -289,7 +310,7 @@ export default function AdminProdutosScreen() {
       const sids = Array.isArray(resp?.data?.setoresImpressaoIds) ? resp.data.setoresImpressaoIds.map((n: any) => String(n)) : [];
       setSelectedSetores(sids);
     } catch {
-      // Silent error
+      setSelectedSetores([]);
     }
     setModalVisible(true);
   };
@@ -330,6 +351,10 @@ export default function AdminProdutosScreen() {
       ativo: true,
       quantidade: '0',
       disponivel: true,
+      ncm: '',
+      cest: '',
+      cfop: '',
+      origem: '0',
     });
     setEditingProduct(null);
     setSelectedSetores([]);
@@ -489,11 +514,6 @@ export default function AdminProdutosScreen() {
           key={viewMode + (isLargeScreen ? '_large' : '_small')}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          initialNumToRender={12}
-          maxToRenderPerBatch={12}
-          windowSize={7}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews={Platform.OS !== 'web'}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={loadInitialData} colors={['#2196F3']} />
           }
@@ -509,7 +529,6 @@ export default function AdminProdutosScreen() {
         <Modal
           visible={modalVisible}
           animationType="slide"
-          presentationStyle="formSheet" // Better on iPad
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalContainer}>
@@ -723,10 +742,59 @@ export default function AdminProdutosScreen() {
                               trackColor={{ false: '#E2E8F0', true: '#2196F3' }}
                               thumbColor={'#fff'}
                             />
+                          </View>
+                       </View>
+
+                      {/* Grupo: Dados Fiscais */}
+                      <View style={styles.formSection}>
+                         <Text style={styles.sectionLabel}>Dados Fiscais</Text>
+                         <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                               <Text style={[styles.label, { color: '#f44336' }]}>NCM (Obrigatório)*</Text>
+                               <TextInput
+                                 style={[styles.input, { borderColor: '#FFCDD2' }]}
+                                 value={formData.ncm}
+                                 onChangeText={(t) => setFormData({...formData, ncm: t})}
+                                 keyboardType="numeric"
+                                 placeholder="Ex: 22021000"
+                               />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                               <Text style={styles.label}>CEST</Text>
+                               <TextInput
+                                 style={styles.input}
+                                 value={formData.cest}
+                                 onChangeText={(t) => setFormData({...formData, cest: t})}
+                                 keyboardType="numeric"
+                                 placeholder="Ex: 0300700"
+                               />
+                            </View>
+                         </View>
+                         
+                         <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                               <Text style={styles.label}>CFOP</Text>
+                               <TextInput
+                                 style={styles.input}
+                                 value={formData.cfop}
+                                 onChangeText={(t) => setFormData({...formData, cfop: t})}
+                                 keyboardType="numeric"
+                                 placeholder="Ex: 5102"
+                               />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                               <Text style={styles.label}>Origem (0-8)</Text>
+                               <TextInput
+                                 style={styles.input}
+                                 value={formData.origem}
+                                 onChangeText={(t) => setFormData({...formData, origem: t})}
+                                 keyboardType="numeric"
+                                 maxLength={1}
+                                 placeholder="Ex: 0"
+                               />
+                            </View>
                          </View>
                       </View>
-
-
 
                    </View>
                    <View style={{height: 40}} />

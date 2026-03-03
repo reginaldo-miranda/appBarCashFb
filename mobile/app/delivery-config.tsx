@@ -224,9 +224,7 @@ export default function DeliveryConfigScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="location" size={20} color="#2196F3" />
-              <Text style={styles.sectionTitle}>
-                Localização da Loja <Text style={{ color: 'red' }}>*</Text>
-              </Text>
+              <Text style={styles.sectionTitle}>Localização da Loja</Text>
             </View>
             <Text style={styles.infoText}>
               Defina o ponto central para cálculo de distâncias.
@@ -366,7 +364,7 @@ export default function DeliveryConfigScreen() {
                 <View key={index} style={styles.rangeItem}>
                     <View style={styles.rangeRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.rangeLabel}>De (km) <Text style={{color: 'red'}}>*</Text></Text>
+                            <Text style={styles.rangeLabel}>De (km)</Text>
                             <TextInput
                                 style={styles.rangeInput}
                                 value={range.minDist}
@@ -384,7 +382,7 @@ export default function DeliveryConfigScreen() {
                             />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.rangeLabel}>Preço (R$) <Text style={{color: 'red'}}>*</Text></Text>
+                            <Text style={styles.rangeLabel}>Preço (R$)</Text>
                             <TextInput
                                 style={styles.rangeInput}
                                 value={range.price}

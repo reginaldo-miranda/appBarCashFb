@@ -556,17 +556,17 @@ export default function PaymentSplitModal({
     // A pedido do usuário: REGRA SIMPLES.
     // Se clicou em confirmar pagamento e "Emitir NFC-e" está marcado, 
     // apenas abra a modal de fiscal (que é controlada pelo pai através do onPaymentSuccess).
-    if (emitirNfce) {
+    const isEverythingPaid = totalRemainingGlobal <= 0.05;
+    const isPayingRest = (totalSelected >= totalRemainingGlobal - 0.05);
+    const willFinalize = isEverythingPaid || isPayingRest;
+
+    if (emitirNfce && willFinalize) {
         // Envia isFullPayment=true e wantNfce=true para forçar o pai a abrir a modal
         onPaymentSuccess(true, true, pointsToUse);
         return;
     }
 
     // Se NÃO for emitir NFC-e, segue o fluxo normal de pagamento
-    const isEverythingPaid = totalRemainingGlobal <= 0.05;
-    const isPayingRest = (totalSelected >= totalRemainingGlobal - 0.05);
-    const willFinalize = isEverythingPaid || isPayingRest;
-
     if (willFinalize) {
         setPendingConfirmAction(() => executeConfirmLogic);
         setCpfModalVisible(true);

@@ -28,6 +28,7 @@ CREATE TABLE `Customer` (
     `estado` VARCHAR(191) NULL,
     `fone` VARCHAR(191) NULL,
     `cpf` VARCHAR(191) NOT NULL,
+    `email` VARCHAR(191) NULL,
     `rg` VARCHAR(191) NULL,
     `dataNascimento` DATETIME(3) NULL,
     `ativo` BOOLEAN NOT NULL DEFAULT true,

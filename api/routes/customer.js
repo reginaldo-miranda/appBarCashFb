@@ -48,8 +48,12 @@ router.get("/list", async (req, res) => {
     const { nome } = req.query;
     const where = {};
     if (nome) {
-      // Busca simples (MySQL geralmente é case-insensitive por collation padrão)
-      where.nome = { contains: String(nome) };
+      // Busca ampla para incluir NOME, CPF ou TELEFONE
+      where.OR = [
+        { nome: { contains: String(nome).trim() } },
+        { cpf: { contains: String(nome).trim().replace(/[^\d.-]/g, '') } },
+        { fone: { contains: String(nome).trim().replace(/[^\d() -]/g, '') } }
+      ];
     }
     const customers = await prisma.customer.findMany({
       where,
@@ -131,23 +135,20 @@ router.get("/by-cpf/:cpf", async (req, res) => {
   try {
     const prisma = getActivePrisma();
     const { cpf } = req.params;
-    // Tenta encontrar cliente por CPF (limpa formatação primeiro)
-    // No banco o CPF pode estar com ou sem pontuação? Vamos assumir que buscamos as duas formas ou limpamos na query se banco estiver limpo.
-    // O create limpa? Na create não vi limpeza explicita. Vamos assumir que salvamos como vem.
-    // Melhor tentar os dois ou limpar. O ideal é padronizar.
-    // Vou buscar exato primeiro.
     
-    let customer = await prisma.customer.findUnique({ where: { cpf: cpf } });
+    // Limpa a string de CPF recebida para usar apenas números
+    const cpfLimpo = cpf ? cpf.replace(/\D/g, '') : '';
     
-    // Se não achou e o cpf tem chars, tenta limpo? Ou vice versa.
-    // Por simplicidade: busca exato. O frontend manda limpo (números). Se o banco tiver pontos, falha.
-    // Vamos tentar buscar like ou OR se findUnique falhar? findUnique só aceita unique field.
-    // Se o CPF no banco não é padronizado, é problema.
-    // Vamos assumir busca direta no campo unique @unique.
+    // Tenta encontrar cliente por CPF (pode estar com ou sem pontuação no banco)
+    let customer = await prisma.customer.findUnique({ where: { cpf: cpfLimpo } });
+    
+    if (!customer && cpfLimpo.length === 11) {
+        // Tenta também formatado no formato XXX.XXX.XXX-XX caso tenha sido salvo assim
+        const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        customer = await prisma.customer.findFirst({ where: { cpf: cpfFormatado } });
+    }
     
     if (!customer) {
-        // Fallback: se o CPF passado for números puros, tenta formatar ###.###.###-##?
-        // Ou se o banco tiver salvo com mascara...
         return res.status(404).json({ error: "Cliente não encontrado" });
     }
     

@@ -55,10 +55,12 @@ export default function AdminRelatoriosScreen() {
     vendasPorStatus: {
       finalizadas: 0,
       abertas: 0,
-      canceladas: 0,
     },
   });
+  const [salesList, setSalesList] = useState<any[]>([]);
+  const [showDetails, setShowDetails] = useState(false);
   const [periodo, setPeriodo] = useState<'hoje' | 'semana' | 'mes' | 'total'>('hoje');
+  const [filtroFiscal, setFiltroFiscal] = useState<'todas' | 'fiscal' | 'nao-fiscal'>('todas');
 
   useEffect(() => {
     if (hasPermission('relatorios')) {
@@ -66,7 +68,7 @@ export default function AdminRelatoriosScreen() {
     } else {
       setLoading(false);
     }
-  }, [periodo]);
+  }, [periodo, filtroFiscal]);
 
   if (!hasPermission('relatorios')) {
     return (
@@ -105,19 +107,29 @@ export default function AdminRelatoriosScreen() {
 
       if (periodo === 'hoje') {
         const today = now.toDateString();
-        filteredSales = sales.filter((sale: any) => 
-          new Date(sale.createdAt).toDateString() === today
-        );
+        filteredSales = sales.filter((sale: any) => {
+          const d = sale.dataVenda || sale.createdAt;
+          return d ? new Date(d).toDateString() === today : false;
+        });
       } else if (periodo === 'semana') {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filteredSales = sales.filter((sale: any) => 
-          new Date(sale.createdAt) >= weekAgo
-        );
+        filteredSales = sales.filter((sale: any) => {
+          const d = sale.dataVenda || sale.createdAt;
+          return d ? new Date(d) >= weekAgo : false;
+        });
       } else if (periodo === 'mes') {
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        filteredSales = sales.filter((sale: any) => 
-          new Date(sale.createdAt) >= monthAgo
-        );
+        filteredSales = sales.filter((sale: any) => {
+          const d = sale.dataVenda || sale.createdAt;
+          return d ? new Date(d) >= monthAgo : false;
+        });
+      }
+
+      // Filtrar Vendas Fiscais / Não Fiscais
+      if (filtroFiscal === 'fiscal') {
+        filteredSales = filteredSales.filter((sale: any) => sale.nfce && sale.nfce.status === 'AUTORIZADA');
+      } else if (filtroFiscal === 'nao-fiscal') {
+        filteredSales = filteredSales.filter((sale: any) => !sale.nfce || sale.nfce.status !== 'AUTORIZADA');
       }
 
       // Calcular estatísticas
@@ -176,6 +188,7 @@ export default function AdminRelatoriosScreen() {
         vendasPorTipo,
         vendasPorStatus,
       });
+      setSalesList(filteredSales);
 
     } catch (error: any) {
       console.error('Erro ao carregar relatórios:', error);
@@ -210,6 +223,25 @@ export default function AdminRelatoriosScreen() {
         style={[
           styles.periodButtonText,
           periodo === periodValue && styles.periodButtonTextActive,
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderFiscalFilterButton = (filterValue: typeof filtroFiscal, label: string) => (
+    <TouchableOpacity
+      style={[
+        styles.periodButton,
+        filtroFiscal === filterValue && styles.periodButtonActive,
+      ]}
+      onPress={() => setFiltroFiscal(filterValue)}
+    >
+      <Text
+        style={[
+          styles.periodButtonText,
+          filtroFiscal === filterValue && styles.periodButtonTextActive,
         ]}
       >
         {label}
@@ -271,6 +303,13 @@ export default function AdminRelatoriosScreen() {
           {renderPeriodButton('mes', 'Mês')}
           {renderPeriodButton('total', 'Total')}
         </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Tipo de Venda (Fiscal/Não Fiscal)</Text>
+        <View style={styles.periodButtons}>
+          {renderFiscalFilterButton('todas', 'Todas')}
+          {renderFiscalFilterButton('fiscal', 'Fiscais (NFC-e)')}
+          {renderFiscalFilterButton('nao-fiscal', 'Não Fiscais')}
+        </View>
       </View>
 
       {/* Estatísticas Principais */}
@@ -327,6 +366,59 @@ export default function AdminRelatoriosScreen() {
           () => router.push('/(tabs)/admin-funcionarios')
         )}
       </View>
+
+      {/* Botão para ocultar/mostrar detalhes */}
+      <View style={[styles.section, { backgroundColor: 'transparent', paddingHorizontal: 0 }]}>
+        <TouchableOpacity 
+          style={{ backgroundColor: '#2196F3', padding: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 16 }}
+          onPress={() => setShowDetails(!showDetails)}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+            {showDetails ? 'Ocultar Detalhamento das Vendas' : 'Mostrar Detalhamento das Vendas'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Lista de Vendas Detalhada */}
+      {showDetails && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Detalhamento das Vendas ({salesList.length})</Text>
+          
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableCellHeader, { flex: 1.5 }]}>Documento</Text>
+            <Text style={[styles.tableCellHeader, { flex: 2 }]}>Emissão</Text>
+            <Text style={[styles.tableCellHeader, { flex: 2 }]} numberOfLines={1}>Cliente</Text>
+            <Text style={[styles.tableCellHeader, { flex: 1.5, textAlign: 'center' }]}>Status</Text>
+            <Text style={[styles.tableCellHeader, { flex: 1.5, textAlign: 'right' }]}>Valor Total</Text>
+          </View>
+
+          {salesList.map((sale: any) => {
+            const docId = sale.nfce && sale.nfce.status === 'AUTORIZADA' 
+              ? `NFCe: ${sale.nfce.numero || sale.nfce.id}` 
+              : `Venda: ${sale.id}`;
+            const d = sale.dataVenda || sale.createdAt;
+            const dateStr = d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+            const clientName = sale.cliente?.nome || 'Consumidor';
+            return (
+              <View key={sale._id || sale.id || Math.random()} style={styles.tableRow}>
+                <Text style={[styles.tableCell, { flex: 1.5 }]} numberOfLines={1}>{docId}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{dateStr}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{clientName}</Text>
+                <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'center', textTransform: 'capitalize' }]} numberOfLines={1}>{sale.status}</Text>
+                <Text style={[styles.tableCell, { flex: 1.5, textAlign: 'right' }]} numberOfLines={1}>{formatCurrency(Number(sale.total) || 0)}</Text>
+              </View>
+            );
+          })}
+
+          <View style={styles.tableFooter}>
+            <Text style={styles.tableFooterLabel}>Total (apenas Finalizadas):</Text>
+            <Text style={styles.tableFooterValue}>
+              {formatCurrency(salesList.filter(s => s.status === 'finalizada').reduce((sum: number, sale: any) => sum + (Number(sale.total) || 0), 0))}
+            </Text>
+          </View>
+        </View>
+      )}
+
     </ScrollView>
   );
 }
@@ -432,5 +524,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  tableCellHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    alignItems: 'center',
+  },
+  tableCell: {
+    fontSize: 12,
+    color: '#555',
+  },
+  tableFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+    paddingTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: '#ccc',
+    alignItems: 'center',
+  },
+  tableFooterLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#555',
+    marginRight: 8,
+  },
+  tableFooterValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2196F3',
   },
 });

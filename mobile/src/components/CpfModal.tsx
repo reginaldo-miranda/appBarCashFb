@@ -8,7 +8,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { customerService } from '../services/api';
@@ -130,7 +131,10 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView 
+        style={styles.overlay} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <View style={styles.container}>
             {/* Header / Title Bar style similar to image */}
             <View style={styles.header}>
@@ -151,7 +155,6 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
                             onChangeText={handleCpfChange}
                             keyboardType="numeric"
                             maxLength={14}
-                            editable={!loading}
                             onSubmitEditing={() => nomeInputRef.current?.focus()}
                          />
                          {loading && <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />}
@@ -191,7 +194,7 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
 
             </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

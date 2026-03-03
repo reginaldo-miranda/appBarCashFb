@@ -3,6 +3,8 @@ import prisma from '../lib/prisma.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
+import puppeteer from 'puppeteer';
 
 import QRCode from 'qrcode';
 
@@ -18,7 +20,7 @@ import { logDebug } from '../debug_logger.js';
 export const emitirNfce = async (req, res) => {
     logDebug(`[Controller] emitirNfce. Body: ${JSON.stringify(req.body)}`);
     try {
-        const { saleId } = req.body;
+        const { saleId, itemsOverlay } = req.body;
         if (!saleId) {
             return res.status(400).json({ error: 'Sale ID is required' });
         }
@@ -34,6 +36,22 @@ export const emitirNfce = async (req, res) => {
         });
 
         if (!sale) return res.status(404).json({ error: 'Venda não encontrada' });
+
+        // Aplica o overlay de itens se existir (garante NCMs atualizados mesmo se o banco estiver dessincronizado)
+        if (itemsOverlay && Array.isArray(itemsOverlay) && itemsOverlay.length > 0) {
+             sale.itens = sale.itens.map(dbItem => {
+                 const overlayItem = itemsOverlay.find(oi => String(oi._id || oi.id) === String(dbItem.id));
+                 if (overlayItem && overlayItem.product) {
+                      dbItem.product = {
+                          ...(dbItem.product || {}),
+                          ncm: overlayItem.product.ncm || (dbItem.product?.ncm || ''),
+                          cfop: overlayItem.product.cfop || (dbItem.product?.cfop || ''),
+                          csosn: overlayItem.product.csosn || (dbItem.product?.csosn || '')
+                      };
+                 }
+                 return dbItem;
+             });
+        }
 
         logDebug(`[EmitirNfce] Sale ID: ${saleId}`);
         logDebug(`[EmitirNfce] Cashback Usado: ${sale?.cashbackUsado}`);
@@ -480,5 +498,83 @@ export const generatePdf = async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).send('Erro ao gerar impressão: ' + e.message);
+    }
+};
+
+export const sendPdfEmail = async (req, res) => {
+    try {
+        const { saleId } = req.params;
+        const { emailTo } = req.body;
+
+        if (!emailTo) {
+            return res.status(400).json({ ok: false, message: 'E-mail de destino é obrigatório.' });
+        }
+
+        // Puxar config de SMTP
+        const getConfigValue = async (key) => {
+            const setting = await prisma.appSetting.findUnique({ where: { key } });
+            return setting ? setting.value : '';
+        };
+
+        const host = await getConfigValue('smtp_host');
+        const port = await getConfigValue('smtp_port');
+        const user = await getConfigValue('smtp_user');
+        const pass = await getConfigValue('smtp_password');
+        const sender = await getConfigValue('smtp_sender');
+
+        if (!host || !user || !pass) {
+            return res.status(400).json({ ok: false, message: 'Configuração SMTP incompleta. Acesse as Configurações de E-mail antes.', emailError: true });
+        }
+
+        // Gerar o PDF nativamente aqui usando o Puppeteer
+        const pdfUrl = `${req.protocol}://${req.get('host')}/api/nfce/${saleId}/pdf`;
+        
+        console.log("[BACKEND-PDF] Iniciando criação de PDF virtual na url:", pdfUrl);
+
+        let pdfBuffer;
+        try {
+            const browser = await puppeteer.launch({
+                headless: "new",
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            });
+            const page = await browser.newPage();
+            // Desabilita o alert/print que tá solto no html gerado na outra rota (window.print)
+            await page.evaluateOnNewDocument(() => {
+                window.print = () => {};
+            });
+            await page.goto(pdfUrl, { waitUntil: 'networkidle0' });
+            pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+            await browser.close();
+            console.log("[BACKEND-PDF] PDF gerado com sucesso.");
+        } catch (pupErr) {
+            console.error("[BACKEND-PDF] Erro ao gerar com Puppeteer:", pupErr);
+            throw new Error("Não foi possível gerar o arquivo PDF nativo.");
+        }
+
+        const transporter = nodemailer.createTransport({
+            host,
+            port: Number(port),
+            secure: Number(port) === 465,
+            auth: { user, pass }
+        });
+
+        await transporter.sendMail({
+            from: `"${sender}" <${user}>`,
+            to: emailTo,
+            subject: `Cupom Fiscal NFC-e - Pedido #${saleId}`,
+            text: `Olá!\n\nSegue em anexo o Cupom Fiscal NFC-e referente à sua compra.\n\nObrigado por comprar conosco!`,
+            attachments: [
+                {
+                    filename: `Cupom_Fiscal_NFCe_${saleId}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                }
+            ]
+        });
+
+        res.json({ ok: true, message: 'Cupom gerado e enviado para o e-mail com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao enviar PDF por e-mail:', error);
+        res.status(500).json({ ok: false, message: 'Erro ao enviar e-mail: ' + error.message });
     }
 };

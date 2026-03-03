@@ -9,6 +9,7 @@ export interface CartItem {
     preco: number;
   };
   nomeProduto: string;
+  product?: any; // Added for populated items
   quantidade: number;
   precoUnitario: number;
   subtotal: number;
