@@ -154,12 +154,8 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // Tentar fazer shutdown/logout no servidor
-      try {
-        await systemService.shutdown();
-      } catch (error) {
-        console.warn('Erro ao encerrar servidor:', error);
-      }
+      // Limpar open sessions no backend se necessário (mas não mandar shutdown total)
+      // await authService.logout().catch(err => console.warn(err));
       
       // Limpar dados locais
       await AsyncStorage.removeItem('authToken');

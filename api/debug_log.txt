@@ -665,3 +665,30 @@
 [2026-03-03T19:32:17.894Z] [EmitirNfce] Delivery Fee: 4
 [2026-03-03T19:32:17.896Z] [EmitirNfce] Total Venda: 4
 [2026-03-03T19:32:17.897Z] [EmitirNfce] Subtotal: 0
+[2026-03-06T18:25:11.257Z] [Finalize] ID: 559 (Int: 559). FreshItens: 2, FreshCV: 1
+[2026-03-06T18:25:11.259Z] [Finalize] Recalculated Subtotal: 36.68
+[2026-03-06T18:25:11.275Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-03-06T18:25:11.276Z] [DEBUG] CV: 387 - dinheiro - 36.68
+[2026-03-06T18:25:11.276Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-06T19:11:40.545Z] [Controller] emitirNfce. Body: {"saleId":563,"itemsOverlay":[{"id":672,"saleId":563,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-03-06T19:11:11.751Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"672","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-06T19:11:40.567Z] [EmitirNfce] Sale ID: 563
+[2026-03-06T19:11:40.568Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-06T19:11:40.568Z] [EmitirNfce] Delivery Fee: 4
+[2026-03-06T19:11:40.568Z] [EmitirNfce] Total Venda: 4
+[2026-03-06T19:11:40.568Z] [EmitirNfce] Subtotal: 0
+[2026-03-06T19:15:28.377Z] [Finalize] ID: 555 (Int: 555). FreshItens: 4, FreshCV: 0
+[2026-03-06T19:15:28.377Z] [Finalize] Recalculated Subtotal: 233.4
+[2026-03-06T19:15:28.447Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-06T19:15:28.447Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-06T19:15:28.948Z] [Controller] emitirNfce. Body: {"saleId":555,"itemsOverlay":[{"id":658,"saleId":555,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":3,"precoUnitario":12,"subtotal":36,"status":"pendente","createdAt":"2026-03-06T18:18:25.883Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"658","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":659,"saleId":555,"productId":3,"nomeProduto":"bauru tche chapa","quantidade":4,"precoUnitario":13,"subtotal":52,"status":"pendente","createdAt":"2026-03-06T18:25:35.810Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"659","produto":{"_id":"3","id":3,"nome":"bauru tche chapa","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":660,"saleId":555,"productId":6,"nomeProduto":"Teste Setor Cozinha 1","quantidade":10,"precoUnitario":12.34,"subtotal":123.4,"status":"pendente","createdAt":"2026-03-06T18:25:30.964Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"660","produto":{"_id":"6","id":6,"nome":"Teste Setor Cozinha 1","preco":12.34,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":674,"saleId":555,"productId":1,"nomeProduto":"cerveja local skol 600 ml","quantidade":2,"precoUnitario":11,"subtotal":22,"status":"pendente","createdAt":"2026-03-06T19:15:13.742Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"674","produto":{"_id":"1","id":1,"nome":"cerveja local skol 600 ml","preco":11,"ncm":"22069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-06T19:15:28.992Z] [EmitirNfce] Sale ID: 555
+[2026-03-06T19:15:28.992Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-06T19:15:28.993Z] [EmitirNfce] Delivery Fee: null
+[2026-03-06T19:15:28.993Z] [EmitirNfce] Total Venda: 233.4
+[2026-03-06T19:15:28.993Z] [EmitirNfce] Subtotal: 233.4
+[2026-03-06T19:51:03.672Z] [Controller] emitirNfce. Body: {"saleId":564,"itemsOverlay":[{"id":675,"saleId":564,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-06T19:50:37.420Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"675","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-06T19:51:03.711Z] [EmitirNfce] Sale ID: 564
+[2026-03-06T19:51:03.711Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-06T19:51:03.711Z] [EmitirNfce] Delivery Fee: 4
+[2026-03-06T19:51:03.711Z] [EmitirNfce] Total Venda: 4
+[2026-03-06T19:51:03.712Z] [EmitirNfce] Subtotal: 0

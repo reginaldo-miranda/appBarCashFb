@@ -115,14 +115,13 @@ export default function HomeScreen() {
   }, [loadStats]);
 
   const handleLogout = () => {
-    const title = 'Sair do Sistema';
-    const message = 'Tem certeza que deseja fechar o sistema? Isso irá ENCERRAR O BANCO DE DADOS e desligar a aplicação.';
+    const title = 'Sair da Conta';
+    const message = 'Tem certeza que deseja sair do sistema?';
     
-    // Tratamento específico para Web (Alert.alert tem limitações)
     if (Platform.OS === 'web') {
-      // @ts-ignore - window.confirm existe no ambiente web
+      // @ts-ignore
       if (window.confirm(`${title}\n\n${message}`)) {
-        performShutdown();
+        logout();
       }
       return;
     }
@@ -133,33 +132,12 @@ export default function HomeScreen() {
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
-          text: 'Sair e Desligar', 
+          text: 'Sair Agora', 
           style: 'destructive', 
-          onPress: performShutdown
+          onPress: () => logout()
         },
       ]
     );
-  };
-
-  const performShutdown = async () => {
-    try {
-      // Tenta enviar comando de shutdown ao servidor
-      await systemService.shutdown().catch((err) => console.warn('Falha no shutdown remoto', err));
-      
-      // Aguarda um momento para garantir envio e então fecha
-      setTimeout(() => {
-        if (Platform.OS === 'android') {
-          BackHandler.exitApp();
-        } else {
-          // Fallback para iOS e Web: apenas desloga
-          logout();
-        }
-      }, 800);
-    } catch (error) {
-      console.error('Erro ao sair:', error);
-      Alert.alert('Erro', 'Falha ao encerrar o servidor remoto. Apenas o logout local será realizado.');
-      logout();
-    }
   };
 
   const menuItems = [

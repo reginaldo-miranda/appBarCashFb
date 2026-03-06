@@ -48,12 +48,16 @@ router.get("/list", async (req, res) => {
     const { nome } = req.query;
     const where = {};
     if (nome) {
-      // Busca ampla para incluir NOME, CPF ou TELEFONE
-      where.OR = [
-        { nome: { contains: String(nome).trim() } },
-        { cpf: { contains: String(nome).trim().replace(/[^\d.-]/g, '') } },
-        { fone: { contains: String(nome).trim().replace(/[^\d() -]/g, '') } }
-      ];
+      // Busca ampla para incluir NOME, CPF ou TELEFONE, mas apenas se a regex não resultar em vazio
+      const searchStr = String(nome).trim();
+      const numCpfStr = searchStr.replace(/[^\d.-]/g, '');
+      const numFoneStr = searchStr.replace(/[^\d() -]/g, '');
+      
+      const orConditions = [{ nome: { contains: searchStr } }];
+      if (numCpfStr.length > 0) orConditions.push({ cpf: { contains: numCpfStr } });
+      if (numFoneStr.length > 0) orConditions.push({ fone: { contains: numFoneStr } });
+      
+      where.OR = orConditions;
     }
     const customers = await prisma.customer.findMany({
       where,
@@ -68,19 +72,27 @@ router.get("/list", async (req, res) => {
   }
 });
 
-// Rota para buscar cliente por ID
 router.get("/:id", async (req, res) => {
+  console.log(`[DEBUG-CUSTOMER] GET /:id called with params:`, req.params);
   try {
     const prisma = getActivePrisma();
     const id = Number(req.params.id);
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "ID de cliente inválido" });
+    }
     const customer = await prisma.customer.findUnique({ where: { id } });
     if (!customer) {
       return res.status(404).json({ error: "Cliente não encontrado" });
     }
     res.json(customer);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao buscar cliente" });
+    console.error("ERRO COMPLETO EM /customer/:id =>", {
+      mensagem: error.message,
+      stack: error.stack,
+      codigo: error.code,
+      meta: error.meta
+    });
+    res.status(500).json({ error: "Erro ao buscar cliente", detalhes: error.message });
   }
 });
 

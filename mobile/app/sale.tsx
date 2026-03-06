@@ -139,6 +139,8 @@ export default function SaleScreen() {
   const [selectedCliente, setSelectedCliente] = useState<any | null>(null);
   const [selectedEntregador, setSelectedEntregador] = useState<any | null>(null);
   const [showClientModal, setShowClientModal] = useState(false);
+  const [clientModalSource, setClientModalSource] = useState<string | null>(null);
+  const [employeeModalSource, setEmployeeModalSource] = useState<string | null>(null);
   const [searchClientQuery, setSearchClientQuery] = useState('');
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
 
@@ -279,8 +281,8 @@ export default function SaleScreen() {
           }
           if (sale.cliente) {
               // Verificação robusta: se o cliente da venda vier incompleto (sem saldo), buscar completo
-              if (sale.cliente.saldoCashback === undefined && (sale.cliente.id || (sale.cliente as any)._id)) {
-                  const cid = sale.cliente.id || (sale.cliente as any)._id;
+              const cid = sale.clienteId || sale.cliente?.id || (sale.cliente as any)?._id;
+              if (sale.cliente.saldoCashback === undefined && cid) {
                   customerService.getById(cid).then(res => {
                       if (res.data) {
                           console.log('[DEBUG] Cliente recarregado com saldo:', res.data.saldoCashback);
@@ -289,7 +291,12 @@ export default function SaleScreen() {
                           setSelectedCliente(sale.cliente);
                       }
                   }).catch(err => {
-                      console.error('Erro ao recarregar cliente completo:', err);
+                      // Se for apenas erro 400 de cliente genérico/não achado, não bloquear a UI com console.error
+                      if (err.response?.status === 400 || err.response?.status === 404) {
+                           console.log('[INFO] Cliente de venda avulsa não possui detalhes adicionais.');
+                      } else {
+                           console.warn('Falha silenciosa ao recarregar cliente da comanda:', err.message);
+                      }
                       setSelectedCliente(sale.cliente);
                   });
               } else {
@@ -519,7 +526,9 @@ export default function SaleScreen() {
   const handleSelectClient = async (client: any) => {
       setSelectedCliente(client);
       setShowClientModal(false);
-      
+      if (clientModalSource === 'checkout') setModalVisible(true);
+      if (clientModalSource === 'delivery') setDeliveryModalVisible(true);
+      setClientModalSource(null);
       let newAddress = deliveryAddress;
       // Auto-fill delivery address if empty and client has address
       // Also if IS delivery mode or we want to prompt?
@@ -552,7 +561,8 @@ export default function SaleScreen() {
   const handleSelectEntregador = async (emp: any) => {
       setSelectedEntregador(emp);
       setShowEmployeeModal(false);
-      
+      if (employeeModalSource === 'delivery') setDeliveryModalVisible(true);
+      setEmployeeModalSource(null);
       if (sale && sale._id) {
           try {
               const res = await saleService.update(sale._id, { entregadorId: emp.id });
@@ -743,6 +753,11 @@ export default function SaleScreen() {
       setSale(response.data);
       setCart(response.data.itens || []);
       Alert.alert('Sucesso', `${product.nome} foi adicionado ao carrinho!`);
+      
+      // Abre o modal do carrinho no celular se já não estiver aberto
+      if (isPhone) {
+        setItemsModalVisible(true);
+      }
       
 
       try {
@@ -1622,9 +1637,17 @@ export default function SaleScreen() {
             setDeliveryCoords={setDeliveryCoords}
             companyConfig={companyConfig}
             selectedCliente={selectedCliente}
-            onSelectClient={() => setShowClientModal(true)}
+            onSelectClient={() => {
+                setClientModalSource('delivery');
+                setDeliveryModalVisible(false);
+                setShowClientModal(true);
+            }}
             selectedEntregador={selectedEntregador}
-            onSelectEntregador={() => setShowEmployeeModal(true)}
+            onSelectEntregador={() => {
+                setEmployeeModalSource('delivery');
+                setDeliveryModalVisible(false);
+                setShowEmployeeModal(true);
+            }}
             user={user}
             loading={loading}
             GOOGLE_API_KEY={googleMapsKey}
@@ -1929,7 +1952,11 @@ export default function SaleScreen() {
                 selectedCliente && styles.paymentOptionSelected,
                 { marginBottom: 8, justifyContent: 'space-between', paddingVertical: 8 }
               ]}
-              onPress={() => setShowClientModal(true)}
+              onPress={() => {
+                  setClientModalSource('checkout');
+                  setModalVisible(false);
+                  setShowClientModal(true);
+              }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons 
@@ -2433,7 +2460,12 @@ export default function SaleScreen() {
           visible={showClientModal}
           transparent
           animationType="slide"
-          onRequestClose={() => setShowClientModal(false)}
+          onRequestClose={() => {
+              setShowClientModal(false);
+              if (clientModalSource === 'checkout') setModalVisible(true);
+              if (clientModalSource === 'delivery') setDeliveryModalVisible(true);
+              setClientModalSource(null);
+          }}
       >
           <View style={styles.modalOverlay}>
               <View style={[styles.modalContent, { height: '80%' }]}>
@@ -2482,7 +2514,12 @@ export default function SaleScreen() {
                           </TouchableOpacity>
                       ))}
                   </ScrollView>
-                  <TouchableOpacity style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]} onPress={() => setShowClientModal(false)}>
+                  <TouchableOpacity style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]} onPress={() => {
+                      setShowClientModal(false);
+                      if (clientModalSource === 'checkout') setModalVisible(true);
+                      if (clientModalSource === 'delivery') setDeliveryModalVisible(true);
+                      setClientModalSource(null);
+                  }}>
                       <Text style={styles.cancelButtonText}>Fechar</Text>
                   </TouchableOpacity>
               </View>
@@ -2493,7 +2530,11 @@ export default function SaleScreen() {
           visible={showEmployeeModal}
           transparent
           animationType="slide"
-          onRequestClose={() => setShowEmployeeModal(false)}
+          onRequestClose={() => {
+              setShowEmployeeModal(false);
+              if (employeeModalSource === 'delivery') setDeliveryModalVisible(true);
+              setEmployeeModalSource(null);
+          }}
       >
           <View style={styles.modalOverlay}>
               <View style={[styles.modalContent, { height: '60%' }]}>
@@ -2508,7 +2549,11 @@ export default function SaleScreen() {
                           </TouchableOpacity>
                       ))}
                   </ScrollView>
-                  <TouchableOpacity style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]} onPress={() => setShowEmployeeModal(false)}>
+                  <TouchableOpacity style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]} onPress={() => {
+                      setShowEmployeeModal(false);
+                      if (employeeModalSource === 'delivery') setDeliveryModalVisible(true);
+                      setEmployeeModalSource(null);
+                  }}>
                       <Text style={styles.cancelButtonText}>Fechar</Text>
                   </TouchableOpacity>
               </View>
