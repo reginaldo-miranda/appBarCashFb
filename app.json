@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "8b452b04-bf28-4183-b6c5-731a47f75ca2"
+      }
+    },
+    "android": {
+      "package": "com.reginaldomiranda.meuappteste"
+    }
+  }
+}

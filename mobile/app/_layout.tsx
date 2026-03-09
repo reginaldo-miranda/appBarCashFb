@@ -48,7 +48,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ProductProvider>
-        <Stack initialRouteName="login">
+        <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login-simples" options={{ title: 'Login Simples' }} />
           <Stack.Screen name="login" options={{ title: 'Login' }} />

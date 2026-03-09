@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-      }
+      },
+      "bundleIdentifier": "com.reginaldomiranda.mobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -63,7 +64,15 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -11,6 +11,7 @@ import {
   Alert,
   Platform,
   FlatList,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -483,8 +484,17 @@ const getEnvApiUrl = (): string | undefined => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <ScreenIdentifier screenName="Configurações" />
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 20}
+    >
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 150 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenIdentifier screenName="Configurações" />
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Configurações do Aplicativo</Text>
@@ -1025,7 +1035,8 @@ const getEnvApiUrl = (): string | undefined => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

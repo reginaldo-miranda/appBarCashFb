@@ -692,3 +692,23 @@
 [2026-03-06T19:51:03.711Z] [EmitirNfce] Delivery Fee: 4
 [2026-03-06T19:51:03.711Z] [EmitirNfce] Total Venda: 4
 [2026-03-06T19:51:03.712Z] [EmitirNfce] Subtotal: 0
+[2026-03-09T18:02:34.207Z] [Finalize] ID: 572 (Int: 572). FreshItens: 1, FreshCV: 0
+[2026-03-09T18:02:34.209Z] [Finalize] Recalculated Subtotal: 26
+[2026-03-09T18:02:34.489Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-09T18:02:34.489Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-09T18:02:42.320Z] [Controller] emitirNfce. Body: {"saleId":572,"itemsOverlay":[{"id":682,"saleId":572,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":2,"precoUnitario":13,"subtotal":26,"status":"pendente","createdAt":"2026-03-09T18:02:07.616Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"682","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-09T18:02:42.371Z] [EmitirNfce] Sale ID: 572
+[2026-03-09T18:02:42.372Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-09T18:02:42.372Z] [EmitirNfce] Delivery Fee: null
+[2026-03-09T18:02:42.372Z] [EmitirNfce] Total Venda: 26
+[2026-03-09T18:02:42.372Z] [EmitirNfce] Subtotal: 26
+[2026-03-09T18:15:07.117Z] [Finalize] ID: 573 (Int: 573). FreshItens: 1, FreshCV: 0
+[2026-03-09T18:15:07.134Z] [Finalize] Recalculated Subtotal: 13
+[2026-03-09T18:15:07.209Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-09T18:15:07.209Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-09T18:15:08.867Z] [Controller] emitirNfce. Body: {"saleId":573,"itemsOverlay":[{"id":683,"saleId":573,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-03-09T18:14:53.010Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"683","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-09T18:15:08.875Z] [EmitirNfce] Sale ID: 573
+[2026-03-09T18:15:08.876Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-09T18:15:08.876Z] [EmitirNfce] Delivery Fee: null
+[2026-03-09T18:15:08.876Z] [EmitirNfce] Total Venda: 13
+[2026-03-09T18:15:08.876Z] [EmitirNfce] Subtotal: 13
