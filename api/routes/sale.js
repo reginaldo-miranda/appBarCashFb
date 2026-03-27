@@ -2040,4 +2040,53 @@ router.post('/:id/receipt-print', async (req, res) => {
   }
 });
 
+// ── LOG DE REIMPRESSÃO ──────────────────────────────────────────────────────
+// Registra ação de reimpressão de cupom (comum ou fiscal)
+// Body: { userId, userName, tipo } → tipo: 'comum' | 'fiscal'
+router.post('/:id/reprint-log', async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const saleId = Number(req.params.id);
+    if (!saleId || !Number.isInteger(saleId) || saleId <= 0) {
+      return res.status(400).json({ error: 'ID de venda inválido' });
+    }
+
+    const { userId, userName, tipo } = req.body;
+    const tipoValido = tipo === 'fiscal' ? 'fiscal' : 'comum';
+
+    // Verificar se a venda existe e está finalizada
+    const venda = await prisma.sale.findUnique({
+      where: { id: saleId },
+      select: { id: true, status: true, nfce: true },
+    });
+
+    if (!venda) {
+      return res.status(404).json({ error: 'Venda não encontrada' });
+    }
+    if (venda.status !== 'finalizada') {
+      return res.status(400).json({ error: 'Reimpressão permitida apenas para vendas finalizadas' });
+    }
+    if (tipoValido === 'fiscal' && !venda.nfce) {
+      return res.status(400).json({ error: 'Venda não possui cupom fiscal autorizado' });
+    }
+
+    // Log estruturado (console + resposta)
+    const logEntry = {
+      acao: 'REIMPRESSAO_CUPOM',
+      saleId,
+      tipo: tipoValido,
+      userId: userId || 'desconhecido',
+      userName: userName || 'Usuário não identificado',
+      dataHora: new Date().toISOString(),
+    };
+
+    console.log('[REIMPRESSAO]', JSON.stringify(logEntry));
+
+    return res.json({ ok: true, log: logEntry });
+  } catch (error) {
+    console.error('Erro ao registrar log de reimpressão:', error);
+    res.status(500).json({ error: 'Erro interno ao registrar reimpressão' });
+  }
+});
+
 export default router;

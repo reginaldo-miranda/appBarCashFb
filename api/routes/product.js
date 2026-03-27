@@ -532,7 +532,71 @@ router.get('/groups/used', async (req, res) => {
   }
 });
 
+// ── SUGESTÃO DE NCM ─────────────────────────────────────────────────────────
+// Busca sugestões de NCM na BrasilAPI pelo nome do produto (gratuita, sem chave)
+// GET /product/suggest-ncm?nome=cerveja+skol
+router.get('/suggest-ncm', async (req, res) => {
+  try {
+    const nome = String(req.query.nome || '').trim();
+    if (!nome) {
+      return res.status(400).json({ error: 'Parâmetro "nome" obrigatório' });
+    }
+
+    // Busca na BrasilAPI de NCM com até 2 termos do nome (para melhor resultado)
+    const palavras = nome.split(/\s+/).slice(0, 2).join(' ');
+    const searchUrl = `https://brasilapi.com.br/api/ncm/v1?search=${encodeURIComponent(palavras)}`;
+
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(searchUrl, {
+      headers: { 'Accept': 'application/json' },
+      timeout: 8000,
+    });
+
+    if (!response.ok) {
+      throw new Error(`BrasilAPI retornou status ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      // Segunda tentativa: usar apenas a primeira palavra
+      const primeiraPalavra = nome.split(/\s+/)[0];
+      const url2 = `https://brasilapi.com.br/api/ncm/v1?search=${encodeURIComponent(primeiraPalavra)}`;
+      const res2 = await fetch(url2, { headers: { 'Accept': 'application/json' }, timeout: 8000 });
+      const data2 = await res2.json();
+
+      if (!Array.isArray(data2) || data2.length === 0) {
+        return res.json({ sugestoes: [], mensagem: 'Nenhum NCM encontrado para este produto' });
+      }
+
+      const sugestoes = data2.slice(0, 5).map(item => ({
+        ncm: String(item.codigo || item.ncm || '').replace(/\D/g, ''),
+        descricao: item.descricao || item.description || '',
+        cfop: '5102',  // CFOP padrão para ventas internas
+        csosn: '102',  // CSOSN padrão para Simples Nacional
+      })).filter(s => s.ncm.length === 8);
+
+      return res.json({ sugestoes, termoBuscado: primeiraPalavra });
+    }
+
+    const sugestoes = data.slice(0, 5).map(item => ({
+      ncm: String(item.codigo || item.ncm || '').replace(/\D/g, ''),
+      descricao: item.descricao || item.description || '',
+      cfop: '5102',
+      csosn: '102',
+    })).filter(s => s.ncm.length === 8);
+
+    return res.json({ sugestoes, termoBuscado: palavras });
+
+  } catch (error) {
+    console.error('[suggest-ncm] Erro:', error.message);
+    // Retorna lista vazia (não bloquear o fluxo)
+    return res.json({ sugestoes: [], erro: 'Não foi possível consultar a BrasilAPI' });
+  }
+});
+
 // Rota para buscar produto por ID
+
 router.get("/:id", async (req, res) => {
   try {
     const prisma = getActivePrisma();

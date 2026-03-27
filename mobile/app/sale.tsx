@@ -2106,12 +2106,22 @@ export default function SaleScreen() {
                           sale.itens.forEach(item => {
                               const p = (item.product || item.produto) as any;
                               const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
-                              const pid = String(item.productId || (item as any).produtoId || (isPopulated ? (p._id || p.id) : '') || item._id || (item as any).id || Math.random());
-                              
-                              const pNcm = (typeof p?.ncm === 'string' ? p.ncm : (typeof (item as any)?.ncm === 'string' ? (item as any).ncm : ''));
-                              const pCfop = (typeof p?.cfop === 'string' ? p.cfop : (typeof (item as any)?.cfop === 'string' ? (item as any).cfop : ''));
-                              const pCsosn = (typeof p?.csosn === 'string' ? p.csosn : (typeof (item as any)?.csosn === 'string' ? (item as any).csosn : ''));
-                              
+
+                              // PID: sempre o ID do PRODUTO (não do item de venda)
+                              // Prioridade: item.productId numérico > produto populado > nunca item._id
+                              const pidNum = item.productId || (item as any).produtoId;
+                              const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+                              const pid = String(pidNum || pidFromProduto || '');
+
+                              // Se não conseguiu resolver o productId, pula o item (não tem como buscar/salvar)
+                              if (!pid) return;
+
+                              // Extrair NCM/CFOP/CSOSN — tratar null/undefined como ausente
+                              const toStr = (v: any) => (v != null && v !== '' ? String(v) : '');
+                              const pNcm = toStr(p?.ncm ?? (item as any)?.ncm);
+                              const pCfop = toStr(p?.cfop ?? (item as any)?.cfop);
+                              const pCsosn = toStr(p?.csosn ?? (item as any)?.csosn);
+
                               const isInvalidNcm = !pNcm || pNcm.replace(/\D/g, '').length !== 8 || pNcm === '00000000' || pNcm === '99998888';
                               const isInvalidCfop = !pCfop || pCfop.replace(/\D/g, '').length !== 4;
                               const isInvalidCsosn = !pCsosn || pCsosn.replace(/\D/g, '').length < 3;
@@ -2121,10 +2131,10 @@ export default function SaleScreen() {
                                       missingProducts.push({
                                           _id: item._id || (item as any).id,
                                           productId: pid,
-                                          nomeProduto: item.nomeProduto || (isPopulated ? p.nome : 'Produto'),
-                                          ncm: isPopulated ? p.ncm : (item as any).ncm,
-                                          cfop: isPopulated ? p.cfop : (item as any).cfop,
-                                          csosn: isPopulated ? p.csosn : (item as any).csosn
+                                          nomeProduto: item.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+                                          ncm: pNcm || null,
+                                          cfop: pCfop || null,
+                                          csosn: pCsosn || null
                                       });
                                   }
                               }
@@ -2388,26 +2398,34 @@ export default function SaleScreen() {
                       sale.itens.forEach(item => {
                           const p = (item.product || item.produto) as any;
                           const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
-                          const pid = String(item.productId || (item as any).produtoId || (isPopulated ? (p._id || p.id) : '') || item._id || (item as any).id || Math.random().toString());
-                          
-                          const pNcm = (typeof p?.ncm === 'string' ? p.ncm : (typeof (item as any)?.ncm === 'string' ? (item as any).ncm : ''));
-                          const pCfop = (typeof p?.cfop === 'string' ? p.cfop : (typeof (item as any)?.cfop === 'string' ? (item as any).cfop : ''));
-                          const pCsosn = (typeof p?.csosn === 'string' ? p.csosn : (typeof (item as any)?.csosn === 'string' ? (item as any).csosn : ''));
-                          
+
+                          // PID: sempre o ID do PRODUTO (não do item de venda)
+                          const pidNum = item.productId || (item as any).produtoId;
+                          const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+                          const pid = String(pidNum || pidFromProduto || '');
+
+                          // Se não conseguiu resolver o productId, pula o item
+                          if (!pid) return;
+
+                          // Extrair NCM/CFOP/CSOSN — tratar null/undefined como ausente
+                          const toStr2 = (v: any) => (v != null && v !== '' ? String(v) : '');
+                          const pNcm = toStr2(p?.ncm ?? (item as any)?.ncm);
+                          const pCfop = toStr2(p?.cfop ?? (item as any)?.cfop);
+                          const pCsosn = toStr2(p?.csosn ?? (item as any)?.csosn);
+
                           const isInvalidNcm = !pNcm || pNcm.replace(/\D/g, '').length !== 8 || pNcm === '00000000' || pNcm === '99998888';
                           const isInvalidCfop = !pCfop || pCfop.replace(/\D/g, '').length !== 4;
                           const isInvalidCsosn = !pCsosn || pCsosn.replace(/\D/g, '').length < 3;
 
-                          // Se falto dado fiscal ou se o produto eh so string (indicando q nao populou e precisamos buscar os dados)
                           if (!isPopulated || isInvalidNcm || isInvalidCfop || isInvalidCsosn) {
                               if (!missingProducts.some(m => m.productId === pid)) {
                                  missingProducts.push({
                                     _id: item._id || (item as any).id,
                                     productId: pid,
-                                    nomeProduto: item.nomeProduto || (isPopulated ? p.nome : 'Produto'),
-                                    ncm: isPopulated ? p.ncm : (item as any).ncm,
-                                    cfop: isPopulated ? p.cfop : (item as any).cfop,
-                                    csosn: isPopulated ? p.csosn : (item as any).csosn
+                                    nomeProduto: item.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+                                    ncm: pNcm || null,
+                                    cfop: pCfop || null,
+                                    csosn: pCsosn || null
                                 });
                               }
                          }
