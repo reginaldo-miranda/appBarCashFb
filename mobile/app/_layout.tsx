@@ -4,6 +4,8 @@ import { Platform } from "react-native";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import { ProductProvider } from "../src/contexts/ProductContext";
 
+import { SafeAreaView } from "react-native-safe-area-context";
+
 // Versão ultra-simplificada para garantir que o app carregue
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -48,16 +50,18 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ProductProvider>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="login-simples" options={{ title: 'Login Simples' }} />
-          <Stack.Screen name="login" options={{ title: 'Login' }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="tablet" options={{ headerShown: false }} />
-          <Stack.Screen name="delivery-dashboard" options={{ headerShown: false }} />
-          <Stack.Screen name="sale" options={{ headerShown: false }} />
-          <Stack.Screen name="TestScreen" options={{ title: 'Testes e Diagnóstico' }} />
-        </Stack>
+        <SafeAreaView style={{ flex: 1 }}>
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="login-simples" options={{ title: 'Login Simples' }} />
+            <Stack.Screen name="login" options={{ title: 'Login' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="tablet" options={{ headerShown: false }} />
+            <Stack.Screen name="delivery-dashboard" options={{ headerShown: false }} />
+            <Stack.Screen name="sale" options={{ headerShown: false }} />
+            <Stack.Screen name="TestScreen" options={{ title: 'Testes e Diagnóstico' }} />
+          </Stack>
+        </SafeAreaView>
       </ProductProvider>
     </AuthProvider>
   );

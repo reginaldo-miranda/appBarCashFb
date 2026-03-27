@@ -712,3 +712,28 @@
 [2026-03-09T18:15:08.876Z] [EmitirNfce] Delivery Fee: null
 [2026-03-09T18:15:08.876Z] [EmitirNfce] Total Venda: 13
 [2026-03-09T18:15:08.876Z] [EmitirNfce] Subtotal: 13
+[2026-03-09T19:02:27.201Z] [Finalize] ID: 580 (Int: 580). FreshItens: 1, FreshCV: 1
+[2026-03-09T19:02:27.202Z] [Finalize] Recalculated Subtotal: 12.34
+[2026-03-09T19:02:27.227Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-03-09T19:02:27.227Z] [DEBUG] CV: 391 - dinheiro - 12.34
+[2026-03-09T19:02:27.227Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-27T21:20:40.029Z] [Finalize] ID: 583 (Int: 583). FreshItens: 1, FreshCV: 0
+[2026-03-27T21:20:40.034Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-27T21:20:40.116Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-27T21:20:40.117Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-27T21:20:40.287Z] [Controller] emitirNfce. Body: {"saleId":583,"itemsOverlay":[{"id":695,"saleId":583,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-27T21:20:26.579Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"695","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-27T21:20:40.328Z] [EmitirNfce] Sale ID: 583
+[2026-03-27T21:20:40.328Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-27T21:20:40.328Z] [EmitirNfce] Delivery Fee: null
+[2026-03-27T21:20:40.328Z] [EmitirNfce] Total Venda: 12
+[2026-03-27T21:20:40.329Z] [EmitirNfce] Subtotal: 12
+[2026-03-27T21:24:22.960Z] [Finalize] ID: 584 (Int: 584). FreshItens: 1, FreshCV: 0
+[2026-03-27T21:24:22.961Z] [Finalize] Recalculated Subtotal: 13
+[2026-03-27T21:24:23.035Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-27T21:24:23.035Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-27T21:24:23.103Z] [Controller] emitirNfce. Body: {"saleId":584,"itemsOverlay":[{"id":696,"saleId":584,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-03-27T21:24:13.368Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"696","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-27T21:24:23.150Z] [EmitirNfce] Sale ID: 584
+[2026-03-27T21:24:23.151Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-27T21:24:23.151Z] [EmitirNfce] Delivery Fee: null
+[2026-03-27T21:24:23.151Z] [EmitirNfce] Total Venda: 13
+[2026-03-27T21:24:23.151Z] [EmitirNfce] Subtotal: 13

@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   productsList: {
-    paddingBottom: 0,
+    paddingBottom: 250,
   },
   // Novo estilo para layout em linha
   productRow: {
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   saleListContent: {
-    paddingBottom: 16,
+    paddingBottom: 250,
   },
   saleTotal: {
     fontSize: 18,

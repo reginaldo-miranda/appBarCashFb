@@ -522,6 +522,7 @@ const styles = StyleSheet.create({
 
   listContainer: {
     paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   saleCard: {
     backgroundColor: '#fff',
