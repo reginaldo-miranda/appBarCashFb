@@ -116,12 +116,27 @@ export default function HomeScreen() {
 
   const handleLogout = () => {
     const title = 'Sair da Conta';
-    const message = 'Tem certeza que deseja sair do sistema?';
+    const message = 'Tem certeza que deseja sair do sistema? A API também será encerrada.';
     
+    const confirmLogout = async () => {
+      try {
+        await systemService.shutdown();
+        if (Platform.OS === 'web') {
+          window.alert('API finalizada com sucesso!');
+        } else {
+          Alert.alert('API Finalizada', 'A API foi encerrada com sucesso.');
+        }
+      } catch (e) {
+        console.log('Erro ao finalizar API', e);
+      } finally {
+        logout();
+      }
+    };
+
     if (Platform.OS === 'web') {
       // @ts-ignore
       if (window.confirm(`${title}\n\n${message}`)) {
-        logout();
+        confirmLogout();
       }
       return;
     }
@@ -134,7 +149,7 @@ export default function HomeScreen() {
         { 
           text: 'Sair Agora', 
           style: 'destructive', 
-          onPress: () => logout()
+          onPress: confirmLogout
         },
       ]
     );

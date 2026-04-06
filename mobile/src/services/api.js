@@ -672,7 +672,7 @@ export const idleTimeConfigService = {
 
 // Serviço de sistema para controle da aplicação e servidor
 export const systemService = {
-  shutdown: () => api.post('/auth/shutdown'),
+  shutdown: () => api.post('/shutdown'),
 };
 
 // Função simples para configurar IP manual (para testes)

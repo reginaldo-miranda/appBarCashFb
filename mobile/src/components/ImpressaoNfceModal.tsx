@@ -10,9 +10,10 @@ interface Props {
   status: 'loading' | 'success' | 'error' | 'idle';
   message?: string;
   nfceData?: any; // Dados retornados da API (url, qrcode, etc)
+  onContingenciaPress?: () => void;
 }
 
-export default function ImpressaoNfceModal({ visible, onClose, status, message, nfceData }: Props) {
+export default function ImpressaoNfceModal({ visible, onClose, status, message, nfceData, onContingenciaPress }: Props) {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -124,38 +125,42 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
                     <Text style={styles.message}>{message || 'NFC-e emitida com sucesso.'}</Text>
                 )}
                 
-                {/* Fallback para botão se não tiver imagem, ou ambos */}
-                {(nfceData?.urlConsulta || nfceData?.nfce?.qrCode || nfceData?.qrCode?.url) && (
-                  <View style={styles.actions}>
-                    {nfceData?.pdfUrl && (
-                        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => {
-                            if (Platform.OS === 'web') {
-                                window.open(nfceData.pdfUrl, '_blank');
-                            } else {
-                                Linking.openURL(nfceData.pdfUrl);
-                            }
-                        }}>
-                        <Ionicons name="print" size={20} color="#fff" />
-                        <Text style={styles.actionText}>Imprimir Cupom (PDF)</Text>
-                        </TouchableOpacity>
-                    )}
+                <View style={styles.actions}>
+                  {nfceData?.pdfUrl && (
+                      <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => {
+                          if (Platform.OS === 'web') {
+                              window.open(nfceData.pdfUrl, '_blank');
+                          } else {
+                              Linking.openURL(nfceData.pdfUrl);
+                          }
+                      }}>
+                      <Ionicons name="print" size={20} color="#fff" />
+                      <Text style={styles.actionText}>Imprimir Cupom (PDF)</Text>
+                      </TouchableOpacity>
+                  )}
 
-                    {nfceData?.pdfUrl && (
-                        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#009688' }]} onPress={() => setShowEmailModal(true)}>
-                            <Ionicons name="mail" size={20} color="#fff" />
-                            <Text style={styles.actionText}>Enviar por E-mail</Text>
-                        </TouchableOpacity>
-                    )}
+                  {nfceData?.pdfUrl && (
+                      <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#009688' }]} onPress={() => setShowEmailModal(true)}>
+                          <Ionicons name="mail" size={20} color="#fff" />
+                          <Text style={styles.actionText}>Enviar por E-mail</Text>
+                      </TouchableOpacity>
+                  )}
 
-                    <TouchableOpacity style={styles.actionButton} onPress={() => {
+                  {(nfceData?.urlConsulta || nfceData?.nfce?.qrCode || nfceData?.qrCode?.url) ? (
+                    <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#2196F3' }]} onPress={() => {
                        const url = nfceData?.qrCode?.url || nfceData?.nfce?.qrCode || nfceData?.urlConsulta;
                        if(url) Linking.openURL(url);
                     }}>
                       <Ionicons name="qr-code" size={20} color="#fff" />
                       <Text style={styles.actionText}>Visualizar QR Code</Text>
                     </TouchableOpacity>
-                  </View>
-                )}
+                  ) : null}
+
+                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#4CAF50', marginTop: 8 }]} onPress={onClose}>
+                    <Ionicons name="checkmark" size={20} color="#fff" />
+                    <Text style={styles.actionText}>Concluir / Fechar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -165,7 +170,13 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
                 <Text style={styles.errorTitle}>Falha na Emissão</Text>
                 <Text style={styles.message}>{message || 'Ocorreu um erro ao comunicar com a SEFAZ.'}</Text>
                 
-                <TouchableOpacity style={[styles.actionButton, {backgroundColor:'#757575', marginTop:20}]} onPress={onClose}>
+                {onContingenciaPress && (
+                  <TouchableOpacity style={[styles.actionButton, {backgroundColor:'#FF9800', marginTop:20}]} onPress={onContingenciaPress}>
+                    <Text style={styles.actionText}>Emitir em Contingência</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity style={[styles.actionButton, {backgroundColor:'#757575', marginTop: onContingenciaPress ? 10 : 20}]} onPress={onClose}>
                   <Text style={styles.actionText}>Fechar</Text>
                 </TouchableOpacity>
               </View>

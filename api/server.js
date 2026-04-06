@@ -302,8 +302,18 @@ app.listen(PORT, '0.0.0.0', () => console.log(`✅ API rodando em: http://0.0.0.
 // Conexão única com Prisma após iniciar servidor
 const dbTarget = 'local';
 prisma.$connect()
-  .then(() => console.log(`✅ Conectado ao MySQL (${dbTarget})`))
+  .then(async () => {
+    console.log(`✅ Conectado ao MySQL (${dbTarget})`);
+    // Iniciar job de contingência NFC-e
+    try {
+      const { iniciarContingenciaJob } = await import('./services/ContingenciaJobService.js');
+      iniciarContingenciaJob();
+    } catch (e) {
+      console.warn('⚠️ Job de contingência não iniciado:', e?.message || e);
+    }
+  })
   .catch(err => console.error("❌ Erro ao conectar MySQL:", err));
+
 
 (async () => {
   try {
@@ -353,6 +363,24 @@ prisma.$connect()
      await prisma.$executeRawUnsafe(
       "CREATE TABLE IF NOT EXISTS `idletimeconfig` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `ativo` TINYINT(1) NOT NULL DEFAULT 0,\n        `usarHoraInclusao` TINYINT(1) NOT NULL DEFAULT 1,\n        `estagios` JSON NOT NULL,\n        `updatedAt` DATETIME(3) NOT NULL,\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     );
+    // ── Migração: Campos de Contingência NFC-e na tabela Nfce ──
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `tpEmis` INTEGER NOT NULL DEFAULT 1;");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `dhCont` DATETIME(3) NULL;");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `xJust` VARCHAR(255) NULL;");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `tentativas` INTEGER NOT NULL DEFAULT 0;");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `ultimaTentativa` DATETIME(3) NULL;");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `prazoLimite` DATETIME(3) NULL;");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `erroUltimo` TEXT NULL;");
+    // Atualizar enum NfceStatus para incluir novos valores de contingência
+    try {
+      await prisma.$executeRawUnsafe(
+        "ALTER TABLE `Nfce` MODIFY COLUMN `status` ENUM('PENDENTE','PROCESSANDO','AUTORIZADA','REJEITADA','CANCELADA','DENEGADA','CONTINGENCIA','CONTINGENCIA_REJEITADA','CONTINGENCIA_EXPIRADA','INUTILIZADA') NOT NULL DEFAULT 'PENDENTE';"
+      );
+    } catch {}
+    // Criar tabela NfceEvent se não existir
+    await prisma.$executeRawUnsafe(
+      "CREATE TABLE IF NOT EXISTS `NfceEvent` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `nfceId` INTEGER NOT NULL,\n        `tipo` VARCHAR(191) NOT NULL,\n        `sequencia` INTEGER NOT NULL DEFAULT 1,\n        `xmlEnvio` TEXT NULL,\n        `xmlRetorno` TEXT NULL,\n        `status` VARCHAR(191) NULL,\n        `motivo` VARCHAR(191) NULL,\n        `protocolo` VARCHAR(191) NULL,\n        `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        INDEX `NfceEvent_nfceId_fkey`(`nfceId`),\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    );
   } catch {}
 })();
 
@@ -390,6 +418,11 @@ const gracefulShutdown = async () => {
   }
   process.exit(0);
 };
+
+app.post('/api/shutdown', (req, res) => {
+  res.json({ ok: true, message: 'A API foi finalizada com sucesso.' });
+  setTimeout(() => gracefulShutdown(), 1000);
+});
 
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);

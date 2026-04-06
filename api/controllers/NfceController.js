@@ -67,6 +67,7 @@ export const emitirNfce = async (req, res) => {
         const maxAttempts = 100; // Aumentado para lidar com grandes desincronias de numeração
         let lastError = null;
         let lastResult = null;
+        let lastSignedXml = null; // GUARDA o XML da tentativa vencedora
         let success = false;
 
         // Loop de Tentativas (Auto-Retry em caso de Duplicidade)
@@ -87,10 +88,10 @@ export const emitirNfce = async (req, res) => {
 
                 // Análise do Resultado
                 if (sefazResult.status === 'AUTORIZADO') {
+                    lastSignedXml = signedXml; // SALVA o XML da tentativa que foi AUTORIZADA
                     success = true; // Sai do loop com sucesso
                 } else {
                     // Verifica se é erro de Duplicidade (204 ou 539)
-                    // Motivo geralmente contém "Duplicidade" ou códigos
                     const isDuplicity = (sefazResult.motivo && sefazResult.motivo.includes('Duplicidade')) ||
                                         (sefazResult.motivo && (sefazResult.motivo.includes('204') || sefazResult.motivo.includes('539')));
 
@@ -110,7 +111,6 @@ export const emitirNfce = async (req, res) => {
                         // Loop continua...
                     } else {
                         // Outro erro (Rejeição definitiva, erro de validação, etc)
-                        // Não adianta tentar de novo
                         console.error(`[NFC-e] Erro definitivo na tentativa ${attempts}: ${sefazResult.motivo}`);
                         lastError = sefazResult;
                         break; // Sai do loop
@@ -120,8 +120,6 @@ export const emitirNfce = async (req, res) => {
             } catch (innerError) {
                 console.error(`[NFC-e] Exceção na tentativa ${attempts}:`, innerError);
                 lastError = { status: 'ERRO_INTERNO', motivo: innerError.message || 'Erro interno desconhecido' };
-                // Dependendo do erro interno (ex: falha de rede temporária), poderíamos tentar de novo.
-                // Por segurança, vamos abortar em erro de código/interno, exceto se decidirmos tratar timeouts.
                 break; 
             }
         } // Fim do While
@@ -166,10 +164,9 @@ export const emitirNfce = async (req, res) => {
             // Para simplificar, vamos regerar ou assumir que o ultimo foi o sucesso.
             // MELHORIA: Guardar signedXml dentro do loop quando sucesso.
             
-            // Re-buildando XML rapidamente para garantir que temos o binário correto da tentativa vencedora
-            // (Isso é seguro pois os dados não mudaram, só a sequencia que já está atualizada no obj company)
-             const { xmlContent } = await NfceService.buildXML(sale, company);
-             const signedXmlFinal = await NfceService.signXML(xmlContent, company.certificadoPath, company.certificadoSenha);
+            // CORREÇÃO: Usar o XML já assinado da tentativa vencedora (NÃO rebuildar — evita novo cNF aleatório
+            // que causaria Rejeição 202: "Campo Id não corresponde à concatenação dos campos correspondentes")
+            const signedXmlFinal = lastSignedXml;
             
             const xmlFilename = `${sefazResult.chave}.xml`;
             finalXmlPath = path.join(xmlDir, xmlFilename);
@@ -250,7 +247,7 @@ export const emitirNfce = async (req, res) => {
                     chave: lastResult.chave,
                     protocolo: lastResult.protocolo || '',
                     xml: '', // Não temos o XML final assinado aqui fácil sem rebuild, deixa vazio por enqto
-                    status: 'REJEITADA',
+                    status: failure.status === 'ERRO_COMUNICACAO' ? 'ERRO' : 'REJEITADA',
                     ambiente: company.ambienteFiscal,
                     motivo: failure.motivo || 'Rejeitada',
                     numero: company.numeroInicialNfce,
@@ -266,8 +263,8 @@ export const emitirNfce = async (req, res) => {
             
             return res.status(400).json({
                 success: false,
-                status: 'REJEITADA',
-                error: `Rejeição: ${failure.motivo}`,
+                status: failure.status || 'REJEITADA',
+                error: (failure.status === 'ERRO_COMUNICACAO' ? 'Falha de Comunicação: ' : 'Rejeição: ') + failure.motivo,
                 message: failure.motivo || 'Nota rejeitada pela SEFAZ após tentativas.',
                 nfce: failure
              });
@@ -333,6 +330,7 @@ export const generatePdf = async (req, res) => {
         console.log("[DEBUG] TotalFinal:", totalFinal);
         console.log("[DEBUG] CashbackUsado (DB):", sale.cashbackUsado);
 
+        const isContingencia = sale.nfce?.tpEmis === 9;
         const html = `
             <html>
             <head>
@@ -343,6 +341,9 @@ export const generatePdf = async (req, res) => {
                     .bold { font-weight: bold; }
                     .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
                     .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                    .contingencia-box { border: 2px solid #000; background: #fff; padding: 8px; margin: 8px 0; text-align: center; }
+                    .contingencia-titulo { font-size: 14px; font-weight: bold; letter-spacing: 1px; }
+                    .contingencia-info { font-size: 11px; margin-top: 4px; }
                 </style>
             </head>
             <body>
@@ -354,6 +355,23 @@ export const generatePdf = async (req, res) => {
                 <div class="center bold">DANFE NFC-e - Documento Auxiliar</div>
                 <div class="center">Nota Fiscal de Consumidor Eletrônica</div>
                 <div class="center">Não permite aproveitamento de crédito de ICMS</div>
+                
+                ${isContingencia ? `
+                <div class="divider"></div>
+                <div class="contingencia-box">
+                    <div class="contingencia-titulo">*** EMITIDA EM CONTINGENCIA ***</div>
+                    <div class="contingencia-titulo">*** OFFLINE - SEM COMUNICACAO SEFAZ ***</div>
+                    <div class="contingencia-info">
+                        Inicio Contingencia: ${sale.nfce?.dhCont ? new Date(sale.nfce.dhCont).toLocaleString('pt-BR') : 'N/D'}
+                    </div>
+                    <div class="contingencia-info" style="word-break:break-word;">
+                        Motivo: ${sale.nfce?.xJust || 'Falha de comunicacao com a SEFAZ'}
+                    </div>
+                    <div class="contingencia-info">
+                        <strong>Pendente de transmissao a SEFAZ</strong>
+                    </div>
+                </div>
+                ` : ''}
                 
                 <div class="divider"></div>
                 
@@ -578,3 +596,369 @@ export const sendPdfEmail = async (req, res) => {
         res.status(500).json({ ok: false, message: 'Erro ao enviar e-mail: ' + error.message });
     }
 };
+
+// ═══════════════════════════════════════════════════════════════
+// FUNÇÕES DE CONTINGÊNCIA OFFLINE (novas — não alteram nada acima)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Ativar modo de contingência offline
+ * POST /api/nfce/contingencia/ativar
+ * Body: { xJust: string (mínimo 15 chars) }
+ */
+export const ativarContingencia = async (req, res) => {
+    try {
+        const { xJust } = req.body;
+        if (!xJust || xJust.trim().length < 15) {
+            return res.status(400).json({ ok: false, message: 'Justificativa obrigatória (mínimo 15 caracteres).' });
+        }
+        const dhCont = new Date().toISOString();
+        await prisma.appSetting.upsert({
+            where: { key: 'contingencia_ativa' },
+            update: { value: 'true' },
+            create: { key: 'contingencia_ativa', value: 'true' }
+        });
+        await prisma.appSetting.upsert({
+            where: { key: 'contingencia_dhCont' },
+            update: { value: dhCont },
+            create: { key: 'contingencia_dhCont', value: dhCont }
+        });
+        await prisma.appSetting.upsert({
+            where: { key: 'contingencia_xJust' },
+            update: { value: xJust.trim() },
+            create: { key: 'contingencia_xJust', value: xJust.trim() }
+        });
+        return res.json({ ok: true, message: 'Modo de contingência ativado.', dhCont, xJust: xJust.trim() });
+    } catch (e) {
+        console.error('[Contingência] Erro ao ativar:', e);
+        return res.status(500).json({ ok: false, message: e.message });
+    }
+};
+
+/**
+ * Desativar modo de contingência offline e disparar job de retransmissão
+ * POST /api/nfce/contingencia/desativar
+ */
+export const desativarContingencia = async (req, res) => {
+    try {
+        await prisma.appSetting.upsert({
+            where: { key: 'contingencia_ativa' },
+            update: { value: 'false' },
+            create: { key: 'contingencia_ativa', value: 'false' }
+        });
+        // Dispara job imediatamente em background (não aguarda)
+        import('../services/ContingenciaJobService.js')
+            .then(({ executarJobAgora }) => executarJobAgora())
+            .catch(e => console.error('[Contingência] Erro ao executar job após desativação:', e));
+
+        return res.json({ ok: true, message: 'Modo de contingência desativado. Retransmissão iniciada.' });
+    } catch (e) {
+        console.error('[Contingência] Erro ao desativar:', e);
+        return res.status(500).json({ ok: false, message: e.message });
+    }
+};
+
+/**
+ * Listar NFC-es em contingência
+ * GET /api/nfce/contingencia/lista
+ */
+export const listarContingencias = async (req, res) => {
+    try {
+        const nfces = await prisma.nfce.findMany({
+            where: {
+                status: { in: ['CONTINGENCIA', 'CONTINGENCIA_REJEITADA', 'CONTINGENCIA_EXPIRADA', 'INUTILIZADA'] }
+            },
+            include: {
+                sale: {
+                    select: {
+                        id: true,
+                        total: true,
+                        dataVenda: true,
+                        tipoVenda: true,
+                        cliente: { select: { nome: true } }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Buscar status do modo contingência
+        const setting = await prisma.appSetting.findUnique({ where: { key: 'contingencia_ativa' } });
+        const dhContSetting = await prisma.appSetting.findUnique({ where: { key: 'contingencia_dhCont' } });
+        const xJustSetting = await prisma.appSetting.findUnique({ where: { key: 'contingencia_xJust' } });
+
+        const modoAtivo = setting && setting.value === 'true';
+
+        return res.json({
+            ok: true,
+            modoAtivo,
+            dhCont: dhContSetting?.value || null,
+            xJust: xJustSetting?.value || null,
+            total: nfces.length,
+            pendentes: nfces.filter(n => n.status === 'CONTINGENCIA').length,
+            rejeitadas: nfces.filter(n => n.status === 'CONTINGENCIA_REJEITADA').length,
+            expiradas: nfces.filter(n => n.status === 'CONTINGENCIA_EXPIRADA').length,
+            nfces
+        });
+    } catch (e) {
+        console.error('[Contingência] Erro ao listar:', e);
+        return res.status(500).json({ ok: false, message: e.message });
+    }
+};
+
+/**
+ * Emitir NFC-e em modo de contingência offline (sem enviar ao SEFAZ)
+ * POST /api/nfce/contingencia/emitir
+ * Body: { saleId, itemsOverlay? }
+ */
+export const emitirNfceContingencia = async (req, res) => {
+    try {
+        const { saleId, itemsOverlay } = req.body;
+        if (!saleId) return res.status(400).json({ ok: false, error: 'saleId obrigatório' });
+
+        const sale = await prisma.sale.findUnique({
+            where: { id: parseInt(saleId) },
+            include: { itens: { include: { product: true } }, nfce: true, cliente: true, caixaVendas: true }
+        });
+        if (!sale) return res.status(404).json({ ok: false, error: 'Venda não encontrada' });
+
+        // Aplica overlay de itens se existir
+        if (itemsOverlay && Array.isArray(itemsOverlay) && itemsOverlay.length > 0) {
+            sale.itens = sale.itens.map(dbItem => {
+                const overlayItem = itemsOverlay.find(oi => String(oi._id || oi.id) === String(dbItem.id));
+                if (overlayItem && overlayItem.product) {
+                    dbItem.product = {
+                        ...(dbItem.product || {}),
+                        ncm: overlayItem.product.ncm || (dbItem.product?.ncm || ''),
+                        cfop: overlayItem.product.cfop || (dbItem.product?.cfop || ''),
+                        csosn: overlayItem.product.csosn || (dbItem.product?.csosn || '')
+                    };
+                }
+                return dbItem;
+            });
+        }
+
+        let company = await prisma.company.findFirst();
+        if (!company || !company.cnpj) {
+            return res.status(400).json({ ok: false, error: 'Configuração fiscal incompleta (CNPJ não encontrado)' });
+        }
+
+        // Buscar dados de contingência
+        const dhContSetting = await prisma.appSetting.findUnique({ where: { key: 'contingencia_dhCont' } });
+        const xJustSetting = await prisma.appSetting.findUnique({ where: { key: 'contingencia_xJust' } });
+        const dhCont = dhContSetting?.value ? new Date(dhContSetting.value) : new Date();
+        const xJust = xJustSetting?.value || 'Falha de comunicacao com a SEFAZ';
+
+        // Gerar XML de contingência (tpEmis=9)
+        const { xmlContent, accessKey } = await NfceService.buildXMLContingencia(sale, company, dhCont, xJust);
+
+        // Assinar XML localmente
+        const signedXml = await NfceService.signXML(xmlContent, company.certificadoPath, company.certificadoSenha);
+
+        // Gerar QR Code offline (com CSC)
+        const qrCodeResult = await NfceService.getQrCodeContingencia(accessKey, company);
+
+        // Calcular prazo limite (24h após início da contingência)
+        const prazoLimite = new Date(dhCont.getTime() + 24 * 60 * 60 * 1000);
+
+        // Salvar no banco com status CONTINGENCIA
+        const nfceData = {
+            chave: accessKey,
+            xml: signedXml,
+            protocolo: '',
+            motivo: 'Emitida em contingência offline',
+            status: 'CONTINGENCIA',
+            ambiente: company.ambienteFiscal,
+            numero: company.numeroInicialNfce,
+            serie: company.serieNfce,
+            qrCode: qrCodeResult?.url || null,
+            urlConsulta: null,
+            tpEmis: 9,
+            dhCont,
+            xJust,
+            prazoLimite,
+            tentativas: 0
+        };
+
+        let savedNfce;
+        if (sale.nfce) {
+            savedNfce = await prisma.nfce.update({ where: { id: sale.nfce.id }, data: nfceData });
+        } else {
+            savedNfce = await prisma.nfce.create({ data: { ...nfceData, saleId: sale.id } });
+        }
+
+        // Incrementa número da NFC-e para a próxima emissão
+        await prisma.company.update({
+            where: { id: company.id },
+            data: { numeroInicialNfce: { increment: 1 } }
+        });
+
+        return res.json({
+            ok: true,
+            status: 'CONTINGENCIA',
+            message: 'NFC-e emitida em CONTINGÊNCIA. Será transmitida ao SEFAZ quando a conexão for restabelecida.',
+            prazoLimite: prazoLimite.toISOString(),
+            nfce: savedNfce,
+            qrCode: qrCodeResult ? { url: qrCodeResult.url, base64: qrCodeResult.base64 } : null,
+            pdfUrl: `${req.protocol}://${req.get('host')}/api/nfce/${sale.id}/pdf`
+        });
+    } catch (e) {
+        console.error('[Contingência] Erro ao emitir:', e);
+        return res.status(500).json({ ok: false, error: 'Erro na emissão em contingência: ' + (e.message || e) });
+    }
+};
+
+/**
+ * Retentar transmissão manual de uma NFC-e de contingência
+ * POST /api/nfce/contingencia/:nfceId/retentar
+ *
+ * CORREÇÃO: Antes de enviar, verifica se a chave de acesso tem tpEmis=9 (posição 34).
+ * Se não tiver (bug de versão anterior), regenera o XML + reassina com a chave correta.
+ * Isso corrige o erro: "Erro na Chave de Acesso - Campo Id não corresponde à concatenação
+ * dos campos correspondentes" (Rejeição 202/560 da SEFAZ).
+ */
+export const retentarContingencia = async (req, res) => {
+    try {
+        const { nfceId } = req.params;
+        const nfce = await prisma.nfce.findUnique({ where: { id: parseInt(nfceId) } });
+        if (!nfce) return res.status(404).json({ ok: false, message: 'NFC-e não encontrada.' });
+        if (!['CONTINGENCIA', 'CONTINGENCIA_REJEITADA'].includes(nfce.status)) {
+            return res.status(400).json({ ok: false, message: `NFC-e com status "${nfce.status}" não pode ser retentada.` });
+        }
+
+        const company = await prisma.company.findFirst();
+        if (!company || !company.certificadoPath) {
+            return res.status(400).json({ ok: false, message: 'Certificado não configurado.' });
+        }
+
+        const novasTentativas = (nfce.tentativas || 0) + 1;
+        await prisma.nfce.update({
+            where: { id: nfce.id },
+            data: { tentativas: novasTentativas, ultimaTentativa: new Date(), status: 'CONTINGENCIA' }
+        });
+
+        // ─── CORREÇÃO: Verificar e regenerar XML com chave correta (tpEmis=9) ─────
+        // A chave de acesso NFC-e tem 44 dígitos:
+        // ─── CORREÇÃO: SEMPRE regenerar XML para aplicar novos campos de Schema (indIntermed/QR Code 2.0) ─────
+        let xmlParaEnviar;
+        let chaveParaEnviar;
+        let saleOriginal;
+
+        try {
+            // Buscar venda original com todos os dados
+            saleOriginal = await prisma.sale.findUnique({
+                where: { id: nfce.saleId },
+                include: { itens: { include: { product: true } }, cliente: true, caixaVendas: true }
+            });
+            if (!saleOriginal) throw new Error('Venda original não encontrada para regenerar XML.');
+
+            // Usar o número e série ORIGINAIS salvos na NFC-e
+            const companyParaGerar = {
+                ...company,
+                numeroInicialNfce: nfce.numero || company.numeroInicialNfce,
+                serieNfce: nfce.serie || company.serieNfce
+            };
+
+            // Usar dhCont e xJust originais salvos na NFC-e
+            let dhCont = nfce.dhCont || new Date();
+            let xJust = nfce.xJust || 'Falha de comunicacao com a SEFAZ';
+
+            // Regenerar XML de contingência garantindo o novo layout 4.00 (inclui indIntermed e QR v2.0)
+            const { xmlContent: xmlNovo, accessKey: chaveNova } = await NfceService.buildXMLContingencia(
+                saleOriginal, companyParaGerar, dhCont, xJust
+            );
+
+            // Reassinar 
+            const signedXmlNovo = await NfceService.signXML(xmlNovo, company.certificadoPath, company.certificadoSenha);
+
+            // Atualizar banco (preservando o ID da NFC-e)
+            xmlParaEnviar = signedXmlNovo;
+            chaveParaEnviar = chaveNova;
+
+            await prisma.nfce.update({
+                where: { id: nfce.id },
+                data: { chave: chaveNova, xml: signedXmlNovo }
+            });
+
+            console.log(`[Contingência] ✅ XML regenerado e atualizado no banco para ID=${nfce.id}`);
+        } catch (regenError) {
+            console.error('[Contingência] Erro ao regenerar/preparar XML:', regenError);
+            return res.status(500).json({ ok: false, message: 'Erro ao preparar nota para o novo Schema: ' + regenError.message });
+        }
+
+        const result = await NfceService.sendToSefaz(xmlParaEnviar, company, chaveParaEnviar, saleOriginal);
+
+        if (result.status === 'AUTORIZADO') {
+            await prisma.nfce.update({
+                where: { id: nfce.id },
+                data: { status: 'AUTORIZADA', protocolo: result.protocolo || '', motivo: result.motivo, erroUltimo: null }
+            });
+            
+            // Smart Auto-Recovery: Se tivemos sucesso ao bater na SEFAZ, significa que a conexão restabeleceu!
+            // Desativamos a contingência global automaticamente.
+            await prisma.appSetting.upsert({
+                where: { key: 'contingencia_ativa' },
+                update: { value: 'false' },
+                create: { key: 'contingencia_ativa', value: 'false' }
+            });
+            
+            return res.json({ ok: true, message: 'NFC-e transmitida com sucesso! Protocolo: ' + result.protocolo });
+        } else {
+            await prisma.nfce.update({
+                where: { id: nfce.id },
+                data: { erroUltimo: result.motivo, status: 'CONTINGENCIA_REJEITADA' }
+            });
+            return res.status(400).json({ ok: false, message: 'Falha na transmissão: ' + result.motivo });
+        }
+    } catch (e) {
+        console.error('[Contingência] Erro ao retentar:', e);
+        return res.status(500).json({ ok: false, message: e.message });
+    }
+};
+
+/**
+ * Inutilizar numeração de NFC-e de contingência não transmitida
+ * POST /api/nfce/contingencia/:nfceId/inutilizar
+ * Body: { xJust? }
+ */
+export const inutilizarContingencia = async (req, res) => {
+    try {
+        const { nfceId } = req.params;
+        const { xJust } = req.body;
+
+        const nfce = await prisma.nfce.findUnique({ where: { id: parseInt(nfceId) } });
+        if (!nfce) return res.status(404).json({ ok: false, message: 'NFC-e não encontrada.' });
+
+        const company = await prisma.company.findFirst();
+        if (!company) return res.status(400).json({ ok: false, message: 'Empresa não configurada.' });
+
+        const justificativa = xJust || nfce.xJust || 'Numeracao de contingencia nao transmitida';
+        
+        // Marca como inutilizada no banco (envio real ao SEFAZ pode ser implementado depois)
+        await prisma.nfce.update({
+            where: { id: nfce.id },
+            data: {
+                status: 'INUTILIZADA',
+                motivo: 'Inutilizada: ' + justificativa,
+                erroUltimo: null
+            }
+        });
+
+        // Registra evento de inutilização
+        await prisma.nfceEvent.create({
+            data: {
+                nfceId: nfce.id,
+                tipo: 'INUTILIZACAO',
+                sequencia: 1,
+                status: 'INUTILIZADA',
+                motivo: justificativa
+            }
+        });
+
+        return res.json({ ok: true, message: 'NFC-e marcada como inutilizada com sucesso.' });
+    } catch (e) {
+        console.error('[Contingência] Erro ao inutilizar:', e);
+        return res.status(500).json({ ok: false, message: e.message });
+    }
+};
+

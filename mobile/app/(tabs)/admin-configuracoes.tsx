@@ -16,6 +16,7 @@ import {
 
 
 import { SafeIcon } from '../../components/SafeIcon';
+import api from '../../src/services/api';
 import { employeeService, userService, companyService, idleTimeConfigService, roleService } from '../../src/services/api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
@@ -86,6 +87,19 @@ export default function AdminConfiguracoesScreen() {
     ]
   });
   const [loadingIdleConfig, setLoadingIdleConfig] = useState(false);
+
+  // States de Contingência NFC-e
+  const [contingenciaStatus, setContingenciaStatus] = useState<{
+    modoAtivo: boolean;
+    dhCont?: string;
+    xJust?: string;
+    pendentes: number;
+    rejeitadas: number;
+    expiradas: number;
+  } | null>(null);
+  const [loadingContingencia, setLoadingContingencia] = useState(false);
+  const [contingenciaModalVisible, setContingenciaModalVisible] = useState(false);
+  const [contingenciaJustificativa, setContingenciaJustificativa] = useState('');
 
   const navigation = useNavigation();
 
@@ -209,6 +223,88 @@ export default function AdminConfiguracoesScreen() {
     }
   };
 
+  // ── Funções de Contingência ────────────────────────────────────────────────
+
+  const carregarStatusContingencia = async () => {
+    try {
+      setLoadingContingencia(true);
+      const res = await api.get('/nfce/contingencia/lista');
+      if (res.data?.ok) {
+        setContingenciaStatus({
+          modoAtivo: res.data.modoAtivo,
+          dhCont: res.data.dhCont,
+          xJust: res.data.xJust,
+          pendentes: res.data.pendentes || 0,
+          rejeitadas: res.data.rejeitadas || 0,
+          expiradas: res.data.expiradas || 0,
+        });
+      }
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível carregar status de contingência.');
+    } finally {
+      setLoadingContingencia(false);
+    }
+  };
+
+  const handleAbrirContingencia = () => {
+    carregarStatusContingencia();
+    setContingenciaModalVisible(true);
+  };
+
+  const handleAtivarContingencia = () => {
+    if (!contingenciaJustificativa || contingenciaJustificativa.trim().length < 15) {
+      Alert.alert('Atenção', 'A justificativa deve ter pelo menos 15 caracteres.');
+      return;
+    }
+    Alert.alert(
+      'Ativar Contingência',
+      `Confirma ativar o modo de contingência?\n\nJustificativa: "${contingenciaJustificativa}"\n\nAs NFC-es serão emitidas offline até você desativar.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Ativar',
+          onPress: async () => {
+            try {
+              setLoadingContingencia(true);
+              await api.post('/nfce/contingencia/ativar', { xJust: contingenciaJustificativa.trim() });
+              Alert.alert('✅ Sucesso', 'Modo de contingência ativado!');
+              setContingenciaJustificativa('');
+              await carregarStatusContingencia();
+            } catch (e: any) {
+              Alert.alert('Erro', e.response?.data?.message || 'Falha ao ativar contingência.');
+            } finally {
+              setLoadingContingencia(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDesativarContingencia = () => {
+    Alert.alert(
+      'Desativar Contingência',
+      `Ao desativar, o sistema tentará retransmitir automaticamente as ${contingenciaStatus?.pendentes || 0} NFC-e(s) pendentes para a SEFAZ.\n\nConfirma?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desativar e Transmitir',
+          onPress: async () => {
+            try {
+              setLoadingContingencia(true);
+              await api.post('/nfce/contingencia/desativar');
+              Alert.alert('✅ Sucesso', 'Modo desativado. Retransmissão iniciada em background.');
+              await carregarStatusContingencia();
+            } catch (e: any) {
+              Alert.alert('Erro', e.response?.data?.message || 'Falha ao desativar contingência.');
+            } finally {
+              setLoadingContingencia(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const fetchAddressByCep = async (cep: string) => {
     // Remove caracteres não numéricos
@@ -715,7 +811,167 @@ export default function AdminConfiguracoesScreen() {
         </View>
 
 
+        {/* ─── Seção de Contingência NFC-e ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Contingência NFC-e</Text>
+          <View style={styles.settingsCard}>
+            <TouchableOpacity
+              style={[styles.settingItem, { borderLeftWidth: 4, borderLeftColor: '#FF9800' }]}
+              onPress={handleAbrirContingencia}
+            >
+              <View style={styles.settingContent}>
+                <SafeIcon name="warning" size={24} color="#FF9800" fallbackText="⚠" />
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Controle de Contingência</Text>
+                  <Text style={styles.settingDescription}>
+                    Ativar/desativar modo offline e gerenciar NFC-es pendentes
+                  </Text>
+                </View>
+              </View>
+              <SafeIcon name="chevron-forward" size={20} color="#ccc" fallbackText="›" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
       </ScrollView>
+
+      {/* Modal de Controle de Contingência */}
+      <Modal
+        visible={contingenciaModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onShow={carregarStatusContingencia}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setContingenciaModalVisible(false)}>
+              <Text style={styles.cancelButton}>Fechar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Contingência NFC-e</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {loadingContingencia ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <ActivityIndicator size="large" color="#FF9800" />
+                <Text style={{ marginTop: 12, color: '#666' }}>Carregando...</Text>
+              </View>
+            ) : (
+              <>
+                {/* Status atual */}
+                <View style={[contingenciaStyles.statusCard, {
+                  backgroundColor: contingenciaStatus?.modoAtivo ? '#FFF3E0' : '#E8F5E9',
+                  borderColor: contingenciaStatus?.modoAtivo ? '#FF9800' : '#4CAF50',
+                }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <SafeIcon
+                      name={contingenciaStatus?.modoAtivo ? 'warning' : 'checkmark-circle'}
+                      size={28}
+                      color={contingenciaStatus?.modoAtivo ? '#FF9800' : '#4CAF50'}
+                      fallbackText={contingenciaStatus?.modoAtivo ? '⚠' : '✓'}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[contingenciaStyles.statusTitle, {
+                        color: contingenciaStatus?.modoAtivo ? '#E65100' : '#2E7D32',
+                      }]}>
+                        {contingenciaStatus?.modoAtivo ? '🟡 Modo Contingência ATIVO' : '🟢 Modo Normal (Online)'}
+                      </Text>
+                      {contingenciaStatus?.modoAtivo && contingenciaStatus.dhCont && (
+                        <Text style={contingenciaStyles.statusSub}>
+                          Ativo desde: {new Date(contingenciaStatus.dhCont).toLocaleString('pt-BR')}
+                        </Text>
+                      )}
+                      {contingenciaStatus?.modoAtivo && contingenciaStatus.xJust && (
+                        <Text style={contingenciaStyles.statusSub}>
+                          Motivo: {contingenciaStatus.xJust}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                {/* Contadores */}
+                <View style={contingenciaStyles.contadores}>
+                  <View style={contingenciaStyles.contadorItem}>
+                    <Text style={[contingenciaStyles.contadorNum, { color: '#FF9800' }]}>
+                      {contingenciaStatus?.pendentes ?? '-'}
+                    </Text>
+                    <Text style={contingenciaStyles.contadorLabel}>Pendentes</Text>
+                  </View>
+                  <View style={contingenciaStyles.contadorItem}>
+                    <Text style={[contingenciaStyles.contadorNum, { color: '#F44336' }]}>
+                      {contingenciaStatus?.rejeitadas ?? '-'}
+                    </Text>
+                    <Text style={contingenciaStyles.contadorLabel}>Rejeitadas</Text>
+                  </View>
+                  <View style={contingenciaStyles.contadorItem}>
+                    <Text style={[contingenciaStyles.contadorNum, { color: '#9C27B0' }]}>
+                      {contingenciaStatus?.expiradas ?? '-'}
+                    </Text>
+                    <Text style={contingenciaStyles.contadorLabel}>Expiradas</Text>
+                  </View>
+                </View>
+
+                {/* Ações */}
+                {!contingenciaStatus?.modoAtivo ? (
+                  <View style={contingenciaStyles.acaoSection}>
+                    <Text style={contingenciaStyles.acaoTitulo}>Ativar Contingência</Text>
+                    <Text style={contingenciaStyles.acaoDesc}>
+                      Use apenas quando a SEFAZ estiver indisponível. As NFC-es serão geradas offline e transmitidas quando a conexão voltar.
+                    </Text>
+                    <TextInput
+                      style={contingenciaStyles.input}
+                      placeholder="Justificativa (mín. 15 caracteres)"
+                      value={contingenciaJustificativa}
+                      onChangeText={setContingenciaJustificativa}
+                      multiline
+                      numberOfLines={3}
+                      maxLength={250}
+                    />
+                    <Text style={{ fontSize: 11, color: '#999', textAlign: 'right', marginTop: 2 }}>
+                      {contingenciaJustificativa.length}/250
+                    </Text>
+                    <TouchableOpacity
+                      style={[contingenciaStyles.btnAtivar, loadingContingencia && { opacity: 0.5 }]}
+                      onPress={handleAtivarContingencia}
+                      disabled={loadingContingencia}
+                    >
+                      <SafeIcon name="warning" size={18} color="#fff" fallbackText="⚠" />
+                      <Text style={contingenciaStyles.btnText}>Ativar Modo Contingência</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={contingenciaStyles.acaoSection}>
+                    <Text style={[contingenciaStyles.acaoTitulo, { color: '#C62828' }]}>
+                      Desativar Contingência
+                    </Text>
+                    <Text style={contingenciaStyles.acaoDesc}>
+                      Ao desativar, o sistema iniciará automaticamente a retransmissão das {contingenciaStatus?.pendentes || 0} NFC-e(s) pendentes para a SEFAZ.
+                    </Text>
+                    <TouchableOpacity
+                      style={[contingenciaStyles.btnDesativar, loadingContingencia && { opacity: 0.5 }]}
+                      onPress={handleDesativarContingencia}
+                      disabled={loadingContingencia}
+                    >
+                      <SafeIcon name="cloud-upload" size={18} color="#fff" fallbackText="⬆" />
+                      <Text style={contingenciaStyles.btnText}>Desativar e Iniciar Retransmissão</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Aviso importante */}
+                <View style={contingenciaStyles.aviso}>
+                  <SafeIcon name="information-circle" size={16} color="#1565C0" fallbackText="i" />
+                  <Text style={contingenciaStyles.avisoText}>
+                    NFC-es em contingência têm prazo de 24h para transmissão. Após esse prazo, serão marcadas como expiradas e deverão ser inutilizadas.
+                  </Text>
+                </View>
+              </>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Modal de Edição de Permissões */}
       <Modal
@@ -1652,3 +1908,112 @@ const SimpleInput = ({ label, value, onChangeText, ...props }: any) => (
 // Vou assumir que TextInput está importado ou vou adicionar ele no topo.
 // ESPERE: `TextInput` NÃO está importado no topo do arquivo original pelo que vejo nas linhas 1-12.
 // Preciso adicionar TextInput nos imports.
+
+// ─── Estilos do Modal de Contingência ─────────────────────────────────────────
+const contingenciaStyles = StyleSheet.create({
+  statusCard: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  statusTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  statusSub: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  contadores: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginBottom: 16,
+  },
+  contadorItem: {
+    alignItems: 'center',
+  },
+  contadorNum: {
+    fontSize: 26,
+    fontWeight: 'bold',
+  },
+  contadorLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  acaoSection: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  acaoTitulo: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  acaoDesc: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    color: '#333',
+    minHeight: 70,
+    textAlignVertical: 'top',
+    marginBottom: 4,
+  },
+  btnAtivar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FF9800',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  btnDesativar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1565C0',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  aviso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 24,
+  },
+  avisoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1565C0',
+    lineHeight: 17,
+  },
+});

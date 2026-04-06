@@ -344,6 +344,15 @@ model Nfce {
   urlConsulta     String?   @db.Text
   
   pdfPath         String?   // Caminho para o arquivo PDF gerado
+
+  // ── Campos de Contingência Offline ──
+  tpEmis          Int       @default(1)      // 1=Normal, 9=Contingência Offline
+  dhCont          DateTime?                  // Data/Hora início da contingência
+  xJust           String?   @db.VarChar(255) // Justificativa (mín. 15 chars)
+  tentativas      Int       @default(0)      // Tentativas de retransmissão
+  ultimaTentativa DateTime?                  // Data da última tentativa
+  prazoLimite     DateTime?                  // Prazo máximo de transmissão
+  erroUltimo      String?   @db.Text         // Último erro retornado pela SEFAZ
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -377,6 +386,9 @@ enum NfceStatus {
   CANCELADA
   DENEGADA
   CONTINGENCIA
+  CONTINGENCIA_REJEITADA  // Rejeitada definitivamente por dados inválidos
+  CONTINGENCIA_EXPIRADA   // Prazo vencido sem transmissão bem-sucedida
+  INUTILIZADA             // Número inutilizado junto ao SEFAZ
 }
 
 model SaleItem {

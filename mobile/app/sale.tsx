@@ -77,17 +77,47 @@ export default function SaleScreen() {
 
   // NFC-e flag para o modal rápido (antes de ir pra divisão)
   const [fastNfceOption, setFastNfceOption] = useState(false);
-  
+  // Estado do modo de contingência
+  const [contingenciaModoAtivo, setContingenciaModoAtivo] = useState(false);
+
+  // Verifica status de contingência ao carregar
+  useEffect(() => {
+    NfceService.verificarStatusContingencia()
+      .then(s => setContingenciaModoAtivo(s.modoAtivo))
+      .catch(() => {});
+  }, []);
+
   const handleEmitNfce = async (saleIdToEmit: string, itemsOverlay?: any[]) => {
     console.log('[DEBUG] handleEmitNfce CALLED. ID:', saleIdToEmit);
     setNfceModalVisible(true);
     setNfceStatus('loading');
+
+    // Se modo contingência ativo, emitir diretamente em contingência
+    if (contingenciaModoAtivo) {
+      setNfceMessage('Emitindo em CONTINGÊNCIA (SEFAZ indisponível)...');
+      try {
+        const res = await NfceService.emitirContingencia(saleIdToEmit, itemsOverlay);
+        if (res.ok || res.status === 'CONTINGENCIA') {
+          setNfceStatus('success');
+          setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+          setNfceData({ ...res, isContingencia: true });
+        } else {
+          setNfceStatus('error');
+          setNfceMessage(res.error || res.message || 'Erro ao emitir contingência.');
+        }
+      } catch (e: any) {
+        setNfceStatus('error');
+        setNfceMessage(typeof e === 'string' ? e : (e.message || 'Falha na emissão em contingência.'));
+      }
+      return;
+    }
+
+    // Fluxo normal
     setNfceMessage('Transmitindo para SEFAZ...');
     try {
-      const res = await NfceService.emitir(saleIdToEmit, itemsOverlay); 
+      const res = await NfceService.emitir(saleIdToEmit, itemsOverlay);
       console.log('[DEBUG] Resposta Emitir NFC-e:', res);
 
-      // Verificação robusta de status (API retorna 'AUTORIZADO' ou 'REJEITADO')
       const statusRaw = (res.status || '').toUpperCase();
       const isAuth = statusRaw === 'AUTORIZADO' || statusRaw === 'AUTORIZADA';
 
@@ -96,20 +126,115 @@ export default function SaleScreen() {
         setNfceStatus('success');
         setNfceMessage('NFC-e emitida com sucesso!');
         setNfceData(res);
-        // Explicit success alert for delivery/general flow as requested
-        // Moved into ImpressaoNfceModal for better visibility
         console.log('[DEBUG] NFC-e Success. Modal updated.');
       } else {
         console.log('[DEBUG] NFC-e FAILED.', res);
-        setNfceStatus('error');
-        // Prioritize 'motivo' from DB/Sefaz, then 'message', then 'error'
-        const reason = res.motivo || res.message || res.error || 'Erro: Nota Rejeitada pela SEFAZ.';
-        setNfceMessage(reason);
+        // Detecta falha de comunicação e oferece contingência
+        const isComunicacaoFalha = (res.motivo || res.message || '').toLowerCase().includes('comunica') ||
+          (res.motivo || res.message || '').toLowerCase().includes('enotfound') ||
+          (res.status || '').toUpperCase() === 'ERRO_COMUNICACAO' ||
+          (res.status || '').toUpperCase() === 'ERRO';
+
+        if (isComunicacaoFalha) {
+          setContingenciaSaleId(saleIdToEmit);
+          setContingenciaItems(itemsOverlay);
+          setNfceStatus('error');
+          setNfceMessage('SEFAZ indisponível. Deseja emitir em CONTINGÊNCIA?');
+          // Aguarda decisão do usuário nativamente se não for Web
+          if (Platform.OS !== 'web') {
+              Alert.alert(
+                '⚠️ SEFAZ Indisponível',
+                'Não foi possível conectar à SEFAZ. Deseja emitir o cupom em MODO CONTINGÊNCIA?\n\nO cupom será gerado agora e transmitido automaticamente quando a conexão for restabelecida.',
+            [
+              { text: 'Não', style: 'cancel', onPress: () => {
+                setNfceStatus('error');
+                setNfceMessage(res.motivo || res.message || 'Falha de comunicação com a SEFAZ.');
+              }},
+              { text: 'Emitir em Contingência', onPress: async () => {
+                setNfceStatus('loading');
+                setNfceMessage('Emitindo em CONTINGÊNCIA...');
+                try {
+                  // Ativar modo contingência se não estiver ativo
+                  if (!contingenciaModoAtivo) {
+                    await NfceService.ativarContingencia('SEFAZ indisponível no momento da emissao');
+                    setContingenciaModoAtivo(true);
+                  }
+                  const contRes = await NfceService.emitirContingencia(saleIdToEmit, itemsOverlay);
+                  if (contRes.ok || contRes.status === 'CONTINGENCIA') {
+                    setNfceStatus('success');
+                    setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+                    setNfceData({ ...contRes, isContingencia: true });
+                  } else {
+                    setNfceStatus('error');
+                    setNfceMessage(contRes.error || 'Erro ao emitir em contingência.');
+                  }
+                } catch (contErr: any) {
+                  setNfceStatus('error');
+                  setNfceMessage(typeof contErr === 'string' ? contErr : (contErr.message || 'Falha na contingência.'));
+                }
+              }},
+              ]
+            );
+          }
+        } else {
+          setNfceStatus('error');
+          const reason = res.motivo || res.message || res.error || 'Erro: Nota Rejeitada pela SEFAZ.';
+          setNfceMessage(reason);
+        }
       }
     } catch (e: any) {
       console.error('Erro NFC-e:', e);
-      setNfceStatus('error');
-      setNfceMessage(typeof e === 'string' ? e : (e.message || 'Falha de comunicação.'));
+      const msgErro = typeof e === 'string' ? e : (e.message || 'Falha de comunicação.');
+      const isComunicacao = msgErro.toLowerCase().includes('network') ||
+        msgErro.toLowerCase().includes('timeout') ||
+        msgErro.toLowerCase().includes('econnrefused') ||
+        msgErro.toLowerCase().includes('enotfound') ||
+        msgErro.toLowerCase().includes('comunica');
+
+      if (isComunicacao) {
+        setContingenciaSaleId(saleIdToEmit);
+        setContingenciaItems(itemsOverlay);
+        setNfceStatus('error');
+        setNfceMessage('Sem conexão com o servidor. Deseja emitir em CONTINGÊNCIA?');
+        // Mantém também o Alert nativo caso a plataforma seja mobile (não web) e o Modal não trave tudo
+        if (Platform.OS !== 'web') {
+            Alert.alert(
+              '⚠️ Sem Conexão',
+              'Não foi possível conectar ao servidor/SEFAZ.\nDeseja emitir o cupom em MODO CONTINGÊNCIA?\n\nO cupom será transmitido automaticamente quando a conexão voltar.',
+          [
+            { text: 'Não', style: 'cancel', onPress: () => {
+              setNfceStatus('error');
+              setNfceMessage(msgErro);
+            }},
+            { text: 'Emitir em Contingência', onPress: async () => {
+              setNfceStatus('loading');
+              setNfceMessage('Emitindo em CONTINGÊNCIA...');
+              try {
+                if (!contingenciaModoAtivo) {
+                  await NfceService.ativarContingencia('Falha de conexao com a SEFAZ');
+                  setContingenciaModoAtivo(true);
+                }
+                const contRes = await NfceService.emitirContingencia(saleIdToEmit, itemsOverlay);
+                if (contRes.ok || contRes.status === 'CONTINGENCIA') {
+                  setNfceStatus('success');
+                  setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+                  setNfceData({ ...contRes, isContingencia: true });
+                } else {
+                  setNfceStatus('error');
+                  setNfceMessage(contRes.error || 'Erro ao emitir em contingência.');
+                }
+              } catch (contErr: any) {
+                setNfceStatus('error');
+                setNfceMessage(typeof contErr === 'string' ? contErr : (contErr.message || 'Falha na contingência.'));
+              }
+            }},
+            ]
+          );
+        }
+      } else {
+        setNfceStatus('error');
+        setNfceMessage(msgErro);
+      }
     }
   };
 
@@ -146,11 +271,12 @@ export default function SaleScreen() {
 
   const [registerLoading, setRegisterLoading] = useState(false);
   
-  // NFC-e
   const [nfceModalVisible, setNfceModalVisible] = useState(false);
   const [nfceStatus, setNfceStatus] = useState<'loading'|'success'|'error'|'idle'>('idle');
   const [nfceMessage, setNfceMessage] = useState('');
   const [nfceData, setNfceData] = useState<any>(null);
+  const [contingenciaSaleId, setContingenciaSaleId] = useState<number | null>(null);
+  const [contingenciaItems, setContingenciaItems] = useState<any[] | undefined>(undefined);
 
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [registerForm, setRegisterForm] = useState({ nome: '', fone: '', endereco: '', cidade: '', estado: '' });
@@ -2467,8 +2593,33 @@ export default function SaleScreen() {
         status={nfceStatus}
         message={nfceMessage}
         nfceData={nfceData}
+        onContingenciaPress={contingenciaSaleId ? async () => {
+             setNfceStatus('loading');
+             setNfceMessage('Emitindo em CONTINGÊNCIA...');
+             try {
+               if (!contingenciaModoAtivo) {
+                 await NfceService.ativarContingencia('Falha de conexao com a SEFAZ');
+                 setContingenciaModoAtivo(true);
+               }
+               const contRes = await NfceService.emitirContingencia(contingenciaSaleId, contingenciaItems);
+               if (contRes.ok || contRes.status === 'CONTINGENCIA') {
+                 setNfceStatus('success');
+                 setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+                 setNfceData({ ...contRes, isContingencia: true });
+               } else {
+                 setNfceStatus('error');
+                 setNfceMessage(contRes.error || 'Erro ao emitir em contingência.');
+               }
+               setContingenciaSaleId(null);
+             } catch (contErr: any) {
+               setNfceStatus('error');
+               setNfceMessage(typeof contErr === 'string' ? contErr : (contErr.message || 'Falha na contingência.'));
+               setContingenciaSaleId(null);
+             }
+        } : undefined}
         onClose={() => {
             setNfceModalVisible(false);
+            setContingenciaSaleId(null);
             // Ao fechar o modal de NFC-e após sucesso ou erro, volta para a tela anterior (mesas/lista)
             router.back();
         }}

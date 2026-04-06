@@ -1,18 +1,36 @@
 import { Tabs } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 
 import { HapticTab } from '../../components/haptic-tab';
 import ProductsTabButton from '../../src/components/ProductsTabButton';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { SafeIcon } from '../../components/SafeIcon';
 import { Platform } from 'react-native';
+import api from '../../src/services/api';
 
 export default function TabLayout() {
   const authContext = useAuth() as any;
   const { user, isAuthenticated, loading, hasPermission, isAdmin } = authContext;
+
+  // Badge de NFC-es em contingência pendentes
+  const [contingenciaPendentes, setContingenciaPendentes] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const buscarPendentes = async () => {
+      try {
+        const res = await api.get('/nfce/contingencia/lista');
+        setContingenciaPendentes(res.data?.pendentes || 0);
+      } catch { /* silencioso */ }
+    };
+    buscarPendentes();
+    // Verifica a cada 2 minutos
+    const interval = setInterval(buscarPendentes, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   // Configuração específica para Produtos para evitar conflito de href/tabBarButton no Mobile
   const produtosOptions = Platform.OS === 'web' 
@@ -192,6 +210,34 @@ export default function TabLayout() {
         />
       )}
 
+      {/* Tela de Contingência NFC-e - Somente Mobile */}
+      <Tabs.Screen
+        name="contingencia"
+        options={{
+          href: '/(tabs)/contingencia',
+          title: 'Contingência',
+          headerTitle: 'NFC-e em Contingência',
+          tabBarIcon: ({ color }) => (
+            <View style={layoutStyles.iconWrapper}>
+              <SafeIcon
+                name={contingenciaPendentes > 0 ? 'warning' : 'checkmark-circle-outline'}
+                size={24}
+                color={contingenciaPendentes > 0 ? '#FF9800' : color}
+                fallbackText="⚠"
+              />
+              {contingenciaPendentes > 0 && (
+                <View style={layoutStyles.badge}>
+                  <Text style={layoutStyles.badgeText}>
+                    {contingenciaPendentes > 99 ? '99+' : String(contingenciaPendentes)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ),
+          tabBarBadge: contingenciaPendentes > 0 ? contingenciaPendentes : undefined,
+        }}
+      />
+
       {/* Manual de Ajuda */}
       <Tabs.Screen
         name="ajuda"
@@ -204,3 +250,28 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  iconWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+});

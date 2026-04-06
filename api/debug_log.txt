@@ -767,3 +767,137 @@
 [2026-03-27T22:36:38.828Z] [EmitirNfce] Delivery Fee: null
 [2026-03-27T22:36:38.828Z] [EmitirNfce] Total Venda: 19
 [2026-03-27T22:36:38.828Z] [EmitirNfce] Subtotal: 19
+[2026-03-29T12:08:58.818Z] [Finalize] ID: 588 (Int: 588). FreshItens: 1, FreshCV: 0
+[2026-03-29T12:08:58.820Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-29T12:08:58.967Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-29T12:08:58.967Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-29T12:08:59.068Z] [Controller] emitirNfce. Body: {"saleId":588,"itemsOverlay":[{"id":701,"saleId":588,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-29T12:08:30.940Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"701","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-29T12:08:59.086Z] [EmitirNfce] Sale ID: 588
+[2026-03-29T12:08:59.086Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-29T12:08:59.087Z] [EmitirNfce] Delivery Fee: null
+[2026-03-29T12:08:59.087Z] [EmitirNfce] Total Venda: 12
+[2026-03-29T12:08:59.087Z] [EmitirNfce] Subtotal: 12
+[2026-03-29T12:09:24.859Z] [Finalize] ID: 589 (Int: 589). FreshItens: 1, FreshCV: 0
+[2026-03-29T12:09:24.859Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-29T12:09:24.921Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-29T12:09:24.921Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-29T12:09:25.119Z] [Controller] emitirNfce. Body: {"saleId":589,"itemsOverlay":[{"id":702,"saleId":589,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-29T12:09:13.467Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"702","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-29T12:09:25.138Z] [EmitirNfce] Sale ID: 589
+[2026-03-29T12:09:25.139Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-29T12:09:25.139Z] [EmitirNfce] Delivery Fee: null
+[2026-03-29T12:09:25.139Z] [EmitirNfce] Total Venda: 12
+[2026-03-29T12:09:25.139Z] [EmitirNfce] Subtotal: 12
+[2026-03-29T12:13:38.562Z] [Finalize] ID: 590 (Int: 590). FreshItens: 1, FreshCV: 0
+[2026-03-29T12:13:38.562Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-29T12:13:38.595Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-29T12:13:38.596Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-29T12:13:38.824Z] [Controller] emitirNfce. Body: {"saleId":590,"itemsOverlay":[{"id":703,"saleId":590,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-29T12:13:29.965Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"703","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-29T12:13:38.866Z] [EmitirNfce] Sale ID: 590
+[2026-03-29T12:13:38.867Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-29T12:13:38.867Z] [EmitirNfce] Delivery Fee: null
+[2026-03-29T12:13:38.867Z] [EmitirNfce] Total Venda: 12
+[2026-03-29T12:13:38.867Z] [EmitirNfce] Subtotal: 12
+[2026-03-29T12:18:47.624Z] [Finalize] ID: 591 (Int: 591). FreshItens: 1, FreshCV: 0
+[2026-03-29T12:18:47.625Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-29T12:18:47.714Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-29T12:18:47.715Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-29T12:18:47.858Z] [Controller] emitirNfce. Body: {"saleId":591,"itemsOverlay":[{"id":704,"saleId":591,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-29T12:18:39.106Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"704","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-29T12:18:47.932Z] [EmitirNfce] Sale ID: 591
+[2026-03-29T12:18:47.933Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-29T12:18:47.933Z] [EmitirNfce] Delivery Fee: null
+[2026-03-29T12:18:47.933Z] [EmitirNfce] Total Venda: 12
+[2026-03-29T12:18:47.933Z] [EmitirNfce] Subtotal: 12
+[2026-03-29T12:28:29.025Z] [Finalize] ID: 593 (Int: 593). FreshItens: 1, FreshCV: 0
+[2026-03-29T12:28:29.026Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-29T12:28:29.115Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-29T12:28:29.115Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-29T12:28:29.609Z] [Controller] emitirNfce. Body: {"saleId":593,"itemsOverlay":[{"id":706,"saleId":593,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-29T12:28:18.459Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"706","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-29T12:28:29.764Z] [EmitirNfce] Sale ID: 593
+[2026-03-29T12:28:29.765Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-29T12:28:29.765Z] [EmitirNfce] Delivery Fee: null
+[2026-03-29T12:28:29.765Z] [EmitirNfce] Total Venda: 12
+[2026-03-29T12:28:29.765Z] [EmitirNfce] Subtotal: 12
+[2026-03-29T12:34:45.332Z] [Finalize] ID: 594 (Int: 594). FreshItens: 1, FreshCV: 0
+[2026-03-29T12:34:45.333Z] [Finalize] Recalculated Subtotal: 12
+[2026-03-29T12:34:45.367Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-03-29T12:34:45.367Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-03-29T12:34:45.488Z] [Controller] emitirNfce. Body: {"saleId":594,"itemsOverlay":[{"id":707,"saleId":594,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-03-29T12:34:37.531Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"707","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-03-29T12:34:45.533Z] [EmitirNfce] Sale ID: 594
+[2026-03-29T12:34:45.534Z] [EmitirNfce] Cashback Usado: 0
+[2026-03-29T12:34:45.534Z] [EmitirNfce] Delivery Fee: null
+[2026-03-29T12:34:45.534Z] [EmitirNfce] Total Venda: 12
+[2026-03-29T12:34:45.534Z] [EmitirNfce] Subtotal: 12
+[2026-04-04T14:57:15.384Z] [Finalize] ID: 596 (Int: 596). FreshItens: 1, FreshCV: 0
+[2026-04-04T14:57:15.390Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-04T14:57:15.502Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-04T14:57:15.502Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-04T14:58:33.123Z] [Finalize] ID: 597 (Int: 597). FreshItens: 1, FreshCV: 0
+[2026-04-04T14:58:33.124Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-04T14:58:33.237Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-04T14:58:33.238Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-04T21:41:31.500Z] [Finalize] ID: 598 (Int: 598). FreshItens: 1, FreshCV: 0
+[2026-04-04T21:41:31.504Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-04T21:41:31.553Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-04T21:41:31.554Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-04T21:41:51.917Z] [Finalize] ID: 599 (Int: 599). FreshItens: 1, FreshCV: 0
+[2026-04-04T21:41:51.917Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-04T21:41:51.950Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-04T21:41:51.950Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T12:43:12.177Z] [Finalize] ID: 600 (Int: 600). FreshItens: 2, FreshCV: 0
+[2026-04-06T12:43:12.179Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T12:43:12.292Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T12:43:12.293Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T12:43:51.468Z] [Finalize] ID: 601 (Int: 601). FreshItens: 2, FreshCV: 0
+[2026-04-06T12:43:51.472Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T12:43:51.535Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T12:43:51.535Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T14:34:12.256Z] [Finalize] ID: 602 (Int: 602). FreshItens: 2, FreshCV: 0
+[2026-04-06T14:34:12.258Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T14:34:12.289Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T14:34:12.289Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T14:49:21.917Z] [Finalize] ID: 603 (Int: 603). FreshItens: 1, FreshCV: 0
+[2026-04-06T14:49:21.918Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-06T14:49:22.109Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T14:49:22.109Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T14:50:50.920Z] [Finalize] ID: 604 (Int: 604). FreshItens: 1, FreshCV: 0
+[2026-04-06T14:50:50.921Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-06T14:50:50.998Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T14:50:50.999Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T14:55:54.755Z] [Finalize] ID: 605 (Int: 605). FreshItens: 1, FreshCV: 0
+[2026-04-06T14:55:54.756Z] [Finalize] Recalculated Subtotal: 12
+[2026-04-06T14:55:54.826Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T14:55:54.826Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T18:00:21.132Z] [Finalize] ID: 606 (Int: 606). FreshItens: 2, FreshCV: 0
+[2026-04-06T18:00:21.134Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T18:00:21.208Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T18:00:21.208Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T18:11:42.992Z] [Finalize] ID: 607 (Int: 607). FreshItens: 2, FreshCV: 0
+[2026-04-06T18:11:42.994Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T18:11:43.115Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T18:11:43.116Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T18:11:43.299Z] [Controller] emitirNfce. Body: {"saleId":607,"itemsOverlay":[{"id":724,"saleId":607,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-04-06T18:11:32.045Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"724","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":725,"saleId":607,"productId":6,"nomeProduto":"Teste Setor Cozinha 1","quantidade":1,"precoUnitario":12.34,"subtotal":12.34,"status":"pendente","createdAt":"2026-04-06T18:11:34.485Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"725","produto":{"_id":"6","id":6,"nome":"Teste Setor Cozinha 1","preco":12.34,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-06T18:11:43.356Z] [EmitirNfce] Sale ID: 607
+[2026-04-06T18:11:43.362Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-06T18:11:43.362Z] [EmitirNfce] Delivery Fee: null
+[2026-04-06T18:11:43.363Z] [EmitirNfce] Total Venda: 24.34
+[2026-04-06T18:11:43.363Z] [EmitirNfce] Subtotal: 24.34
+[2026-04-06T18:12:27.829Z] [Finalize] ID: 608 (Int: 608). FreshItens: 2, FreshCV: 0
+[2026-04-06T18:12:27.829Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T18:12:27.934Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T18:12:27.934Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T18:12:28.053Z] [Controller] emitirNfce. Body: {"saleId":608,"itemsOverlay":[{"id":726,"saleId":608,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-04-06T18:12:18.029Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"726","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":727,"saleId":608,"productId":6,"nomeProduto":"Teste Setor Cozinha 1","quantidade":1,"precoUnitario":12.34,"subtotal":12.34,"status":"pendente","createdAt":"2026-04-06T18:12:19.038Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"727","produto":{"_id":"6","id":6,"nome":"Teste Setor Cozinha 1","preco":12.34,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-06T18:12:28.096Z] [EmitirNfce] Sale ID: 608
+[2026-04-06T18:12:28.097Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-06T18:12:28.097Z] [EmitirNfce] Delivery Fee: null
+[2026-04-06T18:12:28.097Z] [EmitirNfce] Total Venda: 24.34
+[2026-04-06T18:12:28.097Z] [EmitirNfce] Subtotal: 24.34
+[2026-04-06T18:14:47.293Z] [Finalize] ID: 609 (Int: 609). FreshItens: 2, FreshCV: 0
+[2026-04-06T18:14:47.294Z] [Finalize] Recalculated Subtotal: 24.34
+[2026-04-06T18:14:47.329Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-06T18:14:47.330Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-06T18:14:47.427Z] [Controller] emitirNfce. Body: {"saleId":609,"itemsOverlay":[{"id":728,"saleId":609,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-04-06T18:14:38.051Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"728","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":729,"saleId":609,"productId":6,"nomeProduto":"Teste Setor Cozinha 1","quantidade":1,"precoUnitario":12.34,"subtotal":12.34,"status":"pendente","createdAt":"2026-04-06T18:14:39.329Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"729","produto":{"_id":"6","id":6,"nome":"Teste Setor Cozinha 1","preco":12.34,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-06T18:14:47.450Z] [EmitirNfce] Sale ID: 609
+[2026-04-06T18:14:47.451Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-06T18:14:47.451Z] [EmitirNfce] Delivery Fee: null
+[2026-04-06T18:14:47.451Z] [EmitirNfce] Total Venda: 24.34
+[2026-04-06T18:14:47.451Z] [EmitirNfce] Subtotal: 24.34

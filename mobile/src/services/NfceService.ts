@@ -105,6 +105,59 @@ export const NfceService = {
         }
     },
 
+    // ─── Contingência Offline ────────────────────────────────────────────────
+
+    verificarStatusContingencia: async (): Promise<{ modoAtivo: boolean; dhCont?: string; xJust?: string; pendentes: number }> => {
+        try {
+            const response = await api.get('/nfce/contingencia/lista');
+            const d = response.data;
+            return {
+                modoAtivo: d.modoAtivo || false,
+                dhCont: d.dhCont || undefined,
+                xJust: d.xJust || undefined,
+                pendentes: d.pendentes || 0,
+            };
+        } catch {
+            return { modoAtivo: false, pendentes: 0 };
+        }
+    },
+
+    ativarContingencia: async (xJust: string): Promise<{ ok: boolean; message: string }> => {
+        try {
+            const response = await api.post('/nfce/contingencia/ativar', { xJust });
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data?.message || 'Erro ao ativar contingência';
+        }
+    },
+
+    desativarContingencia: async (): Promise<{ ok: boolean; message: string }> => {
+        try {
+            const response = await api.post('/nfce/contingencia/desativar');
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data?.message || 'Erro ao desativar contingência';
+        }
+    },
+
+    emitirContingencia: async (saleId: number | string, itemsOverlay?: any[]): Promise<any> => {
+        try {
+            const response = await api.post('/nfce/contingencia/emitir', { saleId, itemsOverlay });
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data?.error || 'Erro ao emitir NFC-e em contingência';
+        }
+    },
+
+    listarContingencias: async (): Promise<any> => {
+        try {
+            const response = await api.get('/nfce/contingencia/lista');
+            return response.data;
+        } catch (error: any) {
+            throw error.response?.data?.message || 'Erro ao listar contingências';
+        }
+    },
+
     getConfig: async () => {
         try {
             const response = await api.get('/company');

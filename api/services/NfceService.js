@@ -83,12 +83,12 @@ class NfceService {
   /**
    * Gera o XML da NFC-e baseado na Venda e Empresa
    */
-  async buildXML(sale, company) {
-    console.log("[DEBUG] buildXML iniciado", { saleId: sale.id, itemCount: sale.itens?.length });
+  async buildXML(sale, company, isContingency = false) {
+    console.log("[DEBUG] buildXML iniciado", { saleId: sale.id, itemCount: sale.itens?.length, isContingency });
     try {
         const ambiente = company.ambienteFiscal === 'producao' ? '1' : '2'; // 1=Prod, 2=Hom
         const isProd = ambiente === '1';
-        const accessKey = this.generateAccessKey(sale, company);
+        const accessKey = this.generateAccessKey(sale, company, isContingency);
         const cUF = this.getUfCode(company);
         
         const cleanIbge = (company.ibge || '').replace(/\D/g, '');
@@ -157,13 +157,13 @@ class NfceService {
         .ele('idDest').txt('1').up()
         .ele('cMunFG').txt(cleanIbge).up() // MUST USE SANITIZED IBGE
         .ele('tpImp').txt('4').up()
-        .ele('tpEmis').txt('1').up()
+        .ele('tpEmis').txt(isContingency ? '9' : '1').up()
         .ele('cDV').txt(accessKey.substring(43, 44)).up()
         .ele('tpAmb').txt(ambiente).up()
         .ele('finNFe').txt('1').up()
         .ele('indFinal').txt('1').up() // 1=Consumidor Final (Obrigatório em NFC-e)
-        .ele('indPres').txt('1').up()  // 1=Presencial (Padrão NFC-e)
-        // .ele('indIntermed').txt('0').up() // REMOVIDO: Obrigatório apenas se indPres != 1 (presencial). Se for 1, não deve existir ou deve ser omitido conforme UF. Na dúvida, melhor omitir pois alguns validadores rejeitam se existir com indPres=1
+        .ele('indPres').txt('1').up()
+        .ele('indIntermed').txt('0').up()
         .ele('procEmi').txt('0').up()
         .ele('verProc').txt('1.0.0').up()
     .up();
@@ -480,7 +480,7 @@ class NfceService {
     }
     }
 
-  generateAccessKey(sale, company) {
+  generateAccessKey(sale, company, isContingency = false) {
     try {
         // 1. Sanitizar e Validar UF Code
         let cUF = this.getUfCode(company);
@@ -512,8 +512,8 @@ class NfceService {
         }
         const nNF = String(nNFRaw).replace(/\D/g, '').padStart(9, '0');
 
-        // 7. Tipo Emissão (1 = Normal)
-        const tpEmis = '1'; 
+        // 7. Tipo Emissão (1 = Normal, 9 = Contingencia)
+        const tpEmis = isContingency ? '9' : '1'; 
 
         // 8. Código Numérico (Aleatório)
         // Garantir 8 dígitos numéricos sempre
@@ -657,26 +657,47 @@ class NfceService {
       const urlQrCodeHelper = urls[envKey].qrCode;
       
       const dhEmiMatch = signedXml.match(/<dhEmi>(.*?)<\/dhEmi>/);
-
       const dhEmi = dhEmiMatch ? dhEmiMatch[1] : new Date().toISOString();
-      const dhEmiHex = Buffer.from(dhEmi).toString('hex');
-      const digValHex = Buffer.from(digestValue, 'base64').toString('hex');
       
-      const vNF = Number(sale.total).toFixed(2);
+      const vNFMatch = signedXml.match(/<vNF>(.*?)<\/vNF>/);
+      const vNF = vNFMatch ? vNFMatch[1] : (Number(sale.total || 0).toFixed(2));
       
-      // QR Code params (NFC-e 4.0/5.0)
-      // SHORT FORMAT (AccessKey|2|Amb|idCSC) required by local XSD Regex
-      // Ensure NO leading zeros in idCSC
+      const vICMSMatch = signedXml.match(/<vICMS>(.*?)<\/vICMS>/);
+      const vICMS = vICMSMatch ? vICMSMatch[1] : '0.00';
       
-      const params = [
+      const digValXmlMatch = signedXml.match(/<DigestValue>(.*?)<\/DigestValue>/);
+      const digestValueFromXml = digValXmlMatch ? digValXmlMatch[1] : '';
+      
+      // CRITICAL FIX: The XSD regex for qr_code offline v2 requires EXACTLY 56 hex chars for the digest value.
+      // This is because SEFAZ expects the HEXADECIMAL representation of the BASE64 string itself,
+      // not the hex representation of the decoded bytes (which would be 40 chars for SHA-1). 
+      // 28 base64 chars * 2 hex chars/char = 56 hex chars.
+      const digValHex56 = digestValueFromXml ? Buffer.from(digestValueFromXml, 'utf-8').toString('hex').toUpperCase() : '';
+      
+      const tpEmisNoXml = accessKey.charAt(34);
+      let paramsArr = [
           accessKey,
           '2', // nVersao
-          isProd ? '1' : '2', // tpAmb
-          Number(cscId) // idCSC
-      ].join('|');
+          isProd ? '1' : '2' // tpAmb
+      ];
       
-      const stringToHash = params + cscToken; // Hash matches the short string? Or full? 
-      // Usually hash signs the content. If we send short, we hash short.
+      // Contingência Offline (tpEmis=9)
+      if (tpEmisNoXml === '9') {
+          // XSD QRCODE V2 OFFLINE:
+          // p= Chave | 2 | tpAmb | DD | ValorNFe | DigestHexStringB64_56chars | IdToken | HashHex40
+          const dhEmiRegexResult = dhEmi.match(/-(\d{2})T/); // Pega apenas o dia ("DD")
+          const diaEmi = dhEmiRegexResult ? dhEmiRegexResult[1] : new Date().getDate().toString().padStart(2, '0');
+          
+          paramsArr.push(diaEmi);
+          paramsArr.push(vNF);
+          paramsArr.push(digValHex56);
+      }
+      
+      paramsArr.push(Number(cscId));
+      
+      const params = paramsArr.join('|');
+      
+      const stringToHash = params + cscToken;
       const cHashCSC = crypto.createHash('sha1').update(stringToHash).digest('hex').toUpperCase();
       
       const qrCodeFullParam = `${params}|${cHashCSC}`;
@@ -685,7 +706,7 @@ class NfceService {
       // Use urlChave if available (SP), otherwise use consulta SOAP (which is wrong but fallback)
       const urlChave = urls[envKey].urlChave || urls[envKey].consulta;
       
-      // Remove CDATA to match valid sample
+      // Remove CDATA to match valid sample - SEFAZ XSD rejeita CDATA nesta tag
       const infNFeSupl = `<infNFeSupl><qrCode>${qrCodeUrl}</qrCode><urlChave>${urlChave}</urlChave></infNFeSupl>`;
 
 
@@ -694,16 +715,27 @@ class NfceService {
       // CRITICAL FIX: infNFeSupl matches BEFORE Signature in the valid XML sample.
       // <NFe> <infNFe/> <infNFeSupl/> <Signature/> </NFe>
       // signedXml usually looks like <NFe><infNFe/>...<Signature/></NFe>
-      // BUT if we replace </infNFe>, we put it in the middle.
-      const finalXml = signedXml.replace('</infNFe>', `</infNFe>${infNFeSupl}`);
-
-
-    // 2. Wrap in SOAP - COMPACTED to avoid whitespace validation issues
-    // Pad idLote to 15 digits (Common SEFAZ requirement)
-    // Remove redundant xmlns from NFe string
-    const nfeClean = finalXml.replace(/<\?xml.*?>/g, '').replace(' xmlns="http://www.portalfiscal.inf.br/nfe"', '').trim();
+    // 2. Wrap in SOAP - FINAL MASTER COMPATIBILITY (SOAP 1.2 + ACTION + COMPACT)
+    // SP Case: NFe MUST BE UNITARY. We force clear any previous NFe nesting.
     
-    const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4"><enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><idLote>000000000000001</idLote><indSinc>1</indSinc>${nfeClean}</enviNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
+    // Extract everything between <infNFe> and </Signature> (or the closing NFe tag)
+    // signedXml usually looks like <NFe><infNFe.../></NFe>
+    // but sometimes it comes nested as <NFe><NFe>...
+    const infNFeMatch = signedXml.match(/<infNFe[\s\S]*<\/Signature>/i);
+    let nfeInternal = infNFeMatch ? infNFeMatch[0] : signedXml;
+    
+    // Build a single, clean NFe tag
+    const nfeClean = ` <NFe xmlns="http://www.portalfiscal.inf.br/nfe">${nfeInternal}</NFe> `
+        .replace(/<\?xml[^?]*\?>/g, '')
+        .replace(/\n|\r/g, '') 
+        .replace(/>\s+</g, '><') 
+        .trim();
+
+    // Re-insert infNFeSupl BEFORE Signature (Schema Order: infNFe, infNFeSupl, Signature)
+    const xmlWithSupl = nfeClean.replace('</infNFe>', `</infNFe>${infNFeSupl}`);
+
+    const idLoteVal = String(Date.now()).substring(5, 15); // 10 digits
+    const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4"><enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><idLote>${idLoteVal}</idLote><indSinc>1</indSinc>${xmlWithSupl}</enviNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
 
       // 3. Send
       // 3. Send
@@ -724,7 +756,7 @@ class NfceService {
 
       // DEBUG: Save the FINAL XML being sent to check structure/indentation/order
       try {
-          fs.writeFileSync(path.join(__dirname, '../debug_final_sent.xml'), finalXml);
+          fs.writeFileSync(path.join(__dirname, '../debug_final_sent.xml'), xmlWithSupl);
           console.log("[DEBUG] XML Final salvo em api/debug_final_sent.xml");
       } catch (err) { console.error("Erro saving debug xml", err); }
 
@@ -739,15 +771,16 @@ class NfceService {
       
       // DEBUG LOGGING
       try {
-          fs.writeFileSync(path.join(__dirname, '../debug_final_sent.xml'), finalXml);
+          fs.writeFileSync(path.join(__dirname, '../debug_final_sent.xml'), xmlWithSupl);
           fs.writeFileSync(path.join(__dirname, '../debug_soap_sent.xml'), soapEnvelope);
           console.log("[DEBUG] Dumped debug_final_sent.xml and debug_soap_sent.xml");
       } catch (e) { console.error("Error dumping debug XML:", e); }
 
       try {
           const res = await axios.post(urls[envKey].autorizacao, soapEnvelope, {
-              headers: { 'Content-Type': 'application/soap+xml; charset=utf-8' },
-
+              headers: { 
+                  'Content-Type': 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote"' 
+              },
               httpsAgent: agent
           });
           
@@ -835,14 +868,6 @@ class NfceService {
       const cHashCSC = crypto.createHash('sha1').update(stringToHash).digest('hex').toUpperCase();
       
       const qrCodeFullParam = `${params}|${cHashCSC}`;
-      // Use encodeURIComponent to ensure special chars like pipes are safe in URL
-      // Although SEFAZ usually accepts pipes, some browsers/readers need it. 
-      // Safe bet: encode only if issues persist, but valid samples often show raw pipes.
-      // Given the previous error "Invalid QR Code" was likely due to MISSING Hash, 
-      // we will stick to raw pipes first (or minimal encoding) to match sendToSefaz.
-      // BUT sendToSefaz logic I wrote previously didn't encode. 
-      // Let's assume raw pipes are fine if Hash is present.
-      
       const qrCodeUrl = `${urlQrCodeHelper}?p=${qrCodeFullParam}`;
       
       try {
@@ -855,6 +880,80 @@ class NfceService {
           console.error("Erro gerando imagem QR:", err);
           return null;
       }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // MÉTODOS DE CONTINGÊNCIA OFFLINE (novos — não alteram nada acima)
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Gera XML de contingência (tpEmis=9) com dhCont e xJust obrigatórios.
+   * Baseado no buildXML existente — só altera campos de identificação fiscal.
+   */
+  async buildXMLContingencia(sale, company, dhCont, xJust) {
+      // Usa buildXML assinalando isContingency = true
+      let { xmlContent, accessKey } = await this.buildXML(sale, company, true);
+
+      // Formata dhCont no padrão SEFAZ: YYYY-MM-DDThh:mm:ss-03:00
+      const dc = new Date(dhCont);
+      const offset = '-03:00';
+      const dhContFormatted = `${dc.getFullYear()}-${String(dc.getMonth()+1).padStart(2,'0')}-${String(dc.getDate()).padStart(2,'0')}T${String(dc.getHours()).padStart(2,'0')}:${String(dc.getMinutes()).padStart(2,'0')}:${String(dc.getSeconds()).padStart(2,'0')}${offset}`;
+
+      // Injeta dhCont e xJust APÓS verProc (ordem obrigatória pela NT)
+      const xJustSanitized = this.sanitizeString(xJust).substring(0, 255);
+      xmlContent = xmlContent.replace(
+          '</verProc>',
+          `</verProc><dhCont>${dhContFormatted}</dhCont><xJust>${xJustSanitized}</xJust>`
+      );
+
+      return { xmlContent, accessKey };
+  }
+
+  /**
+   * Gera QR Code offline para contingência.
+   * Para contingência, o QR Code é gerado localmente com CSC (sem protocolo SEFAZ).
+   */
+  async getQrCodeContingencia(accessKey, company) {
+      return await this.getQrCode(accessKey, company, null);
+  }
+
+  /**
+   * Constrói XML de Inutilização de numeração.
+   * Usado quando uma numeração de contingência não pode ser transmitida.
+   */
+  buildXMLInutilizacao(company, numInicial, numFinal, xJust) {
+      const cUF = this.getUfCode(company);
+      const now = new Date();
+      const AAMM = `${String(now.getFullYear()).substring(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const CNPJ = (company.cnpj || '').replace(/\D/g, '').padStart(14, '0');
+      const mod = '65';
+      const serie = String(company.serieNfce || 1).padStart(3, '0');
+      const nNFIni = String(numInicial).padStart(9, '0');
+      const nNFFin = String(numFinal).padStart(9, '0');
+      const isProd = company.ambienteFiscal === 'producao';
+      const tpAmb = isProd ? '1' : '2';
+
+      const idInut = `ID${cUF}${AAMM}${CNPJ}${mod}${serie}${nNFIni}${nNFFin}`;
+
+      const xJustSanitized = this.sanitizeString(xJust || 'Numeracao utilizada em contingencia nao transmitida').substring(0, 255);
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<inutNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <infInut Id="${idInut}">
+    <tpAmb>${tpAmb}</tpAmb>
+    <xServ>INUTILIZAR</xServ>
+    <cUF>${cUF}</cUF>
+    <ano>${AAMM.substring(0,2)}</ano>
+    <CNPJ>${CNPJ}</CNPJ>
+    <mod>${mod}</mod>
+    <serie>${serie}</serie>
+    <nNFIni>${nNFIni}</nNFIni>
+    <nNFFin>${nNFFin}</nNFFin>
+    <xJust>${xJustSanitized}</xJust>
+  </infInut>
+</inutNFe>`;
+
+      return { xml, idInut };
   }
 }
 
