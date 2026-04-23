@@ -128,10 +128,10 @@ function resolveApiBaseUrl() {
 
   if (Platform.OS === 'android') {
     // Fallback prioritário para IP da LAN real (físico)
-    return `http://192.168.0.176:${DEFAULT_PORT}/api`;
+    return `http://192.168.1.145:${DEFAULT_PORT}/api`;
     // return `http://10.0.2.2:${DEFAULT_PORT}/api`; // Emulator
   }
-    return `http://192.168.0.176:${DEFAULT_PORT}/api`; // Remote Server Fallback
+    return `http://192.168.1.145:${DEFAULT_PORT}/api`; // Remote Server Fallback
 }
 
 // Primeiro: variável de ambiente pública

@@ -96,8 +96,11 @@ export const NfceService = {
         }
 
         try {
-            // REMOVIDO header manual Content-Type para deixar o browser/axios gerar o boundary correto
-            const response = await api.post('/company/nfce-config', formData);
+            const configObj: any = {};
+            if (Platform.OS !== 'web') {
+                configObj.headers = { 'Content-Type': 'multipart/form-data' };
+            }
+            const response = await api.post('/company/nfce-config', formData, configObj);
             return response.data;
         } catch (error: any) {
             console.error('Erro updateConfig:', error);

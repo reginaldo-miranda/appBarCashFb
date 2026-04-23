@@ -787,7 +787,7 @@ const getEnvApiUrl = (): string | undefined => {
          </View>
 
          <View style={styles.formGroup}>
-           <Text style={styles.label}>ID CSC (Token)</Text>
+           <Text style={styles.label}>ID CSC (Identificador do CSC)</Text>
           <TextInput
             placeholder="Ex: 000001"
             style={styles.input}
@@ -798,13 +798,13 @@ const getEnvApiUrl = (): string | undefined => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>NFC-e ID (Token)</Text>
+          <Text style={styles.label}>CSC (Código de Segurança do Contribuinte)</Text>
           <TextInput
-             placeholder="Ex: 000001"
+             placeholder="Ex: 12345678-1234-1234-1234-123456789012"
              style={styles.input}
-             value={cscId}
-             onChangeText={setCscId}
-             keyboardType="numeric"
+             value={csc}
+             onChangeText={setCsc}
+             autoCapitalize="none"
           />
         </View>
 

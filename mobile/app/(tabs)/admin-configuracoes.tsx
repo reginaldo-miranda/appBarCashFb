@@ -60,6 +60,7 @@ export default function AdminConfiguracoesScreen() {
   // States para Cadastro de Empresa
   const [companyModalVisible, setCompanyModalVisible] = useState(false);
   const [companyData, setCompanyData] = useState<any>({});
+  const [companyErrors, setCompanyErrors] = useState<any>({});
   const [loadingCompany, setLoadingCompany] = useState(false);
   
   // Roles
@@ -156,6 +157,25 @@ export default function AdminConfiguracoesScreen() {
   };
 
   const handleSaveCompany = async () => {
+    // Validação de campos obrigatórios
+    const requiredFields = ['razaoSocial', 'nomeFantasia', 'cnpj', 'cep', 'logradouro', 'numero', 'bairro', 'cidade', 'uf', 'ibge'];
+    const newErrors: any = {};
+    for (const field of requiredFields) {
+      if (!companyData[field] || String(companyData[field]).trim() === '') {
+        newErrors[field] = true;
+      }
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setCompanyErrors(newErrors);
+      const msg = 'Por favor, preencha todos os campos obrigatórios em vermelho.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Campos Obrigatórios', msg);
+      return;
+    }
+    
+    setCompanyErrors({}); // Limpa erros se está tudo ok
+
     try {
       setLoadingCompany(true);
       await companyService.save(companyData);
@@ -710,7 +730,7 @@ export default function AdminConfiguracoesScreen() {
 
             <TouchableOpacity 
               style={[styles.settingItem, { borderLeftWidth: 4, borderLeftColor: '#9C27B0' }]}
-              onPress={() => navigation.navigate('admin-perfis' as never)}
+              onPress={() => router.push('/(tabs)/admin-perfis' as any)}
             >
               <View style={styles.settingContent}>
                 <SafeIcon name="shield-checkmark" size={24} color="#9C27B0" fallbackText="🛡" />
@@ -1162,14 +1182,14 @@ export default function AdminConfiguracoesScreen() {
 
           <ScrollView style={styles.modalContent}>
             <Text style={styles.sectionHeader}>1. Identificação</Text>
-            <SimpleInput label="Razão Social *" value={companyData.razaoSocial} onChangeText={(t: string) => setCompanyData({...companyData, razaoSocial: t})} />
-            <SimpleInput label="Nome Fantasia *" value={companyData.nomeFantasia} onChangeText={(t: string) => setCompanyData({...companyData, nomeFantasia: t})} />
+            <SimpleInput error={!companyData.razaoSocial || String(companyData.razaoSocial).trim() === ''} label="Razão Social *" value={companyData.razaoSocial} onChangeText={(t: string) => setCompanyData({...companyData, razaoSocial: t})} />
+            <SimpleInput error={!companyData.nomeFantasia || String(companyData.nomeFantasia).trim() === ''} label="Nome Fantasia *" value={companyData.nomeFantasia} onChangeText={(t: string) => setCompanyData({...companyData, nomeFantasia: t})} />
             <View style={{ marginBottom: 16 }}>
                 <Text style={styles.inputLabel}>CNPJ *</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <View style={{ flex: 1 }}>
                         <TextInput 
-                            style={styles.inputField}
+                            style={[styles.inputField, (!companyData.cnpj || String(companyData.cnpj).trim() === '') && { borderColor: 'red', borderWidth: 1 }]}
                             value={companyData.cnpj} 
                             onChangeText={(t) => setCompanyData({...companyData, cnpj: t})} 
                             keyboardType="numeric"
@@ -1235,7 +1255,7 @@ export default function AdminConfiguracoesScreen() {
                     <View style={{ flex: 1 }}>
                         <TextInput 
  
-                            style={styles.inputField}
+                            style={[styles.inputField, (!companyData.cep || String(companyData.cep).trim() === '') && { borderColor: 'red', borderWidth: 1 }]}
                             value={companyData.cep} 
                             onChangeText={(t) => setCompanyData({...companyData, cep: t})} 
                             keyboardType="numeric"
@@ -1251,17 +1271,17 @@ export default function AdminConfiguracoesScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-            <SimpleInput label="Logradouro *" value={companyData.logradouro} onChangeText={(t: string) => setCompanyData({...companyData, logradouro: t})} />
+            <SimpleInput error={!companyData.logradouro || String(companyData.logradouro).trim() === ''} label="Logradouro *" value={companyData.logradouro} onChangeText={(t: string) => setCompanyData({...companyData, logradouro: t})} />
             <View style={{flexDirection: 'row', gap: 10}}>
-                <View style={{flex: 1}}><SimpleInput label="Número *" value={companyData.numero} onChangeText={(t: string) => setCompanyData({...companyData, numero: t})} /></View>
-                <View style={{flex: 2}}><SimpleInput label="Bairro *" value={companyData.bairro} onChangeText={(t: string) => setCompanyData({...companyData, bairro: t})} /></View>
+                <View style={{flex: 1}}><SimpleInput error={!companyData.numero || String(companyData.numero).trim() === ''} label="Número *" value={companyData.numero} onChangeText={(t: string) => setCompanyData({...companyData, numero: t})} /></View>
+                <View style={{flex: 2}}><SimpleInput error={!companyData.bairro || String(companyData.bairro).trim() === ''} label="Bairro *" value={companyData.bairro} onChangeText={(t: string) => setCompanyData({...companyData, bairro: t})} /></View>
             </View>
             <SimpleInput label="Complemento" value={companyData.complemento} onChangeText={(t: string) => setCompanyData({...companyData, complemento: t})} />
             <View style={{flexDirection: 'row', gap: 10}}>
-                <View style={{flex: 2}}><SimpleInput label="Cidade *" value={companyData.cidade} onChangeText={(t: string) => setCompanyData({...companyData, cidade: t})} /></View>
-                <View style={{flex: 1}}><SimpleInput label="UF *" value={companyData.uf} onChangeText={(t: string) => setCompanyData({...companyData, uf: t})} maxLength={2} /></View>
+                <View style={{flex: 2}}><SimpleInput error={!companyData.cidade || String(companyData.cidade).trim() === ''} label="Cidade *" value={companyData.cidade} onChangeText={(t: string) => setCompanyData({...companyData, cidade: t})} /></View>
+                <View style={{flex: 1}}><SimpleInput error={!companyData.uf || String(companyData.uf).trim() === ''} label="UF *" value={companyData.uf} onChangeText={(t: string) => setCompanyData({...companyData, uf: t})} maxLength={2} /></View>
             </View>
-            <SimpleInput label="Cód. Município IBGE *" value={companyData.ibge} onChangeText={(t: string) => setCompanyData({...companyData, ibge: t})} keyboardType="numeric" />
+            <SimpleInput error={!companyData.ibge || String(companyData.ibge).trim() === ''} label="Cód. Município IBGE *" value={companyData.ibge} onChangeText={(t: string) => setCompanyData({...companyData, ibge: t})} keyboardType="numeric" />
 
 
             <Text style={styles.sectionHeader}>3. Contato</Text>
@@ -1295,7 +1315,6 @@ export default function AdminConfiguracoesScreen() {
             <SimpleInput label="Mensagem Rodapé NFC-e" value={companyData.mensagemRodape} onChangeText={(t: string) => setCompanyData({...companyData, mensagemRodape: t})} />
             <View style={{flexDirection: 'row', gap: 10}}>
                 <View style={{flex: 1}}><SimpleInput label="Série NFC-e" value={String(companyData.serieNfce || '1')} onChangeText={(t: string) => setCompanyData({...companyData, serieNfce: t})} keyboardType="numeric" /></View>
-                <View style={{flex: 1}}><SimpleInput label="Nº Inicial" value={String(companyData.numeroInicialNfce || '1')} onChangeText={(t: string) => setCompanyData({...companyData, numeroInicialNfce: t})} keyboardType="numeric" /></View>
                 <View style={{flex: 1}}><SimpleInput label="Nº Inicial" value={String(companyData.numeroInicialNfce || '1')} onChangeText={(t: string) => setCompanyData({...companyData, numeroInicialNfce: t})} keyboardType="numeric" /></View>
             </View>
 
@@ -1891,11 +1910,11 @@ const styles = StyleSheet.create({
 });
 
 // Componente auxiliar simples para Input
-const SimpleInput = ({ label, value, onChangeText, ...props }: any) => (
+const SimpleInput = ({ label, value, onChangeText, error, style, ...props }: any) => (
   <View style={styles.inputGroup}>
     <Text style={styles.inputLabel}>{label}</Text>
     <TextInput 
-      style={styles.inputField}
+      style={[styles.inputField, error && { borderColor: 'red', borderWidth: 1 }, style]}
       value={value || ''}
       onChangeText={onChangeText}
       placeholderTextColor="#999"

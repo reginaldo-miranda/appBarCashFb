@@ -193,7 +193,7 @@ export default function LoginScreen() {
 
       // Fallback manual para o IP da máquina de desenvolvimento (MacBook)
       if (Platform.OS === 'android') {
-        return `http://192.168.0.176:${DEFAULT_PORT}/api`;
+        return `http://192.168.1.145:${DEFAULT_PORT}/api`;
       }
     } catch {}
     return "";

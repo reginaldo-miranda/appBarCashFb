@@ -50,170 +50,131 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Lista de todos os campos válidos do model Company (usada para sanitizar o payload)
+const COMPANY_VALID_FIELDS = new Set([
+  'razaoSocial', 'nomeFantasia', 'cnpj', 'inscricaoEstadual', 'inscricaoMunicipal',
+  'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'cep', 'ibge',
+  'telefone', 'telefoneSecundario', 'email', 'whatsapp',
+  'regimeTributario', 'cnae', 'contribuinteIcms', 'ambienteFiscal',
+  'logo', 'nomeImpressao', 'mensagemRodape', 'serieNfce', 'numeroInicialNfce',
+  'respNome', 'respCpf', 'respCargo', 'respTelefone', 'respEmail',
+  'plano', 'valorMensalidade', 'diaVencimento', 'dataInicioCobranca', 'status',
+  'formaCobranca', 'emailCobranca',
+  'banco', 'agencia', 'conta', 'tipoConta', 'chavePix',
+  'ultimoPagamento', 'proximoVencimento', 'diasAtraso', 'observacoes',
+  'latitude', 'longitude', 'deliveryRadius',
+  'cashbackPercent', 'pointsPerCurrency', 'pontosParaResgate', 'valorResgate',
+  'csc', 'cscId', 'certificadoNome', 'certificadoSenha', 'certificadoPath', 'xmlFolder',
+]);
+
+/**
+ * Remove campos inválidos (relacionais, metadados, campos desconhecidos) do payload
+ * antes de enviar ao Prisma, evitando erros de "Unknown field".
+ */
+function sanitizeCompanyPayload(data) {
+  const clean = {};
+  for (const key of Object.keys(data)) {
+    if (COMPANY_VALID_FIELDS.has(key)) {
+      clean[key] = data[key];
+    } else {
+      console.log(`[sanitize] Campo ignorado: ${key}`);
+    }
+  }
+  return clean;
+}
+
 // POST: Criar ou Atualizar (Upsert logic - garantindo apenas 1 registro)
 router.post("/", async (req, res) => {
-  const data = req.body;
-  console.log('>>> RECEIVING POST /company', JSON.stringify(data, null, 2));
-  
-  // Converter tipos decimais/numéricos se necessário
-  if (data.valorMensalidade) data.valorMensalidade = Number(data.valorMensalidade);
-  if (data.serieNfce) data.serieNfce = Number(data.serieNfce);
-  if (data.numeroInicialNfce) data.numeroInicialNfce = Number(data.numeroInicialNfce);
-  if (data.diaVencimento) data.diaVencimento = Number(data.diaVencimento);
-  if (data.cashbackPercent) data.cashbackPercent = Number(data.cashbackPercent);
-  if (data.pointsPerCurrency) data.pointsPerCurrency = Number(data.pointsPerCurrency);
-  if (data.valorResgate) data.valorResgate = Number(data.valorResgate);
-  if (data.pontosParaResgate) data.pontosParaResgate = Number(data.pontosParaResgate);
-  // Helper para conversão segura
+  const rawData = req.body;
+  console.log('>>> RECEIVING POST /company, keys:', Object.keys(rawData));
+
+  // Helpers de conversão segura
   const toDec = (val) => {
-      if (val === null || val === undefined || val === '') return null;
-      const n = Number(val);
-      return isNaN(n) ? null : n;
+    if (val === null || val === undefined || val === '') return null;
+    if (typeof val === 'string') val = val.replace(',', '.');
+    const n = Number(val);
+    return isNaN(n) ? null : n;
   };
   const toInt = (val, def = null) => {
-      if (val === null || val === undefined || val === '') return def;
-      const n = Number(val);
-      return isNaN(n) ? def : n;
+    if (val === null || val === undefined || val === '') return def;
+    const n = Number(val);
+    return isNaN(n) ? def : n;
   };
 
-  // Garantir defaults para campos obrigatórios não nulos, se possível
-  if (data.pointsPerCurrency === undefined || data.pointsPerCurrency === null) data.pointsPerCurrency = 1;
+  // Extrair deliveryRanges antes de sanitizar (campo relacional tratado à parte)
+  const { deliveryRanges, ...rest } = rawData;
+
+  // Sanitizar: manter apenas campos do model Company
+  const data = sanitizeCompanyPayload(rest);
+
+  // Conversão de tipos para campos numéricos/decimais
+  if (data.ibge !== undefined) data.ibge = String(data.ibge);
+  if (data.cnae !== undefined) data.cnae = String(data.cnae);
+  if (data.cep !== undefined) data.cep = String(data.cep);
+  if (data.numero !== undefined) data.numero = String(data.numero);
+  if (data.cnpj !== undefined) data.cnpj = String(data.cnpj);
+
   data.valorMensalidade = toDec(data.valorMensalidade);
-  data.serieNfce = toInt(data.serieNfce, 1);
+  data.serieNfce        = toInt(data.serieNfce, 1);
   data.numeroInicialNfce = toInt(data.numeroInicialNfce, 1);
-  data.diaVencimento = toInt(data.diaVencimento, null);
-  data.diasAtraso = toInt(data.diasAtraso, 0);
-  data.cashbackPercent = toDec(data.cashbackPercent);
-  // pointsPerCurrency must be a number, not null.
+  data.diaVencimento    = toInt(data.diaVencimento, null);
+  data.diasAtraso       = toInt(data.diasAtraso, 0);
+  data.cashbackPercent  = toDec(data.cashbackPercent) || 5.00;
+  data.pontosParaResgate = toInt(data.pontosParaResgate) || 0;
+  data.valorResgate = toDec(data.valorResgate) || 0;
+
+  // pointsPerCurrency nunca pode ser null (tem NOT NULL no schema)
   const ppc = toDec(data.pointsPerCurrency);
-  data.pointsPerCurrency = ppc === null ? 1 : ppc;
+  data.pointsPerCurrency = ppc || 1.00;
 
-  data.valorResgate = toDec(data.valorResgate);
-  data.pontosParaResgate = toInt(data.pontosParaResgate, 0);
+  // Campos booleanos
+  if (data.contribuinteIcms !== undefined) data.contribuinteIcms = Boolean(data.contribuinteIcms);
 
-  // Garantir que campos de texto sejam strings
-
-
-  // Garantir que campos de texto sejam strings (BrasilAPI retorna números às vezes)
-  if (data.ibge) data.ibge = String(data.ibge);
-  if (data.cnae) data.cnae = String(data.cnae);
-  if (data.cep) data.cep = String(data.cep);
-  if (data.numero) data.numero = String(data.numero);
-  if (data.cnpj) data.cnpj = String(data.cnpj);
-
+  console.log('Payload sanitizado:', JSON.stringify(data, null, 2));
 
   try {
-    // Verifica se já existe
     const existing = await prisma.company.findFirst();
 
     if (existing) {
-      // Atualiza
-      console.log('--- UPDATING EXISTING COMPANY ---');
-      console.log('Incoming Payload keys:', Object.keys(data));
+      // ── UPDATE ──────────────────────────────────────────────────────────────
+      console.log('--- ATUALIZANDO EMPRESA id:', existing.id);
 
-      // Separate explicit fields we want to ensure are updated
-      // Use helper to parse numbers safely from strings or numbers
-      const safeNum = (val, isInt = false) => {
-         if (val === undefined || val === null || val === '') return undefined;
-         if (typeof val === 'string') {
-             val = val.replace(',', '.');
-         }
-         const n = Number(val);
-         if (isNaN(n)) return undefined;
-         return isInt ? parseInt(n) : n;
-      };
-
-      const cashbackPercent = safeNum(req.body.cashbackPercent);
-      // Ensure pointsPerCurrency is never null/undefined, default to 1
-      const pointsPerCurrencyRaw = safeNum(req.body.pointsPerCurrency);
-      const pointsPerCurrency = pointsPerCurrencyRaw !== undefined ? pointsPerCurrencyRaw : 1; 
-      
-      const pontosParaResgate = safeNum(req.body.pontosParaResgate, true);
-      const valorResgate = safeNum(req.body.valorResgate);
-
-      // Construct base payload
-      const { 
-        deliveryRanges, 
-        id, createdAt, updatedAt, products, users, sales, 
-        ...otherData 
-      } = data;
-
-      const updatePayload = {
-        ...otherData,
-        pointsPerCurrency: otherData.pointsPerCurrency || 1, // Fallback for base data
-        updatedAt: new Date(),
-      };
-
-      // Explicitly override/set these fields if they exist in request
-      if (cashbackPercent !== undefined) updatePayload.cashbackPercent = cashbackPercent;
-      
-      // Always update pointsPerCurrency if in request, or ensure it's valid
-      if (req.body.pointsPerCurrency !== undefined) {
-         updatePayload.pointsPerCurrency = pointsPerCurrency;
-      } else if (!updatePayload.pointsPerCurrency) {
-         updatePayload.pointsPerCurrency = 1;
-      }
-
-      if (pontosParaResgate !== undefined) updatePayload.pontosParaResgate = pontosParaResgate;
-      if (valorResgate !== undefined) updatePayload.valorResgate = valorResgate;
-
-      console.log('Final Update Payload:', JSON.stringify(updatePayload, null, 2));
+      const updatePayload = { ...data, updatedAt: new Date() };
 
       if (deliveryRanges !== undefined) {
-          updatePayload.deliveryRanges = {
-            deleteMany: {},
-            create: Array.isArray(deliveryRanges) ? deliveryRanges.map(r => ({
-              minDist: Number(r.minDist),
-              maxDist: Number(r.maxDist),
-              price: Number(r.price)
-            })) : []
-          };
+        updatePayload.deliveryRanges = {
+          deleteMany: {},
+          create: Array.isArray(deliveryRanges) ? deliveryRanges.map(r => ({
+            minDist: Number(r.minDist),
+            maxDist: Number(r.maxDist),
+            price:   Number(r.price),
+          })) : [],
+        };
       }
 
       const updated = await prisma.company.update({
         where: { id: existing.id },
         data: updatePayload,
-        include: { deliveryRanges: true }
+        include: { deliveryRanges: true },
       });
       return res.json({ message: "Dados atualizados com sucesso", company: updated });
+
     } else {
-      // Cria
-      // Cria
-      console.log('--- POST /company DEBUG ---');
-      console.log('Incoming Data:', JSON.stringify(data, null, 2));
+      // ── CREATE ──────────────────────────────────────────────────────────────
+      console.log('--- CRIANDO NOVA EMPRESA');
 
-      // Sanitização: remove campos relacionais ou metadados que não devem ser salvos diretamente na tabela Company
-      const { 
-        deliveryRanges, 
-        id, 
-        createdAt, 
-        updatedAt, 
-        products, 
-        users, 
-        sales, 
-        ...companyData 
-      } = data;
-      
-      const updatePayload = {
-        ...companyData, 
-        updatedAt: new Date()
-      };
-      
-      console.log('Update Payload:', JSON.stringify(updatePayload, null, 2));
-
-      // Se for a primeira criação (via tela de delivery), pode faltar dados obrigatórios da empresa
-      // Preencher com defaults para não quebrar
+      // Defaults obrigatórios para primeiro cadastro
       const payload = {
-         razaoSocial: "Minha Empresa (Configurar)",
-         nomeFantasia: "Minha Empresa",
-         cnpj: "00.000.000/0000-00", // Placeholder inicial
-         ...companyData
+        razaoSocial: "Minha Empresa (Configurar)",
+        nomeFantasia: "Minha Empresa",
+        cnpj: "00000000000000",
+        ...data,
       };
-      
-      // Garantir CNPJ único se for placeholder (caso já exista um placeholder, o que não deveria ocorrer pois cairia no update, mas por segurança)
-      if (payload.cnpj === "00.000.000/0000-00") {
-          const count = await prisma.company.count();
-          if (count > 0) payload.cnpj = `00.000.000/0000-${count + 1}`;
+
+      // Garantir CNPJ único se for placeholder
+      if (payload.cnpj === "00000000000000") {
+        const count = await prisma.company.count();
+        if (count > 0) payload.cnpj = `0000000000000${count + 1}`;
       }
 
       const created = await prisma.company.create({
@@ -223,17 +184,17 @@ router.post("/", async (req, res) => {
             create: Array.isArray(deliveryRanges) ? deliveryRanges.map(r => ({
               minDist: Number(r.minDist),
               maxDist: Number(r.maxDist),
-              price: Number(r.price)
-            })) : []
-          }
+              price:   Number(r.price),
+            })) : [],
+          },
         },
-        include: { deliveryRanges: true }
+        include: { deliveryRanges: true },
       });
       return res.status(201).json({ message: "Empresa cadastrada com sucesso", company: created });
     }
+
   } catch (error) {
     console.error("Erro ao salvar dados da empresa:", error);
-    // Retornar a mensagem exata do erro para facilitar o debug no frontend
     res.status(500).json({ error: "Erro ao salvar empresa: " + (error.message || error) });
   }
 });

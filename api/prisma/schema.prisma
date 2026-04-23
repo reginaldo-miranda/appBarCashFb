@@ -564,6 +564,7 @@ model Company {
   // 4. Dados Fiscais
   regimeTributario  RegimeTributario @default(simples_nacional)
   cnae              String?
+  dataAbertura      String?   // Data de abertura retornada pela BrasilAPI
   contribuinteIcms  Boolean   @default(true)
   ambienteFiscal    AmbienteFiscal @default(homologacao)
 
