@@ -1080,15 +1080,15 @@ function ConfiguracaoFidelidade() {
             const { companyService } = require('../src/services/api');
             
             // Clean inputs: replace commas with dots, remove non-numeric chars (except dot)
-            const parseDecimal = (val) => {
+            const parseDecimal = (val: string) => {
                 if (!val) return 0;
-                const clean = val.replace(',', '.');
+                const clean = String(val).replace(',', '.');
                 return parseFloat(clean) || 0;
             };
             
-            const parseIntSafe = (val) => {
+            const parseIntSafe = (val: string) => {
                if (!val) return 0;
-               return parseInt(val.replace(/\D/g, '')) || 0;
+               return parseInt(String(val).replace(/\D/g, '')) || 0;
             };
 
             const payload = {

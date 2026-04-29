@@ -907,3 +907,93 @@
 [2026-04-23T14:32:56.346Z] [EmitirNfce] Delivery Fee: 0
 [2026-04-23T14:32:56.347Z] [EmitirNfce] Total Venda: 0
 [2026-04-23T14:32:56.347Z] [EmitirNfce] Subtotal: 0
+[2026-04-29T14:53:18.573Z] [Finalize] ID: 6 (Int: 6). FreshItens: 1, FreshCV: 0
+[2026-04-29T14:53:18.879Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T14:53:18.921Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T14:53:18.922Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T14:53:19.541Z] [Controller] emitirNfce. Body: {"saleId":6,"itemsOverlay":[{"id":6,"saleId":6,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T14:53:01.714Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"6","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T14:53:19.552Z] [EmitirNfce] Sale ID: 6
+[2026-04-29T14:53:19.553Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T14:53:19.554Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T14:53:19.555Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T14:53:19.557Z] [EmitirNfce] Subtotal: 18
+[2026-04-29T14:54:24.377Z] [Finalize] ID: 7 (Int: 7). FreshItens: 1, FreshCV: 0
+[2026-04-29T14:54:24.378Z] [Finalize] Recalculated Subtotal: 65
+[2026-04-29T14:54:24.405Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T14:54:24.406Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T14:54:24.508Z] [Controller] emitirNfce. Body: {"saleId":7,"itemsOverlay":[{"id":7,"saleId":7,"productId":2,"nomeProduto":"pizza calabresa (grande)","quantidade":1,"precoUnitario":65,"subtotal":65,"status":"pendente","createdAt":"2026-04-29T14:54:13.614Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"7","produto":{"_id":"2","id":2,"nome":"pizza calabresa","preco":65,"ncm":"19059090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T14:54:24.518Z] [EmitirNfce] Sale ID: 7
+[2026-04-29T14:54:24.519Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T14:54:24.520Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T14:54:24.521Z] [EmitirNfce] Total Venda: 65
+[2026-04-29T14:54:24.522Z] [EmitirNfce] Subtotal: 65
+[2026-04-29T14:55:05.619Z] [Finalize] ID: 8 (Int: 8). FreshItens: 1, FreshCV: 0
+[2026-04-29T14:55:05.621Z] [Finalize] Recalculated Subtotal: 36
+[2026-04-29T14:55:05.641Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T14:55:05.641Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T14:55:06.090Z] [Controller] emitirNfce. Body: {"saleId":8,"itemsOverlay":[{"id":8,"saleId":8,"productId":3,"nomeProduto":"bauru simples","quantidade":2,"precoUnitario":18,"subtotal":36,"status":"pendente","createdAt":"2026-04-29T14:54:56.669Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"8","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T14:55:06.098Z] [EmitirNfce] Sale ID: 8
+[2026-04-29T14:55:06.099Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T14:55:06.101Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T14:55:06.101Z] [EmitirNfce] Total Venda: 36
+[2026-04-29T14:55:06.102Z] [EmitirNfce] Subtotal: 36
+[2026-04-29T14:55:44.382Z] [Finalize] ID: 9 (Int: 9). FreshItens: 1, FreshCV: 0
+[2026-04-29T14:55:44.384Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T14:55:44.409Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T14:55:44.410Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T14:55:44.452Z] [Controller] emitirNfce. Body: {"saleId":9,"itemsOverlay":[{"id":9,"saleId":9,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T14:55:37.129Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"9","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T14:55:44.464Z] [EmitirNfce] Sale ID: 9
+[2026-04-29T14:55:44.465Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T14:55:44.466Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T14:55:44.467Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T14:55:44.467Z] [EmitirNfce] Subtotal: 18
+[2026-04-29T14:56:58.991Z] [Finalize] ID: 10 (Int: 10). FreshItens: 1, FreshCV: 0
+[2026-04-29T14:56:58.994Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T14:56:59.022Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T14:56:59.023Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T14:56:59.056Z] [Controller] emitirNfce. Body: {"saleId":10,"itemsOverlay":[{"id":10,"saleId":10,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T14:56:50.126Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"10","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T14:56:59.072Z] [EmitirNfce] Sale ID: 10
+[2026-04-29T14:56:59.074Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T14:56:59.075Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T14:56:59.077Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T14:56:59.078Z] [EmitirNfce] Subtotal: 18
+[2026-04-29T15:02:01.403Z] [Finalize] ID: 11 (Int: 11). FreshItens: 1, FreshCV: 0
+[2026-04-29T15:02:01.404Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T15:02:01.428Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T15:02:01.429Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T15:02:01.455Z] [Controller] emitirNfce. Body: {"saleId":11,"itemsOverlay":[{"id":11,"saleId":11,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T15:01:53.317Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"11","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T15:02:01.469Z] [EmitirNfce] Sale ID: 11
+[2026-04-29T15:02:01.470Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T15:02:01.471Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T15:02:01.472Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T15:02:01.473Z] [EmitirNfce] Subtotal: 18
+[2026-04-29T15:03:08.212Z] [Finalize] ID: 12 (Int: 12). FreshItens: 1, FreshCV: 0
+[2026-04-29T15:03:08.215Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T15:03:08.237Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T15:03:08.238Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T15:03:08.266Z] [Controller] emitirNfce. Body: {"saleId":12,"itemsOverlay":[{"id":12,"saleId":12,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T15:03:01.896Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"12","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T15:03:08.277Z] [EmitirNfce] Sale ID: 12
+[2026-04-29T15:03:08.278Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T15:03:08.279Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T15:03:08.280Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T15:03:08.280Z] [EmitirNfce] Subtotal: 18
+[2026-04-29T15:05:23.770Z] [Finalize] ID: 13 (Int: 13). FreshItens: 1, FreshCV: 0
+[2026-04-29T15:05:23.772Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T15:05:23.796Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T15:05:23.797Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T15:05:23.832Z] [Controller] emitirNfce. Body: {"saleId":13,"itemsOverlay":[{"id":13,"saleId":13,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T15:05:15.511Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"13","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T15:05:23.844Z] [EmitirNfce] Sale ID: 13
+[2026-04-29T15:05:23.845Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T15:05:23.847Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T15:05:23.847Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T15:05:23.848Z] [EmitirNfce] Subtotal: 18
+[2026-04-29T15:43:00.544Z] [Finalize] ID: 14 (Int: 14). FreshItens: 1, FreshCV: 0
+[2026-04-29T15:43:00.597Z] [Finalize] Recalculated Subtotal: 18
+[2026-04-29T15:43:00.619Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-29T15:43:00.620Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-29T15:43:00.653Z] [Controller] emitirNfce. Body: {"saleId":14,"itemsOverlay":[{"id":14,"saleId":14,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-29T15:42:52.131Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"14","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-04-29T15:43:00.665Z] [EmitirNfce] Sale ID: 14
+[2026-04-29T15:43:00.666Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-29T15:43:00.667Z] [EmitirNfce] Delivery Fee: null
+[2026-04-29T15:43:00.668Z] [EmitirNfce] Total Venda: 18
+[2026-04-29T15:43:00.669Z] [EmitirNfce] Subtotal: 18
