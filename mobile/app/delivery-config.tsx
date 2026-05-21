@@ -19,17 +19,32 @@ import Constants from 'expo-constants';
 import { companyService } from '../src/services/api';
 import ScreenIdentifier from '../src/components/ScreenIdentifier';
 import { useRouter } from 'expo-router';
-
-// Obter API Key do app.json (via Constants)
-const GOOGLE_API_KEY =
-  Constants.expoConfig?.android?.config?.googleMaps?.apiKey ||
-  Constants.expoConfig?.ios?.config?.googleMapsApiKey ||
-  '';
+import { STORAGE_KEYS, getSecureItem } from '../src/services/storage';
 
 export default function DeliveryConfigScreen() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const placesRef = useRef<any>(null);
+
+  const [googleMapsKey, setGoogleMapsKey] = useState(
+    Constants.expoConfig?.android?.config?.googleMaps?.apiKey ||
+    Constants.expoConfig?.ios?.config?.googleMapsApiKey ||
+    ''
+  );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const storedKey = await getSecureItem(STORAGE_KEYS.GOOGLE_MAPS_KEY);
+        if (storedKey) {
+          console.log('[DEBUG] Loaded Google Key from Storage in DeliveryConfig:', storedKey);
+          setGoogleMapsKey(storedKey);
+        }
+      } catch (error) {
+        console.error('Erro ao ler a chave de API do Google Maps:', error);
+      }
+    })();
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -237,7 +252,7 @@ export default function DeliveryConfigScreen() {
                         placeholder="Buscar endereço da loja"
                         onPress={handlePlaceSelect}
                         query={{
-                            key: GOOGLE_API_KEY,
+                            key: googleMapsKey,
                             language: 'pt-BR',
                         }}
                         fetchDetails={true}

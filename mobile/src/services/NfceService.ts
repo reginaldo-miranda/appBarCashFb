@@ -51,7 +51,7 @@ export const NfceService = {
         if (config.serie) formData.append('serie', config.serie);
         if (config.numeroInicial) formData.append('numeroInicial', config.numeroInicial);
         if (config.xmlFolder) formData.append('xmlFolder', config.xmlFolder);
-        if (config.chavePix) formData.append('chavePix', config.chavePix);
+        if (config.chavePix !== undefined) formData.append('chavePix', config.chavePix);
 
         if (certificadoFile) {
             console.log("updateConfig: Preparando upload.", Platform.OS, certificadoFile);

@@ -113,13 +113,23 @@ const DeliveryDetailsModal: React.FC<DeliveryDetailsModalProps> = ({
         }
 
         const doGoogleGeocode = async (addr: string) => {
+            console.log('[DEBUG] doGoogleGeocode init. Address:', addr, 'API Key:', GOOGLE_API_KEY ? 'PRESENT' : 'MISSING');
             if (!GOOGLE_API_KEY) return null;
             try {
                 const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${GOOGLE_API_KEY}`;
                 const res = await fetch(url);
                 const json = await res.json();
+                console.log('[DEBUG] Google Geocode response JSON:', JSON.stringify(json));
+                
                 if (json.status === 'OK' && json.results.length > 0) {
                     return json.results[0];
+                } else {
+                    console.warn('[DEBUG] Google Geocode failed. Status:', json.status, 'Msg:', json.error_message);
+                    if (json.status === 'REQUEST_DENIED' || json.status === 'OVER_QUERY_LIMIT') {
+                        Platform.OS === 'web' 
+                            ? window.alert(`Google Maps recusou: ${json.error_message || json.status}. Habilite a "Geocoding API" no seu painel Google Cloud.`)
+                            : Alert.alert('Google Maps Recusou', `Erro: ${json.error_message || json.status}.\n\nPor favor, acesse o painel Google Cloud Console e certifique-se de que a "Geocoding API" está ativada.`);
+                    }
                 }
             } catch (e) {
                 console.error('Google Geocode Error:', e);
@@ -694,13 +704,23 @@ const DeliveryDetailsModal: React.FC<DeliveryDetailsModalProps> = ({
                                                 }
 
                                                 const doGoogleGeocode = async (addr: string) => {
+                                                    console.log('[DEBUG-2] doGoogleGeocode init. Address:', addr, 'API Key:', GOOGLE_API_KEY ? 'PRESENT' : 'MISSING');
                                                     if (!GOOGLE_API_KEY) return null;
                                                     try {
                                                         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${GOOGLE_API_KEY}`;
                                                         const res = await fetch(url);
                                                         const json = await res.json();
+                                                        console.log('[DEBUG-2] Google Geocode response JSON:', JSON.stringify(json));
+                                                        
                                                         if (json.status === 'OK' && json.results.length > 0) {
                                                             return json.results[0];
+                                                        } else {
+                                                            console.warn('[DEBUG-2] Google Geocode failed. Status:', json.status, 'Msg:', json.error_message);
+                                                            if (json.status === 'REQUEST_DENIED' || json.status === 'OVER_QUERY_LIMIT') {
+                                                                Platform.OS === 'web' 
+                                                                    ? window.alert(`Google Maps recusou: ${json.error_message || json.status}. Habilite a "Geocoding API" no seu painel Google Cloud.`)
+                                                                    : Alert.alert('Google Maps Recusou', `Erro: ${json.error_message || json.status}.\n\nPor favor, acesse o painel Google Cloud Console e certifique-se de que a "Geocoding API" está ativada.`);
+                                                            }
                                                         }
                                                     } catch (e) {
                                                         console.error('Google Geocode Error:', e);

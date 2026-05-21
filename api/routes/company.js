@@ -295,6 +295,7 @@ router.post("/nfce-config", upload.single('certificado'), async (req, res) => {
            xmlFolder,
         };
 
+        if (chavePix !== undefined) newCompanyData.chavePix = chavePix;
         if (certificadoSenha) newCompanyData.certificadoSenha = certificadoSenha;
         if (certificadoPath) newCompanyData.certificadoPath = certificadoPath;
         

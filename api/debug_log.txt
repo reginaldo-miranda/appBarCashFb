@@ -997,3 +997,35 @@
 [2026-04-29T15:43:00.667Z] [EmitirNfce] Delivery Fee: null
 [2026-04-29T15:43:00.668Z] [EmitirNfce] Total Venda: 18
 [2026-04-29T15:43:00.669Z] [EmitirNfce] Subtotal: 18
+[2026-04-30T12:55:12.859Z] [Finalize] ID: 15 (Int: 15). FreshItens: 2, FreshCV: 0
+[2026-04-30T12:55:13.139Z] [Finalize] Recalculated Subtotal: 83
+[2026-04-30T12:55:13.277Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-04-30T12:55:13.278Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-04-30T12:55:13.343Z] [Controller] emitirNfce. Body: {"saleId":15,"itemsOverlay":[{"id":15,"saleId":15,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-04-30T12:54:02.360Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"15","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":16,"saleId":15,"productId":2,"nomeProduto":"pizza calabresa (grande)","quantidade":1,"precoUnitario":65,"subtotal":65,"status":"pendente","createdAt":"2026-04-30T12:54:27.353Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"16","produto":{"_id":"2","id":2,"nome":"pizza calabresa","preco":65,"ncm":"19059090","cfop":"5102","csosn":"102"}}]}
+[2026-04-30T12:55:13.436Z] [EmitirNfce] Sale ID: 15
+[2026-04-30T12:55:13.511Z] [EmitirNfce] Cashback Usado: 0
+[2026-04-30T12:55:13.512Z] [EmitirNfce] Delivery Fee: null
+[2026-04-30T12:55:13.513Z] [EmitirNfce] Total Venda: 83
+[2026-04-30T12:55:13.514Z] [EmitirNfce] Subtotal: 83
+[2026-05-21T12:59:27.585Z] [Finalize] ID: 20 (Int: 20). FreshItens: 2, FreshCV: 0
+[2026-05-21T12:59:27.632Z] [Finalize] Recalculated Subtotal: 83
+[2026-05-21T12:59:27.691Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-05-21T12:59:27.693Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-21T12:59:27.821Z] [Controller] emitirNfce. Body: {"saleId":20,"itemsOverlay":[{"id":21,"saleId":20,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-05-21T12:58:33.687Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"21","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":22,"saleId":20,"productId":1,"nomeProduto":"pizza calabresa","quantidade":1,"precoUnitario":65,"subtotal":65,"status":"pendente","createdAt":"2026-05-21T12:58:45.141Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"22","produto":{"_id":"1","id":1,"nome":"pizza calabresa","preco":65,"ncm":null,"cfop":"5102","csosn":"102"}}]}
+[2026-05-21T12:59:27.833Z] [EmitirNfce] Sale ID: 20
+[2026-05-21T12:59:27.834Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-21T12:59:27.835Z] [EmitirNfce] Delivery Fee: null
+[2026-05-21T12:59:27.836Z] [EmitirNfce] Total Venda: 83
+[2026-05-21T12:59:27.837Z] [EmitirNfce] Subtotal: 83
+[2026-05-21T16:47:17.920Z] [Controller] emitirNfce. Body: {"saleId":35}
+[2026-05-21T16:47:18.234Z] [EmitirNfce] Sale ID: 35
+[2026-05-21T16:47:18.235Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-21T16:47:18.236Z] [EmitirNfce] Delivery Fee: 8
+[2026-05-21T16:47:18.237Z] [EmitirNfce] Total Venda: 8
+[2026-05-21T16:47:18.238Z] [EmitirNfce] Subtotal: 0
+[2026-05-21T16:50:27.896Z] [Controller] emitirNfce. Body: {"saleId":36}
+[2026-05-21T16:50:27.907Z] [EmitirNfce] Sale ID: 36
+[2026-05-21T16:50:27.908Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-21T16:50:27.909Z] [EmitirNfce] Delivery Fee: 8
+[2026-05-21T16:50:27.910Z] [EmitirNfce] Total Venda: 8
+[2026-05-21T16:50:27.911Z] [EmitirNfce] Subtotal: 0

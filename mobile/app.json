@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        "googleMapsApiKey": "AIzaSyDzcoCx6kGsFVtRcma2MOsjZDNd8EgukII"
       },
       "bundleIdentifier": "com.reginaldomiranda.mobile"
     },
@@ -25,7 +25,7 @@
       "edgeToEdgeEnabled": true,
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+          "apiKey": "AIzaSyDzcoCx6kGsFVtRcma2MOsjZDNd8EgukII"
         }
       },
       "predictiveBackGestureEnabled": false,
