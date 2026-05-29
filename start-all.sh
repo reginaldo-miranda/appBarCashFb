@@ -3,6 +3,8 @@
 echo "🎯 Iniciando Sistema Completo do Bar..."
 echo "=================================="
 
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # ===== Funções utilitárias =====
 cleanup_all() {
   echo "🛑 Encerrando processos existentes (API, Expo, LocalTunnel)..."
@@ -40,42 +42,32 @@ fi
 select_db_target() {
   if [ -n "$1" ]; then
     DB_TARGET="$1"
+  else
+    DB_TARGET="local"
   fi
-  if [ -z "$DB_TARGET" ]; then
-    echo ""
-    echo "📊 Selecione o banco de dados para a API antes do login:"
-    echo "  1) Local"
-    echo "  2) Railway"
-    read -p "👉 Escolha [1/2] (padrão: 2): " choice
-    case "$choice" in
-      1) DB_TARGET="local" ;;
-      2|"" ) DB_TARGET="railway" ;;
-      *) DB_TARGET="railway" ;;
-    esac
-  fi
-
+  echo "📊 Banco de dados selecionado: $DB_TARGET"
 }
 
 start_api() {
   local TARGET="$1"
   echo "1️⃣ Iniciando API com base: $TARGET..."
   # Abrir em novo terminal (Linux/macOS) e repassar seleção para start-api.sh
-  GNOME_CMD="cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-api.sh $TARGET; exec bash"
-  OSASCRIPT_CMD='tell app "Terminal" to do script "cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-api.sh '$TARGET'"'
+  GNOME_CMD="cd $ROOT_DIR && ./start-api.sh $TARGET; exec bash"
+  OSASCRIPT_CMD='tell app "Terminal" to do script "cd '"$ROOT_DIR"' && ./start-api.sh '$TARGET'"'
 
   gnome-terminal -- bash -c "$GNOME_CMD" 2>/dev/null || \
   osascript -e "$OSASCRIPT_CMD" 2>/dev/null || \
-  echo "⚠️  Abra um novo terminal e execute: cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-api.sh $TARGET"
+  echo "⚠️  Abra um novo terminal e execute: cd $ROOT_DIR && ./start-api.sh $TARGET"
 }
 
 start_mobile() {
   echo "2️⃣ Iniciando Mobile App (Expo LAN)..."
-  GNOME_CMD_MOBILE="cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-mobile.sh; exec bash"
-  OSASCRIPT_CMD_MOBILE='tell app "Terminal" to do script "cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-mobile.sh"'
+  GNOME_CMD_MOBILE="cd $ROOT_DIR && ./start-mobile.sh; exec bash"
+  OSASCRIPT_CMD_MOBILE='tell app "Terminal" to do script "cd '"$ROOT_DIR"' && ./start-mobile.sh"'
 
   gnome-terminal -- bash -c "$GNOME_CMD_MOBILE" 2>/dev/null || \
   osascript -e "$OSASCRIPT_CMD_MOBILE" 2>/dev/null || \
-  echo "⚠️  Abra um novo terminal e execute: cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-mobile.sh"
+  echo "⚠️  Abra um novo terminal e execute: cd $ROOT_DIR && ./start-mobile.sh"
 }
 
 show_status() {
@@ -108,27 +100,11 @@ echo "=================================="
 while true; do
   echo ""
   echo "🔁 Menu:"
-  echo "  [1] Trocar base (Local/Railway)"
-  echo "  [2] Reiniciar API e Mobile (mesma base atual)"
+  echo "  [1] Reiniciar API e Mobile"
   echo "  [q] Sair e encerrar tudo"
   read -p "👉 Escolha uma opção: " option
   case "$option" in
     1)
-      # Troca de base sem restrições: garantir limpeza total e reiniciar com nova base
-      read -p "   Selecione base [1=Local, 2=Railway] (padrão: 2): " choice2
-      case "$choice2" in
-        1) DB_TARGET="local" ;;
-        2|"" ) DB_TARGET="railway" ;;
-        *) DB_TARGET="railway" ;;
-      esac
-      echo "🔄 Trocando base para: $DB_TARGET"
-      cleanup_all
-      start_api "$DB_TARGET"
-      sleep 6
-      start_mobile
-      show_status
-      ;;
-    2)
       echo "🔄 Reiniciando API e Mobile com base atual (${DB_TARGET})..."
       cleanup_all
       start_api "$DB_TARGET"

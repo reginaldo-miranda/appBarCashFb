@@ -1029,3 +1029,35 @@
 [2026-05-21T16:50:27.909Z] [EmitirNfce] Delivery Fee: 8
 [2026-05-21T16:50:27.910Z] [EmitirNfce] Total Venda: 8
 [2026-05-21T16:50:27.911Z] [EmitirNfce] Subtotal: 0
+[2026-05-22T20:12:50.176Z] [Controller] emitirNfce. Body: {"saleId":613}
+[2026-05-22T20:12:50.194Z] [EmitirNfce] Sale ID: 613
+[2026-05-22T20:12:50.195Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-22T20:12:50.195Z] [EmitirNfce] Delivery Fee: 4
+[2026-05-22T20:12:50.195Z] [EmitirNfce] Total Venda: 4
+[2026-05-22T20:12:50.195Z] [EmitirNfce] Subtotal: 0
+[2026-05-22T20:13:07.835Z] [Controller] emitirNfce. Body: {"saleId":612}
+[2026-05-22T20:13:07.856Z] [EmitirNfce] Sale ID: 612
+[2026-05-22T20:13:07.857Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-22T20:13:07.857Z] [EmitirNfce] Delivery Fee: 4
+[2026-05-22T20:13:07.858Z] [EmitirNfce] Total Venda: 4
+[2026-05-22T20:13:07.858Z] [EmitirNfce] Subtotal: 0
+[2026-05-23T19:05:38.942Z] [Finalize] ID: 614 (Int: 614). FreshItens: 1, FreshCV: 0
+[2026-05-23T19:05:38.943Z] [Finalize] Recalculated Subtotal: 13
+[2026-05-23T19:05:39.005Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-05-23T19:05:39.005Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-23T19:05:39.189Z] [Controller] emitirNfce. Body: {"saleId":614,"itemsOverlay":[{"id":735,"saleId":614,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-05-23T19:04:49.314Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"735","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-05-23T19:05:39.229Z] [EmitirNfce] Sale ID: 614
+[2026-05-23T19:05:39.231Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-23T19:05:39.231Z] [EmitirNfce] Delivery Fee: null
+[2026-05-23T19:05:39.232Z] [EmitirNfce] Total Venda: 13
+[2026-05-23T19:05:39.232Z] [EmitirNfce] Subtotal: 13
+[2026-05-23T19:10:05.909Z] [Finalize] ID: 615 (Int: 615). FreshItens: 1, FreshCV: 0
+[2026-05-23T19:10:05.910Z] [Finalize] Recalculated Subtotal: 20
+[2026-05-23T19:10:05.974Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-05-23T19:10:05.979Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-23T19:10:06.096Z] [Controller] emitirNfce. Body: {"saleId":615,"itemsOverlay":[{"id":736,"saleId":615,"productId":10,"nomeProduto":"pizza mussarela (pequena)","quantidade":1,"precoUnitario":20,"subtotal":20,"status":"pendente","createdAt":"2026-05-23T19:08:29.850Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"736","produto":{"_id":"10","id":10,"nome":"pizza mussarela","preco":45,"ncm":null,"cfop":null,"csosn":null},"product":{"_id":"10","id":10,"nome":"pizza mussarela","preco":45,"ncm":"19059090","cfop":"5102","csosn":"102"}}]}
+[2026-05-23T19:10:06.131Z] [EmitirNfce] Sale ID: 615
+[2026-05-23T19:10:06.133Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-23T19:10:06.133Z] [EmitirNfce] Delivery Fee: null
+[2026-05-23T19:10:06.134Z] [EmitirNfce] Total Venda: 20
+[2026-05-23T19:10:06.134Z] [EmitirNfce] Subtotal: 20

@@ -8,3 +8,5 @@ echo Iniciando o sistema no navegador...
 cd mobile
 npx expo start --web
 pause
+
+

@@ -33,7 +33,7 @@ if ! curl -s --max-time 2 "http://${LAN_IP}:4000/api/health" >/dev/null; then
   OSASCRIPT_CMD='tell app "Terminal" to do script "cd '"$ROOT_DIR"' && ./start-api.sh"'
   gnome-terminal -- bash -c "$GNOME_CMD" 2>/dev/null || \
   osascript -e "$OSASCRIPT_CMD" 2>/dev/null || \
-  echo "⚠️  Abra um novo terminal e execute: cd /Users/reginaldomiranda/Documents/barAppAdminMyNu && ./start-api.sh"
+  echo "⚠️  Abra um novo terminal e execute: cd $ROOT_DIR && ./start-api.sh"
   sleep 5
 fi
 

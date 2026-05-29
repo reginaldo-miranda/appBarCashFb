@@ -2,13 +2,15 @@ JWT_SECRET=thunder
 PORT=4000
 HOST=0.0.0.0
 
-# URLs de conexão para seleção
-DATABASE_URL_LOCAL="mysql://root:saguides%40123@localhost:3306/appBarCash
+# URL principal de conexão com o banco (usada pelo Prisma e pela API)
+DATABASE_URL="mysql://root:saguides%40123@localhost:3306/appBarCash"
 
+# URLs de conexão para seleção
+DATABASE_URL_LOCAL="mysql://root:saguides%40123@localhost:3306/appBarCash"
 
 # Observação:
-# A variável DATABASE_URL efetiva será definida automaticamente pelo start-api.sh
-# e pelo código em lib/prisma.js com base no DB_TARGET selecionado (local/railway).
+# DATABASE_URL é usada diretamente pelo Prisma Client.
+# DATABASE_URL_LOCAL pode ser sobrescrita pelos scripts start-api.sh / start-api.ps1.
 
 
 chave api google AIzaSyASIOxutlTLjG13n_p_MJw5rh1UiWm2mgE
