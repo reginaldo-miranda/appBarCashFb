@@ -2,6 +2,7 @@
 
 echo "🎯 Iniciando Sistema Completo do Bar..."
 echo "=================================="
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -124,4 +125,3 @@ while true; do
   # Pequena pausa
   sleep 1
 done
-

@@ -82,11 +82,10 @@ if [ ! -d "node_modules" ]; then
 fi
 
 # Pular migrações para não tocar nos dados existentes
-echo "🛠️ Aplicando schema do Prisma (db push)"
-npx prisma db push >/dev/null 2>&1 || true
-echo "🧩 Gerando Prisma Client"
-
-npx prisma generate >/dev/null 2>&1 || true
+# echo "🛠️ Aplicando schema do Prisma (db push)"
+# npx prisma db push >/dev/null 2>&1 || true
+# echo "🧩 Gerando Prisma Client"
+# npx prisma generate >/dev/null 2>&1 || true
 
 # Garantir porta livre e iniciar servidor
 kill_by_port 4000

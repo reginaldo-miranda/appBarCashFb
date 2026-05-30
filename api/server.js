@@ -38,6 +38,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import authRoutes from "./routes/auth.js";
 import companyRoutes from "./routes/company.js";
+import publicRoutes from "./routes/public.js";
 
 // ... (existing imports)
 
@@ -262,6 +263,7 @@ const authenticate = (req, res, next) => {
 };
 
 // Rotas
+app.use("/api/public", publicRoutes); // rotas públicas de autoatendimento/cardápio
 app.use("/api/auth", authRoutes); // rotas públicas
 app.use("/api/customer", authenticate, customerRoutes);
 app.use("/api/company", authenticate, companyRoutes); // Nova rota de empresa

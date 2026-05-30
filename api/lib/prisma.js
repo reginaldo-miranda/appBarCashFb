@@ -4,9 +4,8 @@ import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
 // Helper para construir URL do banco - FORÇADO LOCAL APENAS
-// Funciona independente de como a API é iniciada (scripts .sh/.ps1/.bat ou direto)
-const buildDatabaseUrl = (target) => {
-  // Prioridade: DATABASE_URL_LOCAL > DATABASE_URL > fallback hardcoded
+const buildDatabaseUrl = () => {
+  // Prioridade: DATABASE_URL_LOCAL > DATABASE_URL
   const envLocal = process.env.DATABASE_URL_LOCAL;
   const envDefault = process.env.DATABASE_URL;
 
@@ -26,17 +25,14 @@ const buildDatabaseUrl = (target) => {
   return finalUrl; 
 };
 
-const urlLocal = buildDatabaseUrl("local");
-// const urlRailway = buildDatabaseUrl("railway"); // REMOVIDO
+const urlLocal = buildDatabaseUrl();
 const prismaLocal = new PrismaClient({ datasources: { db: { url: urlLocal } } });
-// const prismaRailway = ... // REMOVIDO
 
 // Força sempre local
 let prisma = prismaLocal;
 process.env.DB_TARGET = 'local';
 process.env.DATABASE_URL = urlLocal;
 
-// Função switchDbTarget desabilitada/falsa para nao quebrar chamadas existentes mas nao fazer nada
 export const switchDbTarget = async (next) => {
   console.log("Tentativa de trocar DB ignorada - MODO APENAS LOCAL ATIVO");
   return { ok: true, target: 'local' };
@@ -44,7 +40,6 @@ export const switchDbTarget = async (next) => {
 
 export const getCurrentDbInfo = () => {
   try {
-    // Usar base local por padrão
     const urlStr = process.env.DATABASE_URL || urlLocal || "";
     const u = new URL(urlStr);
     const provider = (u.protocol || "").replace(":", "") || "unknown";
@@ -60,8 +55,7 @@ export const getCurrentDbInfo = () => {
   }
 };
 
-export const getProductsForTarget = async (target) => {
-  // Sempre usa prismaLocal (railway foi removido)
+export const getProductsForTarget = async () => {
   const prods = await prismaLocal.product.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: { id: "asc" }, take: 50 });
   return prods;
 };
@@ -71,8 +65,7 @@ export const getPrisma = () => prisma;
 export const getActivePrisma = () => prisma;
 
 // Schema helpers (MySQL)
-export const getColumnsForTarget = async (target, table) => {
-  // Sempre usa prismaLocal (railway foi removido)
+export const getColumnsForTarget = async (table) => {
   try {
     const rows = await prismaLocal.$queryRawUnsafe(`SHOW COLUMNS FROM \`${table}\``);
     return rows.map(r => ({
@@ -88,13 +81,13 @@ export const getColumnsForTarget = async (target, table) => {
   }
 };
 
-export const getSchemaSummaryForTarget = async (target) => {
+export const getSchemaSummaryForTarget = async () => {
   const tables = [
     'Product', 'categoria', 'tipo', 'productGroup', 'unidadeMedida'
   ];
   const summary = {};
   for (const t of tables) {
-    summary[t] = await getColumnsForTarget(target, t);
+    summary[t] = await getColumnsForTarget(t);
   }
   return summary;
 };

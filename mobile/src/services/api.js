@@ -12,7 +12,22 @@ const getEnvBaseUrl = () => {
   try {
     if (Platform.OS === 'web') {
       const w = typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_WEB_API_URL : undefined;
-      return w || undefined;
+      const v = typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_URL : undefined;
+      const envUrlToUse = w || v;
+
+      if (envUrlToUse && typeof window !== 'undefined') {
+        const currentHost = window.location.hostname || '';
+        
+        // Se a pessoa abriu o site via localhost, 127.0.0.1 ou IP de rede (192.168., 10.0.), 
+        // e a variável de ambiente aponta para a nuvem (railway), DEVEMOS IGNORAR A VARIÁVEL DE AMBIENTE
+        // e forçar a detecção inteligente do resolveApiBaseUrl para buscar a API local!
+        const isCurrentHostLocalNetwork = LOCAL_HOSTNAMES.has(currentHost) || currentHost.startsWith('192.168.') || currentHost.startsWith('10.') || currentHost.startsWith('172.');
+        
+        if (isCurrentHostLocalNetwork) {
+           return undefined; 
+        }
+      }
+      return envUrlToUse || undefined;
     }
     const v = typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_URL : undefined;
     if (!v) return undefined;
@@ -41,62 +56,25 @@ function isLocalUrl(url) {
 function resolveApiBaseUrl() {
   const DEFAULT_PORT = 4000;
 
-  const ENV_URL = getEnvBaseUrl();
-  if (ENV_URL) return ENV_URL;
-
-  // Ambiente Web / Electron: se host for local ou inválido (Electron serve usa app://-), assumir localhost
+  // Em ambiente Web, SEMPRE preferimos a URL da barra do navegador se não for um localhost!
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const hostname = window.location.hostname || '';
     const protocol = window.location.protocol || '';
     
     if (hostname) {
-      // Correção para Electron: se hostname for '-' ou protocolo for 'app:', assumir localhost
       if (hostname === '-' || protocol === 'app:' || LOCAL_HOSTNAMES.has(hostname)) {
+        // Se a barra do navegador disser localhost, tenta ver se a Env tem um IP fixo configurado diferente de localhost
+        const envUrl = getEnvBaseUrl();
+        if (envUrl && !isLocalUrl(envUrl)) return envUrl;
         return `http://localhost:${DEFAULT_PORT}/api`;
       }
+      // O navegador está acessando um IP da rede (ex: 192.168.0.x). Usar ESSE ip!
       return `http://${hostname}:${DEFAULT_PORT}/api`;
     }
-    const candidates = [];
-    try {
-      const scriptUrl = NativeModules?.SourceCode?.scriptURL;
-      if (scriptUrl) {
-        const u = new URL(String(scriptUrl));
-        if (u.hostname) candidates.push(u.hostname);
-      }
-    } catch {}
-    try {
-      const devHost = Constants?.expoGo?.developer?.host;
-      if (devHost) {
-        const h = String(devHost).split(':')[0];
-        if (h) candidates.push(h);
-      }
-    } catch {}
-    try {
-      const hostUri = Constants?.expoConfig?.hostUri;
-      if (hostUri) {
-        const h = String(hostUri).split(':')[0];
-        if (h) candidates.push(h);
-      }
-    } catch {}
-    try {
-      const dbgHost = Constants?.manifest?.debuggerHost;
-      if (dbgHost) {
-        const h = String(dbgHost).split(':')[0];
-        if (h) candidates.push(h);
-      }
-    } catch {}
-    try {
-      const envPackagerHost = (typeof process !== 'undefined' ? process.env?.REACT_NATIVE_PACKAGER_HOSTNAME : '') || '';
-      if (envPackagerHost) candidates.push(envPackagerHost);
-    } catch {}
-    const picked = candidates.find((h) => h);
-    if (picked) {
-      const hostName = String(picked).split(':')[0];
-      const hostOut = LOCAL_HOSTNAMES.has(hostName) ? 'localhost' : hostName;
-      return `http://${hostOut}:${DEFAULT_PORT}/api`;
-    }
-    return '';
   }
+
+  const ENV_URL = getEnvBaseUrl();
+  if (ENV_URL) return ENV_URL;
 
   // Expo Go / Native: múltiplos fallbacks
   const expoHost = Constants?.expoGo?.developer?.host;
@@ -131,7 +109,7 @@ function resolveApiBaseUrl() {
     return `http://192.168.0.176:${DEFAULT_PORT}/api`;
     // return `http://10.0.2.2:${DEFAULT_PORT}/api`; // Emulator
   }
-    return `http://192.168.0.176:${DEFAULT_PORT}/api`; // Remote Server Fallback
+  return `http://192.168.0.176:${DEFAULT_PORT}/api`; // Remote Server Fallback
 }
 
 // Primeiro: variável de ambiente pública
@@ -182,26 +160,12 @@ function endCancelableOp(key) {
 api.interceptors.request.use(
   async (config) => {
     try {
-      // Prioridade: ENV sempre primeiro (garante IP da LAN definido pelo start script)
-      if (ENV_BASE_URL) {
-        config.baseURL = ENV_BASE_URL;
-      } else {
-        const storedBaseUrl = await AsyncStorage.getItem(STORAGE_KEYS.API_BASE_URL);
-        if (storedBaseUrl) {
-          const isLocal = isLocalUrl(storedBaseUrl);
-          // Apenas apaga se for estritamente localhost no mobile
-          if (isLocal && Platform.OS !== 'web') {
-            await AsyncStorage.removeItem(STORAGE_KEYS.API_BASE_URL);
-          } else {
-            config.baseURL = storedBaseUrl;
-          }
-        }
-      }
+      // FORÇAR A REDE LOCAL
+      const hostname = (typeof window !== 'undefined' && window.location.hostname) ? window.location.hostname : '192.168.0.176';
+      
+      // Montamos sempre a API local. IGNORA QUALQUER ASYNC_STORAGE e NUVEM PARA GARANTIR.
+      config.baseURL = `http://${hostname}:4000/api`;
 
-      if (!config.baseURL) {
-        const fallback = api.defaults.baseURL || initialBaseUrl || resolveApiBaseUrl();
-        config.baseURL = fallback;
-      }
 
       // Timeout configurável
       const savedTimeoutStr = await AsyncStorage.getItem(STORAGE_KEYS.API_TIMEOUT_MS);
@@ -258,29 +222,14 @@ api.interceptors.response.use(
   }
 );
 
-// Inicialização assíncrona para aplicar override salvo assim que o app inicia
+// Inicialização assíncrona blindada: NUNCA carregue AsyncStorage se a intenção é rodar local.
   (async () => {
     try {
-      if (ENV_BASE_URL) {
-        initialBaseUrl = ENV_BASE_URL;
-        api.defaults.baseURL = ENV_BASE_URL;
-        try { await AsyncStorage.removeItem(STORAGE_KEYS.API_BASE_URL); } catch {}
-      } else {
-        const storedBaseUrl = await AsyncStorage.getItem(STORAGE_KEYS.API_BASE_URL);
-        if (storedBaseUrl) {
-          const isLocal = isLocalUrl(storedBaseUrl);
-          if (isLocal && Platform.OS !== 'web') {
-            await AsyncStorage.removeItem(STORAGE_KEYS.API_BASE_URL);
-          } else {
-            initialBaseUrl = storedBaseUrl;
-            api.defaults.baseURL = storedBaseUrl;
-          }
-        } else {
+      // Ignorando storage por segurança e usando apenas o dinâmico interceptado acima.
+      console.log("Inicialização da API blindada contra cache.");
       const next = resolveApiBaseUrl();
       initialBaseUrl = next;
       api.defaults.baseURL = next;
-        }
-      }
 
     // Aplicar timeout salvo, se existir
     const savedTimeoutStr = await AsyncStorage.getItem(STORAGE_KEYS.API_TIMEOUT_MS);

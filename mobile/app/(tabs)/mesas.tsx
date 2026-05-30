@@ -19,10 +19,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
 import { SafeIcon } from '../../components/SafeIcon';
-import api, { mesaService, saleService, employeeService, getWsUrl, authService, idleTimeConfigService, customerService } from '../../src/services/api';
+import api, { mesaService, saleService, employeeService, getWsUrl, authService, idleTimeConfigService, customerService, getCurrentBaseUrl } from '../../src/services/api';
 import { STORAGE_KEYS } from '../../src/services/storage';
-  import ProductSelector from '../../src/components/ProductSelector.js';
-  import { useAuth } from '../../src/contexts/AuthContext';
+import QRCode from 'react-native-qrcode-svg';
+import ProductSelector from '../../src/components/ProductSelector.js';
+import { useAuth } from '../../src/contexts/AuthContext';
   import SearchAndFilter from '../../src/components/SearchAndFilter';
   import ScreenIdentifier from '../../src/components/ScreenIdentifier';
   import { API_URL } from '../../src/services/api';
@@ -67,6 +68,54 @@ function parseTimeToMs(timeStr: string) {
   return ms;
 }
 
+function obterIpLanCardapio() {
+  try {
+    const envUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      const match = envUrl.match(/https?:\/\/([^:/]+)/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  } catch (e) {
+    console.log('Erro ao ler EXPO_PUBLIC_API_URL:', e);
+  }
+
+  try {
+    const currentUrl = getCurrentBaseUrl();
+    if (currentUrl && !currentUrl.includes('localhost') && !currentUrl.includes('127.0.0.1')) {
+      const match = currentUrl.match(/https?:\/\/([^:/]+)/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  } catch (e) {
+    console.log('Erro ao ler getCurrentBaseUrl:', e);
+  }
+
+  try {
+    const Constants = require('expo-constants').default;
+    const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return ip;
+      }
+    }
+  } catch (e) {}
+
+  return '192.168.0.176';
+}
+
+function obterPortaCardapio() {
+  try {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.port) {
+      return window.location.port;
+    }
+  } catch (e) {}
+  return '8082';
+}
+
 export default function MesasScreen() {
   const { user } = useAuth();
   const [mesas, setMesas] = useState<Mesa[]>([]);
@@ -102,6 +151,10 @@ export default function MesasScreen() {
   // Estados para cancelar mesa
   const [cancelMesaModalVisible, setCancelMesaModalVisible] = useState(false);
   const [cancelMesaTarget, setCancelMesaTarget] = useState<Mesa | null>(null);
+
+  // Estado para QR Code da mesa
+  const [qrCodeModalVisible, setQrCodeModalVisible] = useState(false);
+  const [qrCodeMesa, setQrCodeMesa] = useState<Mesa | null>(null);
 
   // Estados para busca de clientes no Abrir Mesa
   const [clients, setClients] = useState<any[]>([]);
@@ -1136,6 +1189,12 @@ useEffect(() => {
     );
   };
 
+  // Função para abrir o QR Code da mesa
+  const abrirQrCodeMesa = (mesa: Mesa) => {
+    setQrCodeMesa(mesa);
+    setQrCodeModalVisible(true);
+  };
+
   // Abrir modal de pagamento para fechar mesa
   const fecharModalFecharMesa = async (mesa: Mesa) => {
     console.log('🔥🔥🔥 FUNÇÃO fecharModalFecharMesa INICIADA! 🔥🔥🔥');
@@ -1358,28 +1417,38 @@ useEffect(() => {
            ]}
         >
           <View style={styles.mesaHeader}>
-            <TouchableOpacity onPress={() => !mergeMode && handleOpenReceiptMesa(item)} disabled={mergeMode}>
-              <Text style={[styles.mesaNumero, { textDecorationLine: 'underline', color: '#2196F3' }]}>
-                  Mesa {item.numero}
-                  {(item.nomeResponsavel || item.funcionarioResponsavel?.nome) &&
-                  (() => {
-                      const id = String(item?._id ?? (item as any)?.id ?? '');
-                      const vt = item?.vendaAtual?.total;
-                      const mapData = id ? mesaOpenTotals[id] : undefined;
-                      const displayTotal = vt != null && Number(vt) > 0 ? Number(vt) : (mapData?.total || 0);
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => !mergeMode && handleOpenReceiptMesa(item)} disabled={mergeMode}>
+                <Text style={[styles.mesaNumero, { textDecorationLine: 'underline', color: '#2196F3' }]}>
+                    Mesa {item.numero}
+                    {(item.nomeResponsavel || item.funcionarioResponsavel?.nome) &&
+                    (() => {
+                        const id = String(item?._id ?? (item as any)?.id ?? '');
+                        const vt = item?.vendaAtual?.total;
+                        const mapData = id ? mesaOpenTotals[id] : undefined;
+                        const displayTotal = vt != null && Number(vt) > 0 ? Number(vt) : (mapData?.total || 0);
 
-                      const valorTotal = displayTotal.toFixed(2).replace('.', ',');
-                      
-                      let text = ``;
-                      if (displayTotal > 0) {
-                          text += ` - R$ ${valorTotal}`;
-                      }
-                      text += ` - Responsável: ${item.nomeResponsavel || item.funcionarioResponsavel?.nome}`;
-                      return text;
-                  })()
-                  }
-              </Text>
-            </TouchableOpacity>
+                        const valorTotal = displayTotal.toFixed(2).replace('.', ',');
+                        
+                        let text = ``;
+                        if (displayTotal > 0) {
+                            text += ` - R$ ${valorTotal}`;
+                        }
+                        text += ` - Responsável: ${item.nomeResponsavel || item.funcionarioResponsavel?.nome}`;
+                        return text;
+                    })()
+                    }
+                </Text>
+              </TouchableOpacity>
+              {!mergeMode && (
+                <TouchableOpacity 
+                  style={{ marginLeft: 8, padding: 4, backgroundColor: '#333', borderRadius: 4, borderWidth: 1, borderColor: '#444' }}
+                  onPress={() => abrirQrCodeMesa(item)}
+                >
+                  <SafeIcon name="qr-code" size={14} color="#FF8C00" fallbackText="QR" />
+                </TouchableOpacity>
+              )}
+            </View>
             
             {/* Badges for Merge Mode */}
             {isTarget && <View style={[styles.statusBadge, {backgroundColor: '#2196F3'}]}><Text style={styles.statusText}>PRINCIPAL</Text></View>}
@@ -2612,6 +2681,65 @@ useEffect(() => {
             confirmarFechamentoMesa(true);
         }}
       />
+
+      {/* Modal de QR Code da Mesa */}
+      <Modal
+        visible={qrCodeModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setQrCodeModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 20, padding: 24, width: '85%', maxWidth: 360, alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
+            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FF8C00' }}>QR Code do Cardápio</Text>
+              <TouchableOpacity onPress={() => setQrCodeModalVisible(false)} style={{ padding: 4 }}>
+                <SafeIcon name="close" size={24} color="#FFF" fallbackText="×" />
+              </TouchableOpacity>
+            </View>
+
+            {qrCodeMesa && (() => {
+              const ipLan = obterIpLanCardapio();
+              const porta = obterPortaCardapio();
+              const linkCardapio = `http://${ipLan}:${porta}/cardapio/${qrCodeMesa._id}`;
+              return (
+                <>
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
+                    Mesa {String(qrCodeMesa.numero).padStart(2, '0')}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#AAA', textAlign: 'center', marginBottom: 20 }}>
+                    Aponte a câmera do celular para abrir o cardápio e fazer pedidos.
+                  </Text>
+
+                  {/* QR Code Container */}
+                  <View style={{ backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
+                    <QRCode
+                      value={linkCardapio}
+                      size={200}
+                      logoBackgroundColor='transparent'
+                    />
+                  </View>
+
+                  {/* URL informativa para copiar/acessar manual */}
+                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 10, width: '100%', marginBottom: 20, borderWidth: 1, borderColor: '#333' }}>
+                    <Text style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Link de Acesso:</Text>
+                    <Text style={{ fontSize: 12, color: '#FF8C00', fontWeight: 'bold', textAlign: 'center' }} selectable>
+                      {linkCardapio}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#FF8C00', paddingVertical: 12, borderRadius: 25, width: '100%', alignItems: 'center' }}
+                    onPress={() => setQrCodeModalVisible(false)}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Fechar</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
