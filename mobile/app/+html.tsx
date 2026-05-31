@@ -15,6 +15,17 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
+        {/* PWA - Progressive Web App */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1565C0" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="BarCash PDV" />
+        <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="BarCash PDV" />
+        <meta name="description" content="Sistema de Gestão para Bares e Restaurantes" />
+
         {/* 
           This disables the annoying tap highlight on mobile web. 
           It has no effect on desktop or native apps.

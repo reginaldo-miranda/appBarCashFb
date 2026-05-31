@@ -26,6 +26,7 @@ import {
 } from "../src/services/api";
 import { STORAGE_KEYS } from "../src/services/storage";
 import Constants from "expo-constants";
+import QrCodeAcessoMobile from "../src/components/QrCodeAcessoMobile";
 
 // Fallback visual para fundo
 const BackgroundGradient = ({ children, style }: any) => {
@@ -795,6 +796,9 @@ export default function LoginScreen() {
           </View>
           
           <Text style={styles.footerVersion}>Versão 2.1.0 • BarApp Inc.</Text>
+
+          {/* QR Code para acesso via navegador mobile — só aparece na web (desktop) */}
+          {Platform.OS === 'web' && <QrCodeAcessoMobile />}
 
         </View>
 
