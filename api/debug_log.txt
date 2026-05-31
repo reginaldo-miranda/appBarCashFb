@@ -1061,3 +1061,13 @@
 [2026-05-23T19:10:06.133Z] [EmitirNfce] Delivery Fee: null
 [2026-05-23T19:10:06.134Z] [EmitirNfce] Total Venda: 20
 [2026-05-23T19:10:06.134Z] [EmitirNfce] Subtotal: 20
+[2026-05-30T21:11:15.066Z] [Finalize] ID: 560 (Int: 560). FreshItens: 4, FreshCV: 0
+[2026-05-30T21:11:15.069Z] [Finalize] Recalculated Subtotal: 183.34
+[2026-05-30T21:11:15.189Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-05-30T21:11:15.190Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-30T21:11:15.385Z] [Controller] emitirNfce. Body: {"saleId":560,"itemsOverlay":[{"id":669,"saleId":560,"productId":7,"nomeProduto":"Bauru Teste QA cozinha","quantidade":2,"precoUnitario":12,"subtotal":24,"status":"pendente","createdAt":"2026-05-30T21:09:35.598Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"669","produto":{"_id":"7","id":7,"nome":"Bauru Teste QA cozinha","preco":12,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":670,"saleId":560,"productId":11,"nomeProduto":"pizza calbresa (media)","quantidade":3,"precoUnitario":45,"subtotal":135,"status":"pendente","createdAt":"2026-03-15T21:46:33.168Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"670","produto":{"_id":"11","id":11,"nome":"pizza calbresa","preco":55,"ncm":"19059090","cfop":"5102","csosn":"102"}},{"id":751,"saleId":560,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-05-30T21:10:17.331Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"751","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22069090","cfop":"5102","csosn":"102"}},{"id":752,"saleId":560,"productId":6,"nomeProduto":"Teste Setor Cozinha 1","quantidade":1,"precoUnitario":12.34,"subtotal":12.34,"status":"pendente","createdAt":"2026-05-30T21:10:36.829Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"752","produto":{"_id":"6","id":6,"nome":"Teste Setor Cozinha 1","preco":12.34,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-05-30T21:11:15.495Z] [EmitirNfce] Sale ID: 560
+[2026-05-30T21:11:15.495Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-30T21:11:15.496Z] [EmitirNfce] Delivery Fee: null
+[2026-05-30T21:11:15.496Z] [EmitirNfce] Total Venda: 183.34
+[2026-05-30T21:11:15.496Z] [EmitirNfce] Subtotal: 183.34
