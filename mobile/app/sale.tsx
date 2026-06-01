@@ -136,7 +136,7 @@ export default function SaleScreen() {
           (res.status || '').toUpperCase() === 'ERRO';
 
         if (isComunicacaoFalha) {
-          setContingenciaSaleId(saleIdToEmit);
+          setContingenciaSaleId(parseInt(saleIdToEmit, 10));
           setContingenciaItems(itemsOverlay);
           setNfceStatus('error');
           setNfceMessage('SEFAZ indisponível. Deseja emitir em CONTINGÊNCIA?');
@@ -180,6 +180,50 @@ export default function SaleScreen() {
           setNfceStatus('error');
           const reason = res.motivo || res.message || res.error || 'Erro: Nota Rejeitada pela SEFAZ.';
           setNfceMessage(reason);
+
+          // Captura e correção automática de dados fiscais rejeitados pela SEFAZ durante a finalização
+          const match = reason.match(/nItem:?\s*(\d+)/i);
+          const motivoLower = reason.toLowerCase();
+          const isFiscalDataError = motivoLower.includes('ncm') || motivoLower.includes('cfop') || motivoLower.includes('csosn');
+          
+          if (match && isFiscalDataError && sale && Array.isArray(sale.itens)) {
+            const itemNum = parseInt(match[1], 10);
+            const itemIndex = itemNum - 1;
+            
+            if (itemIndex >= 0 && itemIndex < sale.itens.length) {
+              const itemComErro = sale.itens[itemIndex];
+              const p = (itemComErro as any).product || (itemComErro as any).produto;
+              const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
+              
+              const pidNum = (itemComErro as any).productId || (itemComErro as any).produtoId;
+              const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+              const pid = String(pidNum || pidFromProduto || '');
+              
+              if (pid) {
+                const toStr = (v: any) => (v != null && v !== '' ? String(v) : '');
+                const pNcm = toStr(p?.ncm ?? (itemComErro as any)?.ncm);
+                const pCfop = toStr(p?.cfop ?? (itemComErro as any)?.cfop);
+                const pCsosn = toStr(p?.csosn ?? (itemComErro as any)?.csosn);
+                
+                // Abre o modal de correção automática para este item específico rejeitado
+                const missingProd = {
+                  _id: itemComErro._id,
+                  productId: pid,
+                  nomeProduto: itemComErro.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+                  ncm: pNcm || null,
+                  cfop: pCfop || null,
+                  csosn: pCsosn || null,
+                  avisoRejeicao: `Item rejeitado pela SEFAZ: ${reason}`
+                };
+                
+                setTimeout(() => {
+                  setNfceModalVisible(false); // Fecha o modal de status da emissão
+                  setMissingFiscalProducts([missingProd]);
+                  setFiscalModalVisible(true); // Abre a tela de correção
+                }, 1500);
+              }
+            }
+          }
         }
       }
     } catch (e: any) {
@@ -192,7 +236,7 @@ export default function SaleScreen() {
         msgErro.toLowerCase().includes('comunica');
 
       if (isComunicacao) {
-        setContingenciaSaleId(saleIdToEmit);
+        setContingenciaSaleId(parseInt(saleIdToEmit, 10));
         setContingenciaItems(itemsOverlay);
         setNfceStatus('error');
         setNfceMessage('Sem conexão com o servidor. Deseja emitir em CONTINGÊNCIA?');
@@ -234,6 +278,50 @@ export default function SaleScreen() {
       } else {
         setNfceStatus('error');
         setNfceMessage(msgErro);
+
+        // Captura e correção automática de dados fiscais rejeitados pela SEFAZ no bloco catch (durante fechamento)
+        const match = msgErro.match(/nItem:?\s*(\d+)/i);
+        const motivoLower = msgErro.toLowerCase();
+        const isFiscalDataError = motivoLower.includes('ncm') || motivoLower.includes('cfop') || motivoLower.includes('csosn');
+        
+        if (match && isFiscalDataError && sale && Array.isArray(sale.itens)) {
+          const itemNum = parseInt(match[1], 10);
+          const itemIndex = itemNum - 1;
+          
+          if (itemIndex >= 0 && itemIndex < sale.itens.length) {
+            const itemComErro = sale.itens[itemIndex];
+            const p = (itemComErro as any).product || (itemComErro as any).produto;
+            const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
+            
+            const pidNum = (itemComErro as any).productId || (itemComErro as any).produtoId;
+            const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+            const pid = String(pidNum || pidFromProduto || '');
+            
+            if (pid) {
+              const toStr = (v: any) => (v != null && v !== '' ? String(v) : '');
+              const pNcm = toStr(p?.ncm ?? (itemComErro as any)?.ncm);
+              const pCfop = toStr(p?.cfop ?? (itemComErro as any)?.cfop);
+              const pCsosn = toStr(p?.csosn ?? (itemComErro as any)?.csosn);
+              
+              // Abre o modal de correção automática para este item específico rejeitado
+              const missingProd = {
+                _id: itemComErro._id,
+                productId: pid,
+                nomeProduto: itemComErro.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+                ncm: pNcm || null,
+                cfop: pCfop || null,
+                csosn: pCsosn || null,
+                avisoRejeicao: `Item rejeitado pela SEFAZ: ${msgErro}`
+              };
+              
+              setTimeout(() => {
+                setNfceModalVisible(false); // Fecha o modal de status da emissão
+                setMissingFiscalProducts([missingProd]);
+                setFiscalModalVisible(true); // Abre a tela de correção
+              }, 1500);
+            }
+          }
+        }
       }
     }
   };

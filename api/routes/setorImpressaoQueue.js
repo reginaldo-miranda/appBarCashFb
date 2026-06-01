@@ -76,9 +76,16 @@ router.get('/:id/queue', async (req, res) => {
       LEFT JOIN Employee f ON f.id = sa.funcionarioId
       LEFT JOIN Customer c ON c.id = sa.clienteId
       LEFT JOIN Employee pb ON pb.id = si.preparedById
-      WHERE si.status = ?
-        AND sa.status = 'aberta'
-        AND ${isStrict ? `(psi.setorId = ?)` : `(
+      WHERE (si.status = ? OR (si.status = 'pago' AND ? = 'pendente'))
+        AND (sa.status = 'aberta' OR (sa.status = 'finalizada' AND sa.tipoVenda IN ('balcao', 'delivery')))
+        AND ${isStrict ? `(
+          psi.setorId = ?
+          OR (
+            psi.setorId IS NULL
+            AND sa.tipoVenda IN ('balcao', 'delivery')
+            AND sa.status IN ('aberta', 'finalizada')
+          )
+        )` : `(
           psi.setorId = ?
           OR (
             psi.setorId IS NULL
@@ -91,14 +98,19 @@ router.get('/:id/queue', async (req, res) => {
     `;
 
     const items = isStrict
-      ? await prisma.$queryRawUnsafe(sql, status, setorId)
-      : await prisma.$queryRawUnsafe(sql, status, setorId, defaultSetorId, defaultSetorId, setorId);
+      ? await prisma.$queryRawUnsafe(sql, status, status, setorId)
+      : await prisma.$queryRawUnsafe(sql, status, status, setorId, defaultSetorId, defaultSetorId, setorId);
 
     // Formatar os dados para exibição
     const formattedItems = items.map(item => {
-      const mesaLabel = (String(item.tipoVenda || '').toLowerCase() === 'mesa')
+      const tipoVendaClean = String(item.tipoVenda || '').toLowerCase();
+      const mesaLabel = (tipoVendaClean === 'mesa')
         ? (item.mesaNumero ? `Mesa ${item.mesaNumero}` : (item.mesaNome || 'Mesa'))
-        : (item.comandaNome ? `Comanda ${item.comandaNome}` : 'Comanda');
+        : (tipoVendaClean === 'balcao')
+          ? 'Balcão'
+          : (tipoVendaClean === 'delivery')
+            ? 'Delivery'
+            : (item.comandaNome ? `Comanda ${item.comandaNome}` : 'Comanda');
       const respMesa = item.mesaResponsavelNome || null;
       const respComanda = item.comandaNome || null;
       const responsavel = respMesa || respComanda || item.clienteNome || null;
@@ -171,7 +183,11 @@ router.patch('/sale/:saleId/item/:itemId/status', async (req, res) => {
       });
     }
 
-    if (existingItem.sale && existingItem.sale.status && existingItem.sale.status !== 'aberta') {
+    const saleStatus = existingItem.sale?.status;
+    const tipoVenda = String(existingItem.sale?.tipoVenda || '').toLowerCase();
+    const isFinalizadaPermitida = saleStatus === 'finalizada' && ['balcao', 'delivery'].includes(tipoVenda);
+
+    if (saleStatus && saleStatus !== 'aberta' && !isFinalizadaPermitida) {
       return res.status(400).json({
         success: false,
         message: 'Venda não está aberta para atualização de status'

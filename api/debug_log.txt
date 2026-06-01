@@ -1085,3 +1085,122 @@
 [2026-05-31T14:16:51.631Z] [EmitirNfce] Delivery Fee: null
 [2026-05-31T14:16:51.632Z] [EmitirNfce] Total Venda: 25
 [2026-05-31T14:16:51.632Z] [EmitirNfce] Subtotal: 25
+[2026-05-31T18:09:19.824Z] [Controller] emitirNfce. Body: {"saleId":"623","itemsOverlay":[{"id":755,"saleId":623,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-05-31T14:16:19.290Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"755","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":756,"saleId":623,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-05-31T14:16:26.222Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"756","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22069090","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T18:09:19.924Z] [EmitirNfce] Sale ID: 623
+[2026-05-31T18:09:19.925Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T18:09:19.925Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T18:09:19.926Z] [EmitirNfce] Total Venda: 25
+[2026-05-31T18:09:19.926Z] [EmitirNfce] Subtotal: 25
+[2026-05-31T18:12:58.870Z] [Controller] emitirNfce. Body: {"saleId":"623","itemsOverlay":[{"id":755,"saleId":623,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-05-31T14:16:19.290Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"755","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":756,"saleId":623,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-05-31T14:16:26.222Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"756","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22069090","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T18:12:58.899Z] [EmitirNfce] Sale ID: 623
+[2026-05-31T18:12:58.900Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T18:12:58.900Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T18:12:58.900Z] [EmitirNfce] Total Venda: 25
+[2026-05-31T18:12:58.900Z] [EmitirNfce] Subtotal: 25
+[2026-05-31T18:26:16.009Z] [Controller] emitirNfce. Body: {"saleId":"623","itemsOverlay":[{"id":755,"saleId":623,"productId":12,"nomeProduto":"lanche teste de ncm","quantidade":1,"precoUnitario":13,"subtotal":13,"status":"pendente","createdAt":"2026-05-31T14:16:19.290Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"755","produto":{"_id":"12","id":12,"nome":"lanche teste de ncm","preco":13,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":756,"saleId":623,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-05-31T14:16:26.222Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"756","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T18:26:16.051Z] [EmitirNfce] Sale ID: 623
+[2026-05-31T18:26:16.051Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T18:26:16.052Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T18:26:16.052Z] [EmitirNfce] Total Venda: 25
+[2026-05-31T18:26:16.052Z] [EmitirNfce] Subtotal: 25
+[2026-05-31T18:47:02.689Z] [Finalize] ID: 624 (Int: 624). FreshItens: 1, FreshCV: 1
+[2026-05-31T18:47:02.691Z] [Finalize] Recalculated Subtotal: 12
+[2026-05-31T18:47:02.731Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-05-31T18:47:02.731Z] [DEBUG] CV: 423 - dinheiro - 12
+[2026-05-31T18:47:02.732Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-31T18:47:13.434Z] [Controller] emitirNfce. Body: {"saleId":"624","itemsOverlay":[{"id":757,"saleId":624,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pago","createdAt":"2026-05-31T18:46:42.701Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"757","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22031234","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T18:47:13.449Z] [EmitirNfce] Sale ID: 624
+[2026-05-31T18:47:13.449Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T18:47:13.455Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T18:47:13.459Z] [EmitirNfce] Total Venda: 12
+[2026-05-31T18:47:13.459Z] [EmitirNfce] Subtotal: 12
+[2026-05-31T18:50:57.494Z] [Controller] emitirNfce. Body: {"saleId":"624","itemsOverlay":[{"id":757,"saleId":624,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pago","createdAt":"2026-05-31T18:46:42.701Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"757","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22031234","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T18:50:57.518Z] [EmitirNfce] Sale ID: 624
+[2026-05-31T18:50:57.519Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T18:50:57.520Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T18:50:57.520Z] [EmitirNfce] Total Venda: 12
+[2026-05-31T18:50:57.520Z] [EmitirNfce] Subtotal: 12
+[2026-05-31T19:07:18.398Z] [Controller] emitirNfce. Body: {"saleId":"624","itemsOverlay":[{"id":757,"saleId":624,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pago","createdAt":"2026-05-31T18:46:42.701Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"757","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22031234","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T19:07:18.448Z] [EmitirNfce] Sale ID: 624
+[2026-05-31T19:07:18.449Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T19:07:18.450Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T19:07:18.450Z] [EmitirNfce] Total Venda: 12
+[2026-05-31T19:07:18.450Z] [EmitirNfce] Subtotal: 12
+[2026-05-31T19:25:41.565Z] [Controller] emitirNfce. Body: {"saleId":"624","itemsOverlay":[{"id":757,"saleId":624,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pago","createdAt":"2026-05-31T18:46:42.701Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"757","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22031234","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T19:25:41.603Z] [EmitirNfce] Sale ID: 624
+[2026-05-31T19:25:41.607Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T19:25:41.608Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T19:25:41.608Z] [EmitirNfce] Total Venda: 12
+[2026-05-31T19:25:41.608Z] [EmitirNfce] Subtotal: 12
+[2026-05-31T19:26:17.382Z] [Controller] emitirNfce. Body: {"saleId":"624","itemsOverlay":[{"id":757,"saleId":624,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pago","createdAt":"2026-05-31T18:46:42.701Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"757","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22020000","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T19:26:17.394Z] [EmitirNfce] Sale ID: 624
+[2026-05-31T19:26:17.395Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T19:26:17.395Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T19:26:17.395Z] [EmitirNfce] Total Venda: 12
+[2026-05-31T19:26:17.395Z] [EmitirNfce] Subtotal: 12
+[2026-05-31T19:26:30.984Z] [Controller] emitirNfce. Body: {"saleId":"624","itemsOverlay":[{"id":757,"saleId":624,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pago","createdAt":"2026-05-31T18:46:42.701Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"757","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-05-31T19:26:30.994Z] [EmitirNfce] Sale ID: 624
+[2026-05-31T19:26:30.994Z] [EmitirNfce] Cashback Usado: 0
+[2026-05-31T19:26:30.994Z] [EmitirNfce] Delivery Fee: null
+[2026-05-31T19:26:30.994Z] [EmitirNfce] Total Venda: 12
+[2026-05-31T19:26:30.995Z] [EmitirNfce] Subtotal: 12
+[2026-05-31T19:59:33.187Z] [Finalize] ID: 625 (Int: 625). FreshItens: 1, FreshCV: 1
+[2026-05-31T19:59:33.196Z] [Finalize] Recalculated Subtotal: 13
+[2026-05-31T19:59:33.238Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-05-31T19:59:33.239Z] [DEBUG] CV: 424 - dinheiro - 13
+[2026-05-31T19:59:33.239Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-31T20:01:22.274Z] [Finalize] ID: 627 (Int: 627). FreshItens: 1, FreshCV: 1
+[2026-05-31T20:01:22.275Z] [Finalize] Recalculated Subtotal: 12
+[2026-05-31T20:01:22.373Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-05-31T20:01:22.374Z] [DEBUG] CV: 425 - dinheiro - 12
+[2026-05-31T20:01:22.374Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-05-31T20:14:41.825Z] [Finalize] ID: 628 (Int: 628). FreshItens: 1, FreshCV: 1
+[2026-05-31T20:14:41.825Z] [Finalize] Recalculated Subtotal: 24
+[2026-05-31T20:14:41.885Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-05-31T20:14:41.885Z] [DEBUG] CV: 426 - dinheiro - 24
+[2026-05-31T20:14:41.885Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T14:00:08.890Z] [Finalize] ID: 629 (Int: 629). FreshItens: 3, FreshCV: 1
+[2026-06-01T14:00:08.894Z] [Finalize] Recalculated Subtotal: 37
+[2026-06-01T14:00:08.980Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T14:00:08.981Z] [DEBUG] CV: 427 - dinheiro - 37
+[2026-06-01T14:00:08.981Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T14:04:25.937Z] [Finalize] ID: 630 (Int: 630). FreshItens: 1, FreshCV: 1
+[2026-06-01T14:04:25.938Z] [Finalize] Recalculated Subtotal: 13
+[2026-06-01T14:04:26.048Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T14:04:26.050Z] [DEBUG] CV: 428 - dinheiro - 13
+[2026-06-01T14:04:26.051Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T14:30:18.361Z] [Finalize] ID: 631 (Int: 631). FreshItens: 1, FreshCV: 1
+[2026-06-01T14:30:18.362Z] [Finalize] Recalculated Subtotal: 13
+[2026-06-01T14:30:18.396Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T14:30:18.396Z] [DEBUG] CV: 429 - dinheiro - 13
+[2026-06-01T14:30:18.396Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T14:30:43.656Z] [Finalize] ID: 632 (Int: 632). FreshItens: 1, FreshCV: 1
+[2026-06-01T14:30:43.656Z] [Finalize] Recalculated Subtotal: 12
+[2026-06-01T14:30:43.702Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T14:30:43.702Z] [DEBUG] CV: 430 - dinheiro - 12
+[2026-06-01T14:30:43.703Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T14:52:14.169Z] [Finalize] ID: 636 (Int: 636). FreshItens: 1, FreshCV: 1
+[2026-06-01T14:52:14.170Z] [Finalize] Recalculated Subtotal: 12
+[2026-06-01T14:52:14.211Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T14:52:14.211Z] [DEBUG] CV: 431 - dinheiro - 12
+[2026-06-01T14:52:14.211Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T14:53:40.814Z] [Finalize] ID: 637 (Int: 637). FreshItens: 1, FreshCV: 1
+[2026-06-01T14:53:40.815Z] [Finalize] Recalculated Subtotal: 11
+[2026-06-01T14:53:40.838Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T14:53:40.838Z] [DEBUG] CV: 432 - dinheiro - 11
+[2026-06-01T14:53:40.839Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T17:55:59.499Z] [Finalize] ID: 638 (Int: 638). FreshItens: 2, FreshCV: 1
+[2026-06-01T17:55:59.500Z] [Finalize] Recalculated Subtotal: 25
+[2026-06-01T17:55:59.539Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T17:55:59.539Z] [DEBUG] CV: 433 - dinheiro - 25
+[2026-06-01T17:55:59.540Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T18:43:46.328Z] [Finalize] ID: 643 (Int: 643). FreshItens: 1, FreshCV: 1
+[2026-06-01T18:43:46.329Z] [Finalize] Recalculated Subtotal: 23
+[2026-06-01T18:43:46.381Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T18:43:46.381Z] [DEBUG] CV: 434 - dinheiro - 23
+[2026-06-01T18:43:46.381Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-01T18:56:20.873Z] [Finalize] ID: 645 (Int: 645). FreshItens: 1, FreshCV: 1
+[2026-06-01T18:56:20.873Z] [Finalize] Recalculated Subtotal: 5
+[2026-06-01T18:56:20.971Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-01T18:56:20.988Z] [DEBUG] CV: 435 - dinheiro - 5
+[2026-06-01T18:56:20.988Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0

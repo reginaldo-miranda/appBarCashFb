@@ -91,6 +91,7 @@ export default function AdminProdutosScreen() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'nome' | 'categoria' | 'preco'>('nome');
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
+  const [filterSemSetor, setFilterSemSetor] = useState(false);
   const [dbTarget, setDbTarget] = useState('');
   const [apiHost, setApiHost] = useState('');
   const [setores, setSetores] = useState<SetorImpressao[]>([]);
@@ -105,18 +106,25 @@ export default function AdminProdutosScreen() {
   const statusFilters = [
     { key: '', label: 'Todos' },
     { key: 'ativo', label: 'Ativos' },
-    { key: 'inativo', label: 'Inativos' }
+    { key: 'inativo', label: 'Inativos' },
+    { key: 'sem-setor', label: 'Sem Setor' }
   ];
 
   const handleFilterChange = (filterKey: string) => {
     if (statusFilters.some(filter => filter.key === filterKey)) {
-      // É um filtro de status
+      // É um filtro de status ou setor
       if (filterKey === '') {
         setFilterActive(null);
+        setFilterSemSetor(false);
       } else if (filterKey === 'ativo') {
         setFilterActive(true);
+        setFilterSemSetor(false);
       } else if (filterKey === 'inativo') {
         setFilterActive(false);
+        setFilterSemSetor(false);
+      } else if (filterKey === 'sem-setor') {
+        setFilterActive(null);
+        setFilterSemSetor(true);
       }
     } else {
       // É um filtro de categoria
@@ -366,9 +374,14 @@ export default function AdminProdutosScreen() {
       const nome = String(product?.nome || '').toLowerCase();
       const categoria = String(product?.categoria || '').toLowerCase();
       const descricao = String(product?.descricao || '').toLowerCase();
+      
+      const sids = (product as any)?.setoresImpressaoIds || [];
+      const matchesSemSetor = !filterSemSetor || sids.length === 0;
+
       return (nome.includes(q) || categoria.includes(q) || descricao.includes(q)) &&
              (!selectedCategory || product.categoria === selectedCategory) &&
-             (filterActive === null || product.ativo === filterActive);
+             (filterActive === null || product.ativo === filterActive) &&
+             matchesSemSetor;
     });
 
     filtered.sort((a, b) => {
@@ -419,10 +432,19 @@ export default function AdminProdutosScreen() {
       </View>
       
       <View style={styles.statusContainer}>
-        <View style={[styles.statusBadge, { backgroundColor: item.ativo ? '#E8F5E8' : '#FFEBEE' }]}>
-          <Text style={[styles.statusText, { color: item.ativo ? '#4CAF50' : '#f44336' }]}>
-            {item.ativo ? 'Ativo' : 'Inativo'}
-          </Text>
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+          <View style={[styles.statusBadge, { backgroundColor: item.ativo ? '#E8F5E8' : '#FFEBEE' }]}>
+            <Text style={[styles.statusText, { color: item.ativo ? '#4CAF50' : '#f44336' }]}>
+              {item.ativo ? 'Ativo' : 'Inativo'}
+            </Text>
+          </View>
+          {((item as any)?.setoresImpressaoIds || []).length === 0 && (
+            <View style={[styles.statusBadge, { backgroundColor: '#FFF3E0' }]}>
+              <Text style={[styles.statusText, { color: '#E65100', fontWeight: 'bold' }]}>
+                ⚠️ Sem Setor
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>

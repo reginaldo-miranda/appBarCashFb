@@ -397,8 +397,8 @@ export const customerService = {
 };
 
 export const productService = {
-  list: () => api.get(`/product/list?t=${Date.now()}`),
-  getAll: () => api.get(`/product/list?t=${Date.now()}`),
+  list: (params) => api.get(`/product/list?t=${Date.now()}`, { params }),
+  getAll: (params) => api.get(`/product/list?t=${Date.now()}`, { params }),
   getById: (id) => api.get(`/product/${id}`),
   create: (data) => api.post('/product/create', data),
   createBulk: (products) => api.post('/product/bulk-create', { products }),

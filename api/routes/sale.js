@@ -532,7 +532,7 @@ router.get('/:id', async (req, res) => {
     const { produtoId, quantidade } = req.body;
     const variacao = req.body?.variacao || null;
     const origemRaw = (req.body?.origem || req.headers['x-client-mode'] || '').toString().toLowerCase();
-    const origem = origemRaw === 'tablet' ? 'tablet' : 'default';
+    let origem = origemRaw === 'tablet' ? 'tablet' : 'default';
     console.log('[SALE] POST /:id/item', { id, produtoId, quantidade });
 
     if (!Number.isInteger(id) || id <= 0) {
@@ -553,10 +553,23 @@ router.get('/:id', async (req, res) => {
     }
     const produto = await prisma.product.findUnique({ 
       where: { id: prodId },
-      include: { tamanhos: true } 
+      include: { 
+        tamanhos: true,
+        setoresImpressao: {
+          include: {
+            setor: true
+          }
+        }
+      } 
     });
     if (!produto) {
       return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    // Forçar origem 'tablet' para produtos com setores de impressão ativos cadastrados
+    const temSetorAtivo = Array.isArray(produto.setoresImpressao) && produto.setoresImpressao.some(psi => psi.setor && psi.setor.ativo);
+    if (temSetorAtivo) {
+      origem = 'tablet';
     }
 
     // Lógica para tamanho (Size)
@@ -601,6 +614,7 @@ router.get('/:id', async (req, res) => {
         data: {
           quantidade: novaQtd,
           subtotal: String((Number(novaQtd) * Number(itemExistente.precoUnitario ?? produto.precoVenda)).toFixed(2)),
+          origem: origem === 'tablet' ? 'tablet' : itemExistente.origem,
           createdAt: new Date() // Atualiza data para resetar tempo de ociosidade
         }
       });
@@ -763,13 +777,29 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
     const id = Number(req.params.id);
     const prodId = Number(req.params.produtoId);
     const origemRaw = (req.body?.origem || req.headers['x-client-mode'] || '').toString().toLowerCase();
-    const origem = origemRaw === 'tablet' ? 'tablet' : 'default';
+    let origem = origemRaw === 'tablet' ? 'tablet' : 'default';
     console.log('[SALE] DELETE /:id/item/:produtoId', { id, produtoId: prodId, origem });
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ error: 'Venda inválida' });
     }
     if (!Number.isInteger(prodId) || prodId <= 0) {
       return res.status(400).json({ error: 'Produto inválido' });
+    }
+
+    // Forçar origem 'tablet' se o produto possuir setores de impressão ativos cadastrados
+    const produto = await prisma.product.findUnique({
+      where: { id: prodId },
+      include: {
+        setoresImpressao: {
+          include: {
+            setor: true
+          }
+        }
+      }
+    });
+    const temSetorAtivo = produto?.setoresImpressao?.some(psi => psi.setor && psi.setor.ativo) || false;
+    if (temSetorAtivo) {
+      origem = 'tablet';
     }
 
     const venda = await prisma.sale.findUnique({ where: { id }, include: { itens: true } });
@@ -819,7 +849,7 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
     const prodId = Number(req.params.produtoId);
     const { quantidade, itemId } = req.body;
     const origemRaw = (req.body?.origem || req.headers['x-client-mode'] || '').toString().toLowerCase();
-    const origem = origemRaw === 'tablet' ? 'tablet' : 'default';
+    let origem = origemRaw === 'tablet' ? 'tablet' : 'default';
     console.log('[SALE] PUT /:id/item/:produtoId', { id, produtoId: prodId, quantidade, origem, itemId });
 
     if (!Number.isInteger(id) || id <= 0) {
@@ -831,6 +861,22 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
     const qnt = Number(quantidade);
     if (!Number.isInteger(qnt) || qnt <= 0) {
       return res.status(400).json({ error: 'Quantidade deve ser maior que zero' });
+    }
+
+    // Forçar origem 'tablet' se o produto possuir setores de impressão ativos cadastrados
+    const produto = await prisma.product.findUnique({
+      where: { id: prodId },
+      include: {
+        setoresImpressao: {
+          include: {
+            setor: true
+          }
+        }
+      }
+    });
+    const temSetorAtivo = produto?.setoresImpressao?.some(psi => psi.setor && psi.setor.ativo) || false;
+    if (temSetorAtivo) {
+      origem = 'tablet';
     }
 
     const venda = await prisma.sale.findUnique({ where: { id }, include: { itens: true } });

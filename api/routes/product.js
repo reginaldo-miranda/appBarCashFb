@@ -35,6 +35,9 @@ const mapProduct = (p) => {
       ...t,
       preco: Number(t.preco)
     })) : [],
+    setoresImpressaoIds: Array.isArray(p.setoresImpressao)
+      ? p.setoresImpressao.map(psi => psi.setorId)
+      : (Array.isArray(p.setoresImpressaoIds) ? p.setoresImpressaoIds : []),
     
     // Campos Fiscais
     ncm: p.ncm || '',
@@ -53,7 +56,7 @@ router.get("/", async (req, res) => {
     const prisma = getActivePrisma();
     const produtos = await prisma.product.findMany({ 
       where: { ativo: true }, 
-      include: { tamanhos: true },
+      include: { tamanhos: true, setoresImpressao: true },
       orderBy: { dataInclusao: 'desc' } 
     });
     res.json(produtos.map(mapProduct));
@@ -364,7 +367,7 @@ router.get("/list", async (req, res) => {
   console.log('[DEBUG-PROD] GET /list called');
   try {
     const prisma = getActivePrisma();
-    const { categoriaId, categoria, tipoId, tipo, groupId, grupo, unidade, setorId, setorNome } = req.query;
+    const { categoriaId, categoria, tipoId, tipo, groupId, grupo, unidade, setorId, setorNome, semSetor } = req.query;
     console.log('[DEBUG-PROD] Query params:', req.query);
     const where = { ativo: true };
     const catId = Number(categoriaId);
@@ -377,6 +380,21 @@ router.get("/list", async (req, res) => {
     if (Number.isInteger(grpId) && grpId > 0) where.groupId = grpId;
     if (grupo) where.grupo = String(grupo);
     if (unidade) where.unidade = String(unidade);
+
+    // Tratamento para listar produtos sem setor de impressão cadastrado
+    const isSemSetor = semSetor === 'true' || semSetor === '1';
+    if (isSemSetor) {
+      try {
+        const rows = await prisma.$queryRawUnsafe("SELECT DISTINCT productId AS id FROM `ProductSetorImpressao`");
+        const idsComSetor = Array.isArray(rows) ? rows.map((r) => Number(r.id)).filter((n) => Number.isInteger(n) && n > 0) : [];
+        if (idsComSetor.length > 0) {
+          where.id = { notIn: idsComSetor };
+        }
+      } catch (e) {
+        console.error('Erro ao buscar produtos com setor de impressão:', e);
+      }
+    }
+
     let products = [];
     let idsFilter = undefined;
     const sId = Number(setorId);
@@ -395,17 +413,17 @@ router.get("/list", async (req, res) => {
       } catch {}
     }
     try {
-      const w = idsFilter ? { ...where, id: { in: idsFilter } } : where;
+      const w = idsFilter ? { ...where, id: { ...where.id, in: idsFilter } } : where;
       products = await prisma.product.findMany({ 
         where: w, 
-        include: { tamanhos: true },
+        include: { tamanhos: true, setoresImpressao: true },
         orderBy: { dataInclusao: 'desc' } 
       });
     } catch (e) {
-      const w = idsFilter ? { ...where, id: { in: idsFilter } } : where;
+      const w = idsFilter ? { ...where, id: { ...where.id, in: idsFilter } } : where;
       products = await prisma.product.findMany({ 
         where: w, 
-        include: { tamanhos: true },
+        include: { tamanhos: true, setoresImpressao: true },
         orderBy: { id: 'desc' } 
       });
     }

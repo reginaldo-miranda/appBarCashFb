@@ -20,6 +20,9 @@ import SearchAndFilter from '../../src/components/SearchAndFilter';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { SafeIcon } from '../../components/SafeIcon';
 import { useAuth } from '../../src/contexts/AuthContext';
+import NfceService from '../../src/services/NfceService';
+import FiscalDataValidationModal from '../../src/components/FiscalDataValidationModal';
+import ImpressaoNfceModal from '../../src/components/ImpressaoNfceModal';
 
 interface NfceData {
   id?: number;
@@ -85,6 +88,22 @@ export default function HistoricoScreen() {
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
 
+  // ── Estados NFC-e Retroativa ───────────────────────────────────────────────
+  const [fiscalModalVisible, setFiscalModalVisible] = useState(false);
+  const [missingFiscalProducts, setMissingFiscalProducts] = useState<any[]>([]);
+  const [pendingNfceSaleId, setPendingNfceSaleId] = useState<string | null>(null);
+
+  // Estados ImpressaoNfceModal
+  const [nfceModalVisible, setNfceModalVisible] = useState(false);
+  const [nfceStatus, setNfceStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [nfceMessage, setNfceMessage] = useState('');
+  const [nfceData, setNfceData] = useState<any>(null);
+
+  // Estados Contingência
+  const [contingenciaSaleId, setContingenciaSaleId] = useState<string | null>(null);
+  const [contingenciaItems, setContingenciaItems] = useState<any[]>([]);
+  const [contingenciaModoAtivo, setContingenciaModoAtivo] = useState(false);
+
   // ── Carregamento ─────────────────────────────────────────────────────────
 
   const loadSales = async () => {
@@ -110,6 +129,9 @@ export default function HistoricoScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadSales();
+      NfceService.verificarStatusContingencia()
+        .then(s => setContingenciaModoAtivo(s.modoAtivo))
+        .catch(() => {});
     }, [])
   );
 
@@ -266,6 +288,329 @@ export default function HistoricoScreen() {
       else Alert.alert('Erro', msg);
     } finally {
       setReprinting(false);
+    }
+  };
+
+  // ── Emissão Retroativa NFC-e ───────────────────────────────────────────────
+
+  const transmitRetroNfce = async (saleIdToEmit: string, itemsOverlay?: any[], fullSale?: Sale) => {
+    console.log('[Retro NFC-e] transmitRetroNfce. ID:', saleIdToEmit);
+    setNfceModalVisible(true);
+    setNfceStatus('loading');
+
+    // Se modo contingência ativo, emitir diretamente em contingência
+    if (contingenciaModoAtivo) {
+      setNfceMessage('Emitindo em CONTINGÊNCIA (SEFAZ indisponível)...');
+      try {
+        const res = await NfceService.emitirContingencia(saleIdToEmit, itemsOverlay);
+        if (res.ok || res.status === 'CONTINGENCIA') {
+          setNfceStatus('success');
+          setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+          setNfceData({ ...res, isContingencia: true });
+          
+          // Recarrega lista e atualiza selectedSale
+          await loadSales();
+          try {
+            const freshSaleRes = await saleService.getById(saleIdToEmit);
+            if (freshSaleRes.data) {
+              setSelectedSale(freshSaleRes.data);
+            }
+          } catch (e) {
+            console.error('[Retro NFC-e] Erro ao recarregar selectedSale:', e);
+          }
+        } else {
+          setNfceStatus('error');
+          setNfceMessage(res.error || res.message || 'Erro ao emitir contingência.');
+        }
+      } catch (e: any) {
+        setNfceStatus('error');
+        setNfceMessage(typeof e === 'string' ? e : (e.message || 'Falha na emissão em contingência.'));
+      }
+      return;
+    }
+
+    // Fluxo normal
+    setNfceMessage('Transmitindo para SEFAZ...');
+    try {
+      const res = await NfceService.emitir(saleIdToEmit, itemsOverlay);
+      console.log('[Retro NFC-e] Resposta:', res);
+
+      const statusRaw = (res.status || '').toUpperCase();
+      const isAuth = statusRaw === 'AUTORIZADO' || statusRaw === 'AUTORIZADA';
+
+      if (res.success || isAuth) {
+        setNfceStatus('success');
+        setNfceMessage('NFC-e emitida com sucesso!');
+        setNfceData(res);
+        
+        // Recarrega lista e atualiza selectedSale
+        await loadSales();
+        try {
+          const freshSaleRes = await saleService.getById(saleIdToEmit);
+          if (freshSaleRes.data) {
+            setSelectedSale(freshSaleRes.data);
+          }
+        } catch (e) {
+          console.error('[Retro NFC-e] Erro ao recarregar selectedSale:', e);
+        }
+      } else {
+        const isComunicacaoFalha = (res.motivo || res.message || '').toLowerCase().includes('comunica') ||
+          (res.motivo || res.message || '').toLowerCase().includes('enotfound') ||
+          (res.status || '').toUpperCase() === 'ERRO_COMUNICACAO' ||
+          (res.status || '').toUpperCase() === 'ERRO';
+
+        if (isComunicacaoFalha) {
+          setContingenciaSaleId(saleIdToEmit);
+          setContingenciaItems(itemsOverlay || []);
+          setNfceStatus('error');
+          setNfceMessage('SEFAZ indisponível. Deseja emitir em CONTINGÊNCIA?');
+          
+          if (Platform.OS !== 'web') {
+            Alert.alert(
+              '⚠️ SEFAZ Indisponível',
+              'Não foi possível conectar à SEFAZ. Deseja emitir o cupom em MODO CONTINGÊNCIA?\n\nO cupom será gerado agora e transmitido automaticamente quando a conexão for restabelecida.',
+              [
+                { text: 'Não', style: 'cancel', onPress: () => {
+                  setNfceStatus('error');
+                  setNfceMessage(res.motivo || res.message || 'Falha de comunicação com a SEFAZ.');
+                }},
+                { text: 'Emitir em Contingência', onPress: async () => {
+                  setNfceStatus('loading');
+                  setNfceMessage('Emitindo em CONTINGÊNCIA...');
+                  try {
+                    if (!contingenciaModoAtivo) {
+                      await NfceService.ativarContingencia('SEFAZ indisponível no momento da emissao');
+                      setContingenciaModoAtivo(true);
+                    }
+                    const contRes = await NfceService.emitirContingencia(saleIdToEmit, itemsOverlay);
+                    if (contRes.ok || contRes.status === 'CONTINGENCIA') {
+                      setNfceStatus('success');
+                      setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+                      setNfceData({ ...contRes, isContingencia: true });
+                      await loadSales();
+                      try {
+                        const freshSaleRes = await saleService.getById(saleIdToEmit);
+                        if (freshSaleRes.data) setSelectedSale(freshSaleRes.data);
+                      } catch {}
+                    } else {
+                      setNfceStatus('error');
+                      setNfceMessage(contRes.error || 'Erro ao emitir em contingência.');
+                    }
+                  } catch (contErr: any) {
+                    setNfceStatus('error');
+                    setNfceMessage(typeof contErr === 'string' ? contErr : (contErr.message || 'Falha na contingência.'));
+                  }
+                }},
+              ]
+            );
+          }
+        } else {
+          setNfceStatus('error');
+          const motivoStr = res.motivo || res.message || res.error || 'Erro: Nota Rejeitada pela SEFAZ.';
+          setNfceMessage(motivoStr);
+          
+          // Captura e correção automática de dados fiscais rejeitados pela SEFAZ
+          const match = motivoStr.match(/nItem:?\s*(\d+)/i);
+          const motivoLower = motivoStr.toLowerCase();
+          const isFiscalDataError = motivoLower.includes('ncm') || motivoLower.includes('cfop') || motivoLower.includes('csosn');
+          
+          if (match && isFiscalDataError && fullSale && Array.isArray(fullSale.itens)) {
+            const itemNum = parseInt(match[1], 10);
+            const itemIndex = itemNum - 1;
+            
+            if (itemIndex >= 0 && itemIndex < fullSale.itens.length) {
+              const itemComErro = fullSale.itens[itemIndex];
+              const p = (itemComErro as any).product || (itemComErro as any).produto;
+              const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
+              
+              const pidNum = (itemComErro as any).productId || (itemComErro as any).produtoId;
+              const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+              const pid = String(pidNum || pidFromProduto || '');
+              
+              if (pid) {
+                const toStr = (v: any) => (v != null && v !== '' ? String(v) : '');
+                const pNcm = toStr(p?.ncm ?? (itemComErro as any)?.ncm);
+                const pCfop = toStr(p?.cfop ?? (itemComErro as any)?.cfop);
+                const pCsosn = toStr(p?.csosn ?? (itemComErro as any)?.csosn);
+                
+                // Abre o modal de correção automática para este item específico rejeitado
+                const missingProd = {
+                  _id: itemComErro._id,
+                  productId: pid,
+                  nomeProduto: itemComErro.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+                  ncm: pNcm || null,
+                  cfop: pCfop || null,
+                  csosn: pCsosn || null,
+                  avisoRejeicao: `Item rejeitado pela SEFAZ: ${motivoStr}`
+                };
+                
+                setTimeout(() => {
+                  setNfceModalVisible(false); // Fecha o modal de status da emissão
+                  setMissingFiscalProducts([missingProd]);
+                  setPendingNfceSaleId(saleIdToEmit);
+                  setFiscalModalVisible(true); // Abre a tela de correção
+                }, 1500);
+              }
+            }
+          }
+        }
+      }
+    } catch (e: any) {
+      console.error('Erro Retro NFC-e:', e);
+      const msgErro = typeof e === 'string' ? e : (e.message || 'Falha de comunicação.');
+      const isComunicacao = msgErro.toLowerCase().includes('network') ||
+        msgErro.toLowerCase().includes('timeout') ||
+        msgErro.toLowerCase().includes('econnrefused') ||
+        msgErro.toLowerCase().includes('enotfound') ||
+        msgErro.toLowerCase().includes('comunica');
+
+      if (isComunicacao) {
+        setContingenciaSaleId(saleIdToEmit);
+        setContingenciaItems(itemsOverlay || []);
+        setNfceStatus('error');
+        setNfceMessage('Sem conexão com o servidor. Deseja emitir em CONTINGÊNCIA?');
+        
+        if (Platform.OS !== 'web') {
+          Alert.alert(
+            '⚠️ Sem Conexão',
+            'Não foi possível conectar ao servidor/SEFAZ.\nDeseja emitir o cupom em MODO CONTINGÊNCIA?\n\nO cupom será transmitido automaticamente quando a conexão voltar.',
+            [
+              { text: 'Não', style: 'cancel', onPress: () => {
+                setNfceStatus('error');
+                setNfceMessage(msgErro);
+              }},
+              { text: 'Emitir em Contingência', onPress: async () => {
+                setNfceStatus('loading');
+                setNfceMessage('Emitindo em CONTINGÊNCIA...');
+                try {
+                  if (!contingenciaModoAtivo) {
+                    await NfceService.ativarContingencia('Falha de conexao com a SEFAZ');
+                    setContingenciaModoAtivo(true);
+                  }
+                  const contRes = await NfceService.emitirContingencia(saleIdToEmit, itemsOverlay);
+                  if (contRes.ok || contRes.status === 'CONTINGENCIA') {
+                    setNfceStatus('success');
+                    setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+                    setNfceData({ ...contRes, isContingencia: true });
+                    await loadSales();
+                    try {
+                      const freshSaleRes = await saleService.getById(saleIdToEmit);
+                      if (freshSaleRes.data) setSelectedSale(freshSaleRes.data);
+                    } catch {}
+                  } else {
+                    setNfceStatus('error');
+                    setNfceMessage(contRes.error || 'Erro ao emitir em contingência.');
+                  }
+                } catch (contErr: any) {
+                  setNfceStatus('error');
+                  setNfceMessage(typeof contErr === 'string' ? contErr : (contErr.message || 'Falha na contingência.'));
+                }
+              }},
+            ]
+          );
+        }
+      } else {
+        setNfceStatus('error');
+        setNfceMessage(msgErro);
+
+        // Captura e correção automática de dados fiscais rejeitados pela SEFAZ no bloco catch
+        const match = msgErro.match(/nItem:?\s*(\d+)/i);
+        const motivoLower = msgErro.toLowerCase();
+        const isFiscalDataError = motivoLower.includes('ncm') || motivoLower.includes('cfop') || motivoLower.includes('csosn');
+        
+        if (match && isFiscalDataError && fullSale && Array.isArray(fullSale.itens)) {
+          const itemNum = parseInt(match[1], 10);
+          const itemIndex = itemNum - 1;
+          
+          if (itemIndex >= 0 && itemIndex < fullSale.itens.length) {
+            const itemComErro = fullSale.itens[itemIndex];
+            const p = (itemComErro as any).product || (itemComErro as any).produto;
+            const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
+            
+            const pidNum = (itemComErro as any).productId || (itemComErro as any).produtoId;
+            const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+            const pid = String(pidNum || pidFromProduto || '');
+            
+            if (pid) {
+              const toStr = (v: any) => (v != null && v !== '' ? String(v) : '');
+              const pNcm = toStr(p?.ncm ?? (itemComErro as any)?.ncm);
+              const pCfop = toStr(p?.cfop ?? (itemComErro as any)?.cfop);
+              const pCsosn = toStr(p?.csosn ?? (itemComErro as any)?.csosn);
+              
+              // Abre o modal de correção automática para este item específico rejeitado
+              const missingProd = {
+                _id: itemComErro._id,
+                productId: pid,
+                nomeProduto: itemComErro.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+                ncm: pNcm || null,
+                cfop: pCfop || null,
+                csosn: pCsosn || null,
+                avisoRejeicao: `Item rejeitado pela SEFAZ: ${msgErro}`
+              };
+              
+              setTimeout(() => {
+                setNfceModalVisible(false); // Fecha o modal de status da emissão
+                setMissingFiscalProducts([missingProd]);
+                setPendingNfceSaleId(saleIdToEmit);
+                setFiscalModalVisible(true); // Abre a tela de correção
+              }, 1500);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const handleEmitRetroNfce = async (sale: Sale) => {
+    if (!sale) return;
+    const saleIdStr = String(sale._id);
+
+    console.log('[Retro NFC-e] Varredura fiscal para venda:', saleIdStr);
+    const missingProducts: any[] = [];
+    
+    if (sale.itens && Array.isArray(sale.itens)) {
+      sale.itens.forEach(item => {
+        const p = (item as any).product || (item as any).produto;
+        const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
+
+        const pidNum = (item as any).productId || (item as any).produtoId;
+        const pidFromProduto = isPopulated ? (p._id || p.id) : undefined;
+        const pid = String(pidNum || pidFromProduto || '');
+
+        if (!pid) return;
+
+        const toStr = (v: any) => (v != null && v !== '' ? String(v) : '');
+        const pNcm = toStr(p?.ncm ?? (item as any)?.ncm);
+        const pCfop = toStr(p?.cfop ?? (item as any)?.cfop);
+        const pCsosn = toStr(p?.csosn ?? (item as any)?.csosn);
+
+        const isInvalidNcm = !pNcm || pNcm.replace(/\D/g, '').length !== 8 || pNcm === '00000000' || pNcm === '99998888';
+        const isInvalidCfop = !pCfop || pCfop.replace(/\D/g, '').length !== 4;
+        const isInvalidCsosn = !pCsosn || pCsosn.replace(/\D/g, '').length < 3;
+
+        if (!isPopulated || isInvalidNcm || isInvalidCfop || isInvalidCsosn) {
+          if (!missingProducts.some(m => m.productId === pid)) {
+            missingProducts.push({
+              _id: item._id,
+              productId: pid,
+              nomeProduto: item.nomeProduto || (isPopulated ? p.nome : 'Produto desconhecido'),
+              ncm: pNcm || null,
+              cfop: pCfop || null,
+              csosn: pCsosn || null
+            });
+          }
+        }
+      });
+    }
+
+    if (missingProducts.length > 0) {
+      console.log('[Retro NFC-e] Produtos com dados ausentes encontrados:', missingProducts.length);
+      setMissingFiscalProducts(missingProducts);
+      setPendingNfceSaleId(saleIdStr);
+      setFiscalModalVisible(true);
+    } else {
+      console.log('[Retro NFC-e] Todos os produtos estão corretos. Transmitindo...');
+      transmitRetroNfce(saleIdStr, sale.itens, sale);
     }
   };
 
@@ -587,6 +932,24 @@ export default function HistoricoScreen() {
                 </TouchableOpacity>
               )}
 
+              {/* Botão para Gerar Cupom Fiscal (NFC-e) retroativo */}
+              {selectedSale.status === 'finalizada' && !isFiscal(selectedSale) && (
+                <TouchableOpacity
+                  style={[
+                    styles.reprintMainBtn,
+                    { backgroundColor: '#FF9800', marginTop: 8 },
+                    reprinting && styles.reprintMainDisabled,
+                  ]}
+                  onPress={() => handleEmitRetroNfce(selectedSale)}
+                  disabled={reprinting}
+                >
+                  <Ionicons name="receipt-outline" size={22} color="#fff" />
+                  <Text style={styles.reprintMainText}>
+                    🧾 Gerar Cupom Fiscal (NFC-e)
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {selectedSale.status === 'cancelada' && (
                 <View style={styles.canceledWarning}>
                   <Ionicons name="warning" size={18} color="#F44336" />
@@ -601,6 +964,111 @@ export default function HistoricoScreen() {
           </View>
         )}
       </Modal>
+
+      {/* ── Modais Fiscais de Emissão Retroativa ── */}
+      <FiscalDataValidationModal
+        visible={fiscalModalVisible}
+        products={missingFiscalProducts}
+        onCancel={() => {
+          setFiscalModalVisible(false);
+          setMissingFiscalProducts([]);
+          setPendingNfceSaleId(null);
+        }}
+        onSuccess={async (updatedFiscalData) => {
+          setFiscalModalVisible(false);
+          setMissingFiscalProducts([]);
+          const saleId = pendingNfceSaleId;
+          setPendingNfceSaleId(null);
+          
+          if (saleId && updatedFiscalData) {
+            // Força o salvamento na API dos dados corrigidos
+            try {
+              const promises = Object.keys(updatedFiscalData).map(pid => {
+                const payload = updatedFiscalData[pid];
+                return api.put(`/product/update/${pid}`, payload);
+              });
+              await Promise.allSettled(promises);
+              await new Promise(r => setTimeout(r, 600)); // Pequena pausa para sincronia do banco
+            } catch (e) {
+              console.error('[Retro NFC-e] Erro ao atualizar dados fiscais dos produtos:', e);
+            }
+            
+            // Continua com a transmissão atualizando localmente a venda selecionada para que o XML seja gerado com os novos NCMs
+            if (selectedSale) {
+              const updatedItens = selectedSale.itens.map(item => {
+                const p = (item as any).product || (item as any).produto;
+                const isPopulated = p && typeof p === 'object' && !Array.isArray(p);
+                const pid = String((item as any).productId || (item as any).produtoId || (isPopulated ? (p._id || p.id) : '') || item._id || (item as any).id);
+                
+                const fiscalInfo = updatedFiscalData[pid];
+                if (fiscalInfo) {
+                  return {
+                    ...item,
+                    produto: isPopulated ? {
+                      ...p,
+                      ncm: fiscalInfo.ncm,
+                      cfop: fiscalInfo.cfop,
+                      csosn: fiscalInfo.csosn
+                    } : {
+                      _id: pid,
+                      ncm: fiscalInfo.ncm,
+                      cfop: fiscalInfo.cfop,
+                      csosn: fiscalInfo.csosn
+                    }
+                  };
+                }
+                return item;
+              });
+              
+              const updatedSale = { ...selectedSale, itens: updatedItens };
+              setSelectedSale(updatedSale);
+              transmitRetroNfce(saleId, updatedItens, updatedSale);
+            } else {
+              transmitRetroNfce(saleId, undefined, undefined);
+            }
+          }
+        }}
+      />
+
+      <ImpressaoNfceModal
+        visible={nfceModalVisible}
+        status={nfceStatus}
+        message={nfceMessage}
+        nfceData={nfceData}
+        onContingenciaPress={contingenciaSaleId ? async () => {
+          setNfceStatus('loading');
+          setNfceMessage('Emitindo em CONTINGÊNCIA...');
+          try {
+            if (!contingenciaModoAtivo) {
+              await NfceService.ativarContingencia('Falha de conexao com a SEFAZ');
+              setContingenciaModoAtivo(true);
+            }
+            const contRes = await NfceService.emitirContingencia(contingenciaSaleId, contingenciaItems);
+            if (contRes.ok || contRes.status === 'CONTINGENCIA') {
+              setNfceStatus('success');
+              setNfceMessage('NFC-e emitida em CONTINGÊNCIA!\nSerá transmitida automaticamente quando a SEFAZ voltar.');
+              setNfceData({ ...contRes, isContingencia: true });
+              await loadSales();
+              if (selectedSale) {
+                const freshSaleRes = await saleService.getById(selectedSale._id);
+                if (freshSaleRes.data) setSelectedSale(freshSaleRes.data);
+              }
+            } else {
+              setNfceStatus('error');
+              setNfceMessage(contRes.error || 'Erro ao emitir em contingência.');
+            }
+            setContingenciaSaleId(null);
+          } catch (contErr: any) {
+            setNfceStatus('error');
+            setNfceMessage(typeof contErr === 'string' ? contErr : (contErr.message || 'Falha na contingência.'));
+            setContingenciaSaleId(null);
+          }
+        } : undefined}
+        onClose={() => {
+          setNfceModalVisible(false);
+          setContingenciaSaleId(null);
+        }}
+      />
     </View>
   );
 }

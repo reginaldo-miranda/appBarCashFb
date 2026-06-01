@@ -41,12 +41,13 @@ export const emitirNfce = async (req, res) => {
         if (itemsOverlay && Array.isArray(itemsOverlay) && itemsOverlay.length > 0) {
              sale.itens = sale.itens.map(dbItem => {
                  const overlayItem = itemsOverlay.find(oi => String(oi._id || oi.id) === String(dbItem.id));
-                 if (overlayItem && overlayItem.product) {
+                 const overlayProduct = overlayItem ? (overlayItem.product || overlayItem.produto) : null;
+                 if (overlayItem && overlayProduct) {
                       dbItem.product = {
                           ...(dbItem.product || {}),
-                          ncm: overlayItem.product.ncm || (dbItem.product?.ncm || ''),
-                          cfop: overlayItem.product.cfop || (dbItem.product?.cfop || ''),
-                          csosn: overlayItem.product.csosn || (dbItem.product?.csosn || '')
+                          ncm: overlayProduct.ncm || (dbItem.product?.ncm || ''),
+                          cfop: overlayProduct.cfop || (dbItem.product?.cfop || ''),
+                          csosn: overlayProduct.csosn || (dbItem.product?.csosn || '')
                       };
                  }
                  return dbItem;
@@ -726,12 +727,13 @@ export const emitirNfceContingencia = async (req, res) => {
         if (itemsOverlay && Array.isArray(itemsOverlay) && itemsOverlay.length > 0) {
             sale.itens = sale.itens.map(dbItem => {
                 const overlayItem = itemsOverlay.find(oi => String(oi._id || oi.id) === String(dbItem.id));
-                if (overlayItem && overlayItem.product) {
+                const overlayProduct = overlayItem ? (overlayItem.product || overlayItem.produto) : null;
+                if (overlayItem && overlayProduct) {
                     dbItem.product = {
                         ...(dbItem.product || {}),
-                        ncm: overlayItem.product.ncm || (dbItem.product?.ncm || ''),
-                        cfop: overlayItem.product.cfop || (dbItem.product?.cfop || ''),
-                        csosn: overlayItem.product.csosn || (dbItem.product?.csosn || '')
+                        ncm: overlayProduct.ncm || (dbItem.product?.ncm || ''),
+                        cfop: overlayProduct.cfop || (dbItem.product?.cfop || ''),
+                        csosn: overlayProduct.csosn || (dbItem.product?.csosn || '')
                     };
                 }
                 return dbItem;
