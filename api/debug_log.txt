@@ -1204,3 +1204,23 @@
 [2026-06-01T18:56:20.971Z] [DEBUG] Finalize - FreshCV Count: 1
 [2026-06-01T18:56:20.988Z] [DEBUG] CV: 435 - dinheiro - 5
 [2026-06-01T18:56:20.988Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-02T12:57:45.465Z] [Finalize] ID: 37 (Int: 37). FreshItens: 3, FreshCV: 0
+[2026-06-02T12:57:45.467Z] [Finalize] Recalculated Subtotal: 125
+[2026-06-02T12:57:45.502Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-06-02T12:57:45.503Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-02T12:59:17.875Z] [Controller] emitirNfce. Body: {"saleId":"37","itemsOverlay":[{"id":42,"saleId":37,"productId":3,"nomeProduto":"bauru simples","quantidade":2,"precoUnitario":18,"subtotal":36,"status":"pendente","createdAt":"2026-06-02T12:40:30.297Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"42","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":43,"saleId":37,"productId":1,"nomeProduto":"pizza calabresa","quantidade":1,"precoUnitario":65,"subtotal":65,"status":"pendente","createdAt":"2026-06-02T12:36:51.969Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"43","produto":{"_id":"1","id":1,"nome":"pizza calabresa","preco":65,"ncm":"19059090","cfop":"5102","csosn":"102"}},{"id":44,"saleId":37,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":2,"precoUnitario":12,"subtotal":24,"status":"pendente","createdAt":"2026-06-02T12:40:17.018Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"44","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-06-02T12:59:17.886Z] [EmitirNfce] Sale ID: 37
+[2026-06-02T12:59:17.888Z] [EmitirNfce] Cashback Usado: 0
+[2026-06-02T12:59:17.889Z] [EmitirNfce] Delivery Fee: null
+[2026-06-02T12:59:17.890Z] [EmitirNfce] Total Venda: 125
+[2026-06-02T12:59:17.890Z] [EmitirNfce] Subtotal: 125
+[2026-06-02T16:26:17.441Z] [Finalize] ID: 38 (Int: 38). FreshItens: 1, FreshCV: 1
+[2026-06-02T16:26:17.581Z] [Finalize] Recalculated Subtotal: 18
+[2026-06-02T16:26:17.628Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-02T16:26:17.629Z] [DEBUG] CV: 13 - dinheiro - 18
+[2026-06-02T16:26:17.651Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-02T16:26:46.386Z] [Finalize] ID: 39 (Int: 39). FreshItens: 1, FreshCV: 1
+[2026-06-02T16:26:46.402Z] [Finalize] Recalculated Subtotal: 12
+[2026-06-02T16:26:46.423Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-06-02T16:26:46.543Z] [DEBUG] CV: 14 - dinheiro - 12
+[2026-06-02T16:26:46.544Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0

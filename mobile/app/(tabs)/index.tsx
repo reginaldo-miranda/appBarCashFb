@@ -20,6 +20,7 @@ import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { events } from '../../src/utils/eventBus'
 import { SafeIcon } from '../../components/SafeIcon';
 import WebDropdownMenu from '../../src/components/WebDropdownMenu';
+import QrCodeAcessoMobile from '../../src/components/QrCodeAcessoMobile';
 
 // Header Gradient Fallback
 const HeaderBackground = ({ children, style }: any) => {
@@ -331,6 +332,7 @@ export default function HomeScreen() {
         
         <View style={{ height: 40 }} />
       </ScrollView>
+      {Platform.OS === 'web' && <QrCodeAcessoMobile hideButton={true} />}
     </View>
   );
 }

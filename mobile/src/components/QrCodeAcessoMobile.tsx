@@ -17,12 +17,14 @@ if (Platform.OS !== 'web') {
   } catch {}
 }
 
+import { events } from '../utils/eventBus';
+
 /**
  * Componente QR Code para acesso mobile via navegador.
  * Exibido APENAS na versão web (desktop).
  * Gera um QR Code com a URL do sistema para o operador escanear com o celular.
  */
-export default function QrCodeAcessoMobile() {
+export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?: boolean }) {
   const [visible, setVisible] = useState(false);
   const [url, setUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -108,9 +110,10 @@ export default function QrCodeAcessoMobile() {
         });
       } catch {}
 
-      // Se nada funcionou, mostrar localhost mesmo com aviso
+      // Se nada funcionou, mostrar o IP local da máquina em vez de localhost para que o celular consiga acessar
       if (!url) {
-        setUrl(`http://${hostname}:${webPort}`);
+        const fallbackHost = (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') ? '192.168.1.145' : hostname;
+        setUrl(`http://${fallbackHost}:${webPort}`);
       }
     })();
   }, []);
@@ -165,17 +168,27 @@ export default function QrCodeAcessoMobile() {
     } catch {}
   }, [url]);
 
+  // Escuta o evento global para abrir o modal a partir do menu superior
+  useEffect(() => {
+    const off = events.on('qrcode:open', () => {
+      handleOpen();
+    });
+    return () => off();
+  }, [handleOpen]);
+
   return (
     <>
-      {/* Botão flutuante no canto inferior esquerdo */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={handleOpen}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabIcon}>📱</Text>
-        <Text style={styles.fabText}>Acesso Celular</Text>
-      </TouchableOpacity>
+      {/* Botão flutuante no canto inferior esquerdo - ocultado se hideButton for true */}
+      {!hideButton && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleOpen}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.fabIcon}>📱</Text>
+          <Text style={styles.fabText}>Acesso Celular</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Modal com QR Code */}
       <Modal

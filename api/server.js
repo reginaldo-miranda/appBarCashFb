@@ -34,6 +34,7 @@ dotenv.config();
 
 import express from "express";
 import cors from "cors";
+import os from "os";
 // dotenv loaded at top
 import jwt from "jsonwebtoken";
 import authRoutes from "./routes/auth.js";
@@ -110,8 +111,28 @@ app.get('/api/health', (req, res) => {
     }
   };
 
+  // Detecta o IP local da LAN dinamicamente
+  let lanIp = null;
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          const addr = iface.address;
+          if (addr.startsWith('192.168.') || addr.startsWith('10.') || addr.startsWith('172.')) {
+            lanIp = addr;
+            break;
+          }
+        }
+      }
+      if (lanIp) break;
+    }
+  } catch (e) {
+    console.error('Erro ao detectar interfaces de rede:', e);
+  }
+
   const db = getDbInfo();
-  res.json({ ok: true, status: 'healthy', timestamp: Date.now(), dbTarget, db });
+  res.json({ ok: true, status: 'healthy', timestamp: Date.now(), dbTarget, db, lanIp });
 });
 
 // DESABILITADO - Sempre usar base local

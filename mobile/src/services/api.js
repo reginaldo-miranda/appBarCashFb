@@ -106,10 +106,10 @@ function resolveApiBaseUrl() {
 
   if (Platform.OS === 'android') {
     // Fallback prioritário para IP da LAN real (físico)
-    return `http://192.168.0.176:${DEFAULT_PORT}/api`;
+    return `http://192.168.1.145:${DEFAULT_PORT}/api`;
     // return `http://10.0.2.2:${DEFAULT_PORT}/api`; // Emulator
   }
-  return `http://192.168.0.176:${DEFAULT_PORT}/api`; // Remote Server Fallback
+  return `http://192.168.1.145:${DEFAULT_PORT}/api`; // Remote Server Fallback
 }
 
 // Primeiro: variável de ambiente pública
@@ -160,8 +160,39 @@ function endCancelableOp(key) {
 api.interceptors.request.use(
   async (config) => {
     try {
-      // FORÇAR A REDE LOCAL
-      const hostname = (typeof window !== 'undefined' && window.location.hostname) ? window.location.hostname : '192.168.0.176';
+      // FORÇAR A REDE LOCAL DINAMICAMENTE
+      let hostname = '';
+      
+      if (typeof window !== 'undefined' && window.location.hostname) {
+        hostname = window.location.hostname;
+      } else {
+        // No celular (Expo Go / Native), extrai o IP de forma dinâmica da baseURL resolvida
+        try {
+          const currentBase = api.defaults.baseURL || '';
+          if (currentBase) {
+            const u = new URL(currentBase);
+            if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+              hostname = u.hostname;
+            }
+          }
+        } catch {}
+        
+        // Se mesmo assim for localhost ou inválido, roda o resolveApiBaseUrl()
+        if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+          try {
+            const resolved = resolveApiBaseUrl();
+            const u = new URL(resolved);
+            if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+              hostname = u.hostname;
+            }
+          } catch {}
+        }
+      }
+      
+      // Se nada acima detectou um IP válido de rede local, usa o IP atual do usuário como fallback de último recurso
+      if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+        hostname = '192.168.1.145';
+      }
       
       // Montamos sempre a API local. IGNORA QUALQUER ASYNC_STORAGE e NUVEM PARA GARANTIR.
       config.baseURL = `http://${hostname}:4000/api`;

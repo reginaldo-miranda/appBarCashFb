@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { events } from '../utils/eventBus';
 
 // Using hover on web often requires 'onMouseEnter' / 'onMouseLeave' which are available on View in React Native Web
 // but sometimes require 'cursor: pointer'.
@@ -47,6 +48,13 @@ export default function WebDropdownMenu() {
     {
       label: 'ADM Relatórios',
       route: '/(tabs)/admin-relatorios'
+    },
+    {
+      label: 'Conectar Celular 📱',
+      route: null,
+      onPress: () => {
+        events.emit('qrcode:open');
+      }
     }
   ];
 
@@ -62,11 +70,15 @@ export default function WebDropdownMenu() {
         >
           <TouchableOpacity 
              onPress={() => {
-                 if (menu.route) router.push(menu.route as any);
+                 if (menu.route) {
+                   router.push(menu.route as any);
+                 } else if ((menu as any).onPress) {
+                   (menu as any).onPress();
+                 }
              }}
-             style={styles.menuLabelBtn}
+             style={menu.label.includes('Celular') ? styles.celularBtn : styles.menuLabelBtn}
           >
-            <Text style={[styles.menuText, activeMenu === menu.label && styles.menuTextActive]}>
+            <Text style={menu.label.includes('Celular') ? styles.celularText : [styles.menuText, activeMenu === menu.label && styles.menuTextActive]}>
                 {menu.label}
             </Text>
             {menu.sub && (
@@ -163,5 +175,22 @@ const styles = StyleSheet.create({
   dropdownText: {
     color: '#444',
     fontSize: 14,
+  },
+  celularBtn: {
+    backgroundColor: '#FF8C00', // Laranja premium em harmonia com a paleta
+    borderRadius: 20,           // Formato pílula elegante
+    paddingVertical: 5,         // Ajustado para caber perfeitamente na altura da barra
+    paddingHorizontal: 12,
+    alignSelf: 'center',
+    marginLeft: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    // @ts-ignore
+    cursor: 'pointer'
+  },
+  celularText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
 });

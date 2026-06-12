@@ -104,7 +104,7 @@ function obterIpLanCardapio() {
     }
   } catch (e) {}
 
-  return '192.168.0.176';
+  return '192.168.1.145';
 }
 
 function obterPortaCardapio() {
