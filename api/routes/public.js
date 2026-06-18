@@ -109,69 +109,142 @@ router.get('/mesa/:id', async (req, res) => {
   }
 });
 
-// Rota 3: POST /api/public/pedido - Lançar pedido da mesa
+// Rota 2.5: GET /api/public/comanda/:nome - Validar e buscar comanda
+router.get('/comanda/:nome', async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const nome = String(req.params.nome).trim();
+
+    if (!nome) {
+      return res.status(400).json({ success: false, error: 'Identificação da comanda é obrigatória' });
+    }
+
+    const vendaAtiva = await prisma.sale.findFirst({
+      where: {
+        nomeComanda: nome,
+        tipoVenda: 'comanda',
+        status: 'aberta'
+      },
+      select: {
+        id: true,
+        status: true,
+        tipoVenda: true,
+        subtotal: true,
+        total: true
+      }
+    });
+
+    res.json({
+      success: true,
+      comanda: {
+        nome: nome,
+        vendaAtual: vendaAtiva || null
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar comanda pública:', error);
+    res.status(500).json({ success: false, error: 'Erro ao validar a comanda' });
+  }
+});
+
+// Rota 3: POST /api/public/pedido - Lançar pedido da mesa ou comanda
 router.post('/pedido', async (req, res) => {
   try {
     const prisma = getActivePrisma();
-    const { mesaId, itens } = req.body;
+    const { mesaId, comandaNome, itens } = req.body;
 
-    if (!mesaId) {
-      return res.status(400).json({ success: false, error: 'Identificação da mesa é obrigatória' });
+    if (!mesaId && !comandaNome) {
+      return res.status(400).json({ success: false, error: 'Identificação da mesa ou comanda é obrigatória' });
     }
 
     if (!Array.isArray(itens) || itens.length === 0) {
       return res.status(400).json({ success: false, error: 'A sacola de compras está vazia' });
     }
 
-    const mesaIdNum = Number(mesaId);
-    const mesa = await prisma.mesa.findUnique({
-      where: { id: mesaIdNum },
-      include: { vendaAtual: true }
-    });
+    let mesa = null;
+    let mesaIdNum = null;
+    if (mesaId) {
+      mesaIdNum = Number(mesaId);
+      mesa = await prisma.mesa.findUnique({
+        where: { id: mesaIdNum },
+        include: { vendaAtual: true }
+      });
 
-    if (!mesa || !mesa.ativo) {
-      return res.status(404).json({ success: false, error: 'Mesa não encontrada ou desativada' });
+      if (!mesa || !mesa.ativo) {
+        return res.status(404).json({ success: false, error: 'Mesa não encontrada ou desativada' });
+      }
     }
 
     // Usando transação para criar a venda/itens com total segurança
     const result = await prisma.$transaction(async (tx) => {
-      let vendaId = mesa.vendaAtualId;
+      let vendaId = null;
       let novaVendaCriada = false;
+      const primeiroFunc = await tx.employee.findFirst({ where: { ativo: true } });
 
-      // 1. Se a mesa estiver livre ou sem venda em aberto, cria uma nova venda do tipo mesa
-      if (mesa.status !== 'ocupada' || !vendaId || mesa.vendaAtual?.status !== 'aberta') {
-        // Busca um funcionário administrador ou o primeiro funcionário para marcar a abertura (opcional pelo Schema)
-        // Opcionalmente podemos deixar null se o schema permitir, mas para segurança de UI, vamos associar ao primeiro ativo
-        const primeiroFunc = await tx.employee.findFirst({ where: { ativo: true } });
-        
-        const novaVenda = await tx.sale.create({
-          data: {
-            mesaId: mesaIdNum,
-            tipoVenda: 'mesa',
-            status: 'aberta',
-            funcionarioId: primeiroFunc ? primeiroFunc.id : null,
-            responsavelFuncionarioId: primeiroFunc ? primeiroFunc.id : null,
-            subtotal: 0,
-            desconto: 0,
-            total: 0,
-            observacoes: 'Pedido feito pelo Cardápio Eletrônico'
+      if (mesa) {
+        vendaId = mesa.vendaAtualId;
+
+        // 1. Se a mesa estiver livre ou sem venda em aberto, cria uma nova venda do tipo mesa
+        if (mesa.status !== 'ocupada' || !vendaId || mesa.vendaAtual?.status !== 'aberta') {
+          const novaVenda = await tx.sale.create({
+            data: {
+              mesaId: mesaIdNum,
+              tipoVenda: 'mesa',
+              status: 'aberta',
+              funcionarioId: primeiroFunc ? primeiroFunc.id : null,
+              responsavelFuncionarioId: primeiroFunc ? primeiroFunc.id : null,
+              subtotal: 0,
+              desconto: 0,
+              total: 0,
+              observacoes: 'Pedido feito pelo Cardápio Eletrônico'
+            }
+          });
+
+          vendaId = novaVenda.id;
+          novaVendaCriada = true;
+
+          // Atualizar Mesa para ocupada
+          await tx.mesa.update({
+            where: { id: mesaIdNum },
+            data: {
+              status: 'ocupada',
+              vendaAtualId: vendaId,
+              clientesAtuais: 1,
+              horaAbertura: new Date(),
+              nomeResponsavel: 'Auto-Atendimento'
+            }
+          });
+        }
+      } else if (comandaNome) {
+        const comandaStr = String(comandaNome).trim();
+        const comandaExistente = await tx.sale.findFirst({
+          where: {
+            nomeComanda: comandaStr,
+            tipoVenda: 'comanda',
+            status: 'aberta'
           }
         });
 
-        vendaId = novaVenda.id;
-        novaVendaCriada = true;
+        if (comandaExistente) {
+          vendaId = comandaExistente.id;
+        } else {
+          const novaVenda = await tx.sale.create({
+            data: {
+              nomeComanda: comandaStr,
+              tipoVenda: 'comanda',
+              status: 'aberta',
+              funcionarioId: primeiroFunc ? primeiroFunc.id : null,
+              responsavelFuncionarioId: primeiroFunc ? primeiroFunc.id : null,
+              subtotal: 0,
+              desconto: 0,
+              total: 0,
+              observacoes: 'Pedido feito pelo Cardápio Eletrônico'
+            }
+          });
 
-        // Atualizar Mesa para ocupada
-        await tx.mesa.update({
-          where: { id: mesaIdNum },
-          data: {
-            status: 'ocupada',
-            vendaAtualId: vendaId,
-            clientesAtuais: 1,
-            horaAbertura: new Date(),
-            nomeResponsavel: 'Auto-Atendimento'
-          }
-        });
+          vendaId = novaVenda.id;
+          novaVendaCriada = true;
+        }
       }
 
       const itensInseridos = [];

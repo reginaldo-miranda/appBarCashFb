@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import CriarComandaModal from '../../src/components/CriarComandaModal';
 // import ProdutosComandaModal from '../../src/components/ProdutosComandaModal';
 import SearchAndFilter from '../../src/components/SearchAndFilter';
-import api, { comandaService, employeeService, saleService, getWsUrl, authService, idleTimeConfigService } from '../../src/services/api';
+import api, { comandaService, employeeService, saleService, getWsUrl, authService, idleTimeConfigService, getCurrentBaseUrl } from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../../src/services/storage';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -17,6 +17,52 @@ import ReceiptModal from '../../src/components/ReceiptModal';
 import PixModal from '../../src/components/PixModal';
 import CashbackPromptModal from '../../src/components/CashbackPromptModal';
 import { SafeIcon } from '../../components/SafeIcon';
+import QRCode from 'react-native-qrcode-svg';
+
+function obterIpLanCardapio() {
+  try {
+    const envUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      const match = envUrl.match(/https?:\/\/([^:/]+)/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  } catch (e) {
+    console.log('Erro ao ler EXPO_PUBLIC_API_URL:', e);
+  }
+
+  try {
+    const currentUrl = getCurrentBaseUrl();
+    if (currentUrl && !currentUrl.includes('localhost') && !currentUrl.includes('127.0.0.1')) {
+      const match = currentUrl.match(/https?:\/\/([^:/]+)/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+  } catch (e) {
+    console.log('Erro ao ler getCurrentBaseUrl:', e);
+  }
+
+  try {
+    const Constants = require('expo-constants').default;
+    const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return ip;
+      }
+    }
+  } catch (e) {
+    console.log('Erro ao ler expoConfig hostUri:', e);
+  }
+
+  return '192.168.1.145';
+}
+
+function obterPortaCardapio() {
+  return '8081';
+}
 
 function parseTimeToMs(timeStr: string) {
   if (!timeStr) return 0;
@@ -55,6 +101,15 @@ export default function ComandasAbertasScreen() {
   // Estado para cancelar comanda
   const [cancelComandaModalVisible, setCancelComandaModalVisible] = useState(false);
   const [cancelComandaTarget, setCancelComandaTarget] = useState<Comanda | null>(null);
+
+  // Estados para QR Code
+  const [qrCodeModalVisible, setQrCodeModalVisible] = useState(false);
+  const [qrCodeComanda, setQrCodeComanda] = useState<Comanda | null>(null);
+
+  const abrirQrCodeComanda = (comanda: Comanda) => {
+    setQrCodeComanda(comanda);
+    setQrCodeModalVisible(true);
+  };
   
   // Estados para filtros (igual à tela de produtos)
   const [searchText, setSearchText] = useState('');
@@ -687,6 +742,16 @@ useEffect(() => {
                   </TouchableOpacity>
 
                   <TouchableOpacity 
+                    style={[styles.fecharButton, { backgroundColor: '#FF8C00', flex: 1, margin: 4 }]}
+                    onPress={() => abrirQrCodeComanda(item)}
+                  >
+                    <View style={{ marginRight: 4 }}>
+                      <SafeIcon name="qr-code" size={16} color="#fff" fallbackText="QR" />
+                    </View>
+                    <Text style={styles.fecharButtonText}>QR Code</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
                     style={[styles.fecharButton, { backgroundColor: '#F44336', flex: 1, margin: 4 }]}
                     onPress={() => iniciarCancelamentoComanda(item)}
                   >
@@ -889,6 +954,65 @@ useEffect(() => {
             confirmarFechamentoComanda(true);
         }}
       />
+
+      {/* Modal de QR Code da Comanda */}
+      <Modal
+        visible={qrCodeModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setQrCodeModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 20, padding: 24, width: '85%', maxWidth: 360, alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
+            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FF8C00' }}>QR Code do Cardápio</Text>
+              <TouchableOpacity onPress={() => setQrCodeModalVisible(false)} style={{ padding: 4 }}>
+                <SafeIcon name="close" size={24} color="#FFF" fallbackText="×" />
+              </TouchableOpacity>
+            </View>
+
+            {qrCodeComanda && (() => {
+              const ipLan = obterIpLanCardapio();
+              const porta = obterPortaCardapio();
+              const linkCardapio = `http://${ipLan}:${porta}/cardapio/comanda/${qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda}`;
+              return (
+                <>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
+                    Comanda {qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#AAA', textAlign: 'center', marginBottom: 20 }}>
+                    Aponte a câmera do celular para abrir o cardápio e fazer pedidos para esta comanda.
+                  </Text>
+
+                  {/* QR Code Container */}
+                  <View style={{ backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
+                    <QRCode
+                      value={linkCardapio}
+                      size={200}
+                      logoBackgroundColor='transparent'
+                    />
+                  </View>
+
+                  {/* URL informativa para copiar/acessar manual */}
+                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 10, width: '100%', marginBottom: 20, borderWidth: 1, borderColor: '#333' }}>
+                    <Text style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Link de Acesso:</Text>
+                    <Text style={{ fontSize: 12, color: '#FF8C00', fontWeight: 'bold', textAlign: 'center' }} selectable>
+                      {linkCardapio}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#FF8C00', paddingVertical: 12, borderRadius: 25, width: '100%', alignItems: 'center' }}
+                    onPress={() => setQrCodeModalVisible(false)}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Fechar</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

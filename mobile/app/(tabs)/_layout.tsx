@@ -8,10 +8,12 @@ import { HapticTab } from '../../components/haptic-tab';
 import ProductsTabButton from '../../src/components/ProductsTabButton';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { SafeIcon } from '../../components/SafeIcon';
-import { Platform } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
 import api from '../../src/services/api';
 
 export default function TabLayout() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const authContext = useAuth() as any;
   const { user, isAuthenticated, loading, hasPermission, isAdmin } = authContext;
 
@@ -33,7 +35,7 @@ export default function TabLayout() {
   }, [isAuthenticated]);
 
   // Configuração específica para Produtos para evitar conflito de href/tabBarButton no Mobile
-  const produtosOptions = Platform.OS === 'web' 
+  const produtosOptions = (Platform.OS === 'web' && !isMobile) 
     ? {
         // href removido para evitar conflito com tabBarButton
         title: 'Adm Produtos',
@@ -125,7 +127,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="caixa"
         options={{
-          href: Platform.OS === 'web' ? '/(tabs)/caixa' : null,
+          href: (Platform.OS === 'web' && !isMobile) || hasPermission('vendas') ? '/(tabs)/caixa' : null,
           title: 'Caixa',
           headerTitle: 'Caixa - Vendas Abertas',
           tabBarIcon: () => <SafeIcon name="cash" size={24} color="#FF0000" fallbackText="R$" />,
@@ -135,7 +137,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="historico"
         options={{
-          href: Platform.OS === 'web' ? '/(tabs)/historico' : null,
+          href: Platform.OS === 'web' && !isMobile ? '/(tabs)/historico' : null,
           title: 'Histórico',
           headerTitle: 'Histórico de Vendas',
           tabBarIcon: ({ color }) => <SafeIcon name="time" size={24} color={color} fallbackText="Hist." />,
@@ -178,7 +180,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="admin-configuracoes"
           options={{
-            href: Platform.OS === 'web' ? '/(tabs)/admin-configuracoes' : null,
+            href: Platform.OS === 'web' && !isMobile ? '/(tabs)/admin-configuracoes' : null,
             title: 'Adm Config',
             headerTitle: 'Configurações do Sistema',
             tabBarIcon: ({ color }) => <SafeIcon name="settings" size={24} color={color} fallbackText="Conf." />,
@@ -202,7 +204,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="admin-relatorios"
           options={{
-            href: Platform.OS === 'web' ? '/(tabs)/admin-relatorios' : null,
+            href: Platform.OS === 'web' && !isMobile ? '/(tabs)/admin-relatorios' : null,
             title: 'Adm Relatórios',
             headerTitle: 'Relatórios Administrativos',
             tabBarIcon: ({ color }) => <SafeIcon name="bar-chart" size={24} color={color} fallbackText="Rel." />,

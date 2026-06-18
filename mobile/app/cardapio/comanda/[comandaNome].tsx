@@ -19,7 +19,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { getCurrentBaseUrl } from "../../src/services/api";
+import { getCurrentBaseUrl } from "../../../src/services/api";
 
 const { width } = Dimensions.get("window");
 
@@ -63,15 +63,13 @@ interface ItemCarrinho {
 }
 
 export default function CardapioCliente() {
-  const { mesaId } = useLocalSearchParams();
+  const { comandaNome } = useLocalSearchParams();
   const router = useRouter();
 
   // Estados
   const [loading, setLoading] = useState(true);
   const [loadingPedido, setLoadingPedido] = useState(false);
-  const [mesaInfo, setMesaInfo] = useState<{
-    id: number;
-    numero: number;
+  const [comandaInfo, setComandaInfo] = useState<{
     nome: string;
     vendaAtual?: {
       id: number;
@@ -100,7 +98,7 @@ export default function CardapioCliente() {
   // Carregar dados iniciais da API
   useEffect(() => {
     carregarDados();
-  }, [mesaId]);
+  }, [comandaNome]);
 
   const carregarDados = async () => {
     setLoading(true);
@@ -108,24 +106,20 @@ export default function CardapioCliente() {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
 
-      // 1. Buscar informações da mesa
-      if (mesaId) {
+      // 1. Buscar informações da comanda
+      if (comandaNome) {
         try {
-          const resMesa = await axios.get(`${cleanUrl}/public/mesa/${mesaId}`);
-          if (resMesa.data && resMesa.data.success) {
-            setMesaInfo({
-              id: resMesa.data.mesa.id,
-              numero: resMesa.data.mesa.numero,
-              nome: resMesa.data.mesa.nome,
-              vendaAtual: resMesa.data.mesa.vendaAtual
+          const resComanda = await axios.get(`${cleanUrl}/public/comanda/${comandaNome}`);
+          if (resComanda.data && resComanda.data.success) {
+            setComandaInfo({
+              nome: resComanda.data.comanda.nome,
+              vendaAtual: resComanda.data.comanda.vendaAtual
             });
           }
         } catch (err) {
-          console.warn("Mesa não encontrada na API, usando ID da rota como fallback:", err);
-          setMesaInfo({
-            id: Number(mesaId),
-            numero: Number(mesaId),
-            nome: `Mesa ${mesaId}`,
+          console.warn("Comanda não encontrada na API, usando nome da rota como fallback:", err);
+          setComandaInfo({
+            nome: String(comandaNome),
             vendaAtual: null
           });
         }
@@ -250,14 +244,17 @@ export default function CardapioCliente() {
 
   // Enviar Pedido para a Cozinha
   const enviarPedido = async () => {
-    if (!mesaInfo) return;
+    if (!comandaInfo) {
+      Alert.alert("Aviso", "Aguardando carregar os dados da comanda...");
+      return;
+    }
     setLoadingPedido(true);
     try {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
 
       const payload = {
-        mesaId: mesaInfo.id,
+        comandaNome: comandaInfo.nome,
         itens: carrinho.map((item) => ({
           produtoId: item.produtoId,
           quantidade: item.quantidade,
@@ -306,13 +303,13 @@ export default function CardapioCliente() {
           <Text style={styles.headerTitle}>appBarCash 🍻</Text>
           <View style={styles.mesaCol}>
             <View style={styles.mesaBadge}>
-              <Ionicons name="restaurant" size={14} color="#FFF" style={{ marginRight: 4 }} />
+              <Ionicons name="receipt" size={14} color="#FFF" style={{ marginRight: 4 }} />
               <Text style={styles.mesaBadgeText}>
-                {mesaInfo ? `MESA ${String(mesaInfo.numero).padStart(2, "0")}` : "MESA DIGITAL"}
+                {comandaInfo ? `COMANDA ${String(comandaInfo.nome).toUpperCase()}` : "COMANDA DIGITAL"}
               </Text>
             </View>
             {(() => {
-              const totalVal = mesaInfo?.vendaAtual?.total ? Number(mesaInfo.vendaAtual.total) : 0;
+              const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
               if (totalVal > 0) {
                 return (
                   <Text style={styles.mesaTotalText}>
@@ -702,10 +699,10 @@ export default function CardapioCliente() {
             </View>
             <Text style={styles.sucessoTitle}>Pedido Enviado com Sucesso! 🎉</Text>
             <Text style={styles.sucessoDesc}>
-              O seu pedido já foi cadastrado na comanda da mesa e enviado diretamente para a cozinha/bar para produção.
+              O seu pedido já foi cadastrado na comanda e enviado diretamente para a cozinha/bar para produção.
             </Text>
             <Text style={styles.sucessoMesaText}>
-              {mesaInfo ? `Mesa ${String(mesaInfo.numero).padStart(2, "0")}` : "Mesa Cadastrada"}
+              {comandaInfo ? `Comanda ${comandaInfo.nome}` : "Comanda Cadastrada"}
             </Text>
             
             <TouchableOpacity

@@ -1224,3 +1224,7 @@
 [2026-06-02T16:26:46.423Z] [DEBUG] Finalize - FreshCV Count: 1
 [2026-06-02T16:26:46.543Z] [DEBUG] CV: 14 - dinheiro - 12
 [2026-06-02T16:26:46.544Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-06-18T12:13:27.627Z] [Finalize] ID: 40 (Int: 40). FreshItens: 4, FreshCV: 0
+[2026-06-18T12:13:27.629Z] [Finalize] Recalculated Subtotal: 220
+[2026-06-18T12:13:27.658Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-06-18T12:13:27.659Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
