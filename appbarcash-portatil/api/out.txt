@@ -1,0 +1,3 @@
+Fetching /api/sale/list?status=finalizada,cancelada
+Success! Count: 100
+First sale: 432 finalizada 2026-02-20T14:00:28.836Z

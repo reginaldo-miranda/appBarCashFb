@@ -1,0 +1,23 @@
+JWT_SECRET=thunder
+PORT=4000
+HOST=0.0.0.0
+
+# URL principal de conexão com o banco (usada pelo Prisma e pela API)
+DATABASE_URL="mysql://root:saguides%40123@localhost:3306/appBarCash"
+
+# URLs de conexão para seleção
+DATABASE_URL_LOCAL="mysql://root:saguides%40123@localhost:3306/appBarCash"
+
+# Observação:
+# DATABASE_URL é usada diretamente pelo Prisma Client.
+# DATABASE_URL_LOCAL pode ser sobrescrita pelos scripts start-api.sh / start-api.ps1.
+
+
+chave api google AIzaSyASIOxutlTLjG13n_p_MJw5rh1UiWm2mgE
+AIzaSyDzcoCx6kGsFVtRcma2MOsjZDNd8EgukII
+
+AIzaSyDRsbCFXfWk2cqXTFZjcJSYa3F0C7kNyPw
+
+instalar agentes:  npx @vudovn/ag-kit init
+
+senha de email do google nlqd yocz izek hvju

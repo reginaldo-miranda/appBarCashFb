@@ -1,0 +1,635 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin", "windows"]
+  engineType    = "binary"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL_LOCAL")
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  email        String      @unique
+  senha        String
+  nome         String
+  tipo         TipoUsuario @default(funcionario)
+  employeeId   Int?
+  permissoes   Json?
+  ativo        Boolean     @default(true)
+  dataInclusao DateTime    @default(now())
+  ultimoLogin  DateTime?
+}
+
+model Product {
+  id                  Int              @id @default(autoincrement())
+  nome                String
+  descricao           String?
+  precoCusto          Decimal          @db.Decimal(10, 2)
+  precoVenda          Decimal          @db.Decimal(10, 2)
+  categoria           String?
+  tipo                String?
+  grupo               String?
+  unidade             String           @default("un")
+  ativo               Boolean          @default(true)
+  dadosFiscais        String?
+  quantidade          Int              @default(0)
+  imagem              String?
+  tempoPreparoMinutos Int              @default(0)
+  disponivel          Boolean          @default(true)
+  dataInclusao        DateTime         @default(now())
+  
+  // Dados Fiscais NFC-e
+
+  ncm                 String?          // Nomenclatura Comum do Mercosul (8 dígitos)
+  cest                String?          // Código Especificador da Substituição Tributária
+  cfop                String?          // Código Fiscal de Operações e Prestações (ex: 5102)
+  csosn               String?          // Código de Situação da Operação no Simples Nacional (ex: 102)
+  icmsSituacao        String?          // Para Regime Normal (CST)
+  icmsAliquota        Decimal?         @db.Decimal(5, 2)
+  origem              Int              @default(0) // 0 - Nacional, etc.
+
+  categoriaId         Int?
+  groupId             Int?
+  tipoId              Int?
+  unidadeMedidaId     Int?
+  temVariacao         Boolean          @default(false)
+  categoriaRel        Categoria?       @relation(fields: [categoriaId], references: [id])
+  grupoRel            ProductGroup?    @relation(fields: [groupId], references: [id])
+  tipoRel             Tipo?            @relation(fields: [tipoId], references: [id])
+  unidadeRel          UnidadeMedida?   @relation(fields: [unidadeMedidaId], references: [id])
+  saleItems           SaleItem[]
+  setoresImpressao    ProductSetorImpressao[]
+  tamanhos            ProductSize[]
+  temTamanhos         Boolean          @default(false)
+
+
+  @@index([categoriaId], map: "Product_categoriaId_fkey")
+  @@index([groupId], map: "Product_groupId_fkey")
+  @@index([tipoId], map: "Product_tipoId_fkey")
+  @@index([unidadeMedidaId], map: "Product_unidadeMedidaId_fkey")
+}
+
+model ProductSize {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  nome      String
+  preco     Decimal @db.Decimal(10, 2)
+  ativo     Boolean @default(true)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId], map: "ProductSize_productId_fkey")
+}
+
+model ProductGroup {
+  id           Int       @id @default(autoincrement())
+  nome         String    @unique
+  descricao    String?
+  icone        String    @default("?")
+  ativo        Boolean   @default(true)
+  dataInclusao DateTime  @default(now())
+  products     Product[]
+}
+
+model Employee {
+  id                Int        @id @default(autoincrement())
+  nome              String
+  cpf               String?
+  email             String?
+  endereco          String?
+  bairro            String?
+  telefone          String?
+  cargo             String?
+  salario           Decimal?   @db.Decimal(10, 2)
+  dataAdmissao      DateTime?
+  ativo             Boolean    @default(true)
+  dataInclusao      DateTime   @default(now())
+  caixasAbertura    Caixa[]    @relation("CaixaFuncionarioAbertura")
+  caixasFechamento  Caixa[]    @relation("CaixaFuncionarioFechamento")
+  mesasResponsaveis Mesa[]
+  vendasAbertura    Sale[]     @relation("SaleFuncionarioAbertura")
+  vendasFuncionario Sale[]     @relation("SaleFuncionario")
+  vendasResponsavel Sale[]     @relation("SaleResponsavel")
+  vendasEntregues   Sale[]     @relation("SaleEntregador")
+  saleItemsPrepared SaleItem[] @relation("SaleItemPreparedBy")
+}
+
+model Customer {
+  id             Int       @id @default(autoincrement())
+  nome           String?
+  endereco       String?        @db.Text
+  cidade         String?
+  estado         String?
+  fone           String?
+  cep            String?
+  cpf            String?   @unique
+  rg             String?
+  dataNascimento DateTime?
+  ativo          Boolean   @default(true)
+  dataInclusao   DateTime  @default(now())
+  vendas         Sale[]    @relation("SaleCliente")
+}
+
+model Mesa {
+  id                       Int        @id @default(autoincrement())
+  numero                   Int        @unique
+  nome                     String
+  capacidade               Int
+  status                   MesaStatus @default(livre)
+  vendaAtualId             Int?       @unique
+  funcionarioResponsavelId Int?
+  nomeResponsavel          String?
+  clientesAtuais           Int        @default(0)
+  horaAbertura             DateTime?
+  observacoes              String?
+  tipo                     MesaTipo   @default(interna)
+  ativo                    Boolean    @default(true)
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+  funcionarioResponsavel   Employee?  @relation(fields: [funcionarioResponsavelId], references: [id])
+  vendaAtual               Sale?      @relation("MesaVendaAtual", fields: [vendaAtualId], references: [id])
+  vendas                   Sale[]     @relation("SaleMesa")
+
+  @@index([funcionarioResponsavelId], map: "Mesa_funcionarioResponsavelId_fkey")
+}
+
+model Tipo {
+  id           Int       @id @default(autoincrement())
+  nome         String    @unique
+  ativo        Boolean   @default(true)
+  dataInclusao DateTime  @default(now())
+  descricao    String?
+  products     Product[]
+}
+
+model UnidadeMedida {
+  id           Int       @id @default(autoincrement())
+  nome         String    @unique
+  sigla        String    @unique
+  ativo        Boolean   @default(true)
+  dataInclusao DateTime  @default(now())
+  descricao    String?
+  products     Product[]
+}
+
+model SetorImpressao {
+  id              Int       @id @default(autoincrement())
+  nome            String    @unique
+  descricao       String?
+  modoEnvio       ModoEnvio @default(impressora)
+  whatsappDestino String?
+  ativo           Boolean   @default(true)
+  dataInclusao    DateTime  @default(now())
+  printerId       Int?
+  printer         Printer?  @relation(fields: [printerId], references: [id])
+  produtos        ProductSetorImpressao[]
+
+
+  @@index([printerId], map: "SetorImpressao_printerId_fkey")
+}
+
+model Printer {
+  id           Int              @id @default(autoincrement())
+  nome         String           @unique
+  modelo       String?
+  address      String?
+  driver       String?
+  ativo        Boolean          @default(true)
+  dataInclusao DateTime         @default(now())
+  setores      SetorImpressao[]
+}
+
+model PrintJob {
+  id          Int            @id @default(autoincrement())
+  saleId      Int?
+  productId   Int
+  setorId     Int
+  printerId   Int?
+  content     String         @db.Text
+  status      PrintJobStatus @default(queued)
+  error       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  processedAt DateTime?
+}
+
+model WhatsAppMessageLog {
+  id        Int         @id @default(autoincrement())
+  saleId    Int?
+  destino   String
+  content   String      @db.Text
+  status    WhatsStatus @default(queued)
+  error     String?     @db.Text
+  createdAt DateTime    @default(now())
+  sentAt    DateTime?
+}
+
+model ProductSetorImpressao {
+  productId Int
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  setorId   Int
+  setor     SetorImpressao @relation(fields: [setorId], references: [id], onDelete: Cascade)
+
+  @@id([productId, setorId])
+  @@index([setorId], map: "ProductSetorImpressao_setorId_fkey")
+}
+
+model Categoria {
+  id           Int       @id @default(autoincrement())
+  nome         String    @unique
+  descricao    String?
+  ativo        Boolean   @default(true)
+  dataInclusao DateTime  @default(now())
+  products     Product[]
+}
+
+model Sale {
+  id                       Int            @id @default(autoincrement())
+  funcionarioId            Int?
+  clienteId                Int?
+  mesaId                   Int?
+  responsavelNome          String?
+  responsavelFuncionarioId Int?
+  funcionarioNome          String?
+  funcionarioAberturaNome  String?
+
+  funcionarioAberturaId    Int?
+  entregadorId             Int?
+  numeroComanda            String?        @unique
+  nomeComanda              String?
+  tipoVenda                TipoVenda      @default(balcao)
+  subtotal                 Decimal        @db.Decimal(10, 2)
+  desconto                 Decimal        @db.Decimal(10, 2)
+  total                    Decimal        @db.Decimal(10, 2)
+  formaPagamento           FormaPagamento @default(dinheiro)
+  status                   SaleStatus     @default(aberta)
+  dataVenda                DateTime       @default(now())
+  dataFinalizacao          DateTime?
+  observacoes              String?
+  tempoPreparoEstimado     Int            @default(0)
+  impressaoCozinha         Boolean        @default(false)
+  impressaoBar             Boolean        @default(false)
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  caixaVendas              CaixaVenda[]
+  mesaVendaAtual           Mesa?          @relation("MesaVendaAtual")
+  cliente                  Customer?      @relation("SaleCliente", fields: [clienteId], references: [id])
+  funcionarioAbertura      Employee?      @relation("SaleFuncionarioAbertura", fields: [funcionarioAberturaId], references: [id])
+  funcionario              Employee?      @relation("SaleFuncionario", fields: [funcionarioId], references: [id])
+  entregador               Employee?      @relation("SaleEntregador", fields: [entregadorId], references: [id])
+  mesa                     Mesa?          @relation("SaleMesa", fields: [mesaId], references: [id])
+  responsavelFuncionario   Employee?      @relation("SaleResponsavel", fields: [responsavelFuncionarioId], references: [id])
+  itens                    SaleItem[]
+
+  // Delivery Fields
+  isDelivery               Boolean        @default(false)
+  deliveryAddress          String?        @db.Text
+  deliveryDistance         Float?         // em km
+  deliveryFee              Decimal?       @db.Decimal(10, 2)
+  deliveryStatus           DeliveryStatus? @default(pending)
+
+
+  @@index([clienteId], map: "Sale_clienteId_fkey")
+  @@index([funcionarioAberturaId], map: "Sale_funcionarioAberturaId_fkey")
+  @@index([funcionarioId], map: "Sale_funcionarioId_fkey")
+  @@index([mesaId], map: "Sale_mesaId_fkey")
+  @@index([responsavelFuncionarioId], map: "Sale_responsavelFuncionarioId_fkey")
+  @@index([entregadorId], map: "Sale_entregadorId_fkey")
+
+  // Relacionamento com NFC-e
+  nfce               Nfce?
+}
+
+model Nfce {
+  id              Int       @id @default(autoincrement())
+  saleId          Int       @unique
+  sale            Sale      @relation(fields: [saleId], references: [id])
+  
+  chave           String    @unique // Chave de acesso de 44 dígitos
+  numero          Int
+  serie           Int
+  
+  status          NfceStatus @default(PENDENTE)
+  ambiente        AmbienteFiscal @default(homologacao)
+  
+  xml             String    @db.LongText // XML assinado e processado
+  protocolo       String?   // Protocolo de autorização
+  motivo          String?   // Mensagem de retorno da SEFAZ
+  
+  qrCode          String?   @db.Text // URL ou Hash para QR Code
+  urlConsulta     String?   @db.Text
+  
+  pdfPath         String?   // Caminho para o arquivo PDF gerado
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  eventos         NfceEvent[]
+}
+
+model NfceEvent {
+  id              Int       @id @default(autoincrement())
+  nfceId          Int
+  nfce            Nfce      @relation(fields: [nfceId], references: [id])
+  
+  tipo            String    // CANCELAMENTO, CARTA_CORRECAO, ETC
+  sequencia       Int       @default(1)
+  
+  xmlEnvio        String?   @db.Text
+  xmlRetorno      String?   @db.Text
+  
+  status          String?   // Status do evento (135 - Evento vinculado, etc)
+  motivo          String?
+  protocolo       String?
+  
+  createdAt       DateTime  @default(now())
+}
+
+enum NfceStatus {
+  PENDENTE
+  PROCESSANDO
+  AUTORIZADA
+  REJEITADA
+  CANCELADA
+  DENEGADA
+  CONTINGENCIA
+}
+
+model SaleItem {
+  id                 Int         @id @default(autoincrement())
+  saleId             Int
+  productId          Int?
+  nomeProduto        String
+  quantidade         Int
+  precoUnitario      Decimal     @db.Decimal(10, 2)
+  subtotal           Decimal     @db.Decimal(10, 2)
+  status             String      @default("pendente") @db.VarChar(20)
+  createdAt          DateTime    @default(now())
+  preparedAt         DateTime?
+  preparedById       Int?
+  origem             String?     @default("default") @db.VarChar(20)
+  variacaoOpcoes     Json?
+  variacaoRegraPreco RegraPreco?
+  variacaoTipo       String?     @db.VarChar(50)
+  preparedBy         Employee?   @relation("SaleItemPreparedBy", fields: [preparedById], references: [id])
+  product            Product?    @relation(fields: [productId], references: [id])
+  sale               Sale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([preparedById], map: "SaleItem_preparedById_fkey")
+  @@index([productId], map: "SaleItem_productId_fkey")
+  @@index([saleId], map: "SaleItem_saleId_fkey")
+}
+
+model Caixa {
+  id                      Int          @id @default(autoincrement())
+  dataAbertura            DateTime     @default(now())
+  dataFechamento          DateTime?
+  valorAbertura           Decimal      @db.Decimal(10, 2)
+  valorFechamento         Decimal?     @db.Decimal(10, 2)
+  totalVendas             Decimal      @default(0.00) @db.Decimal(10, 2)
+  totalDinheiro           Decimal      @default(0.00) @db.Decimal(10, 2)
+  totalCartao             Decimal      @default(0.00) @db.Decimal(10, 2)
+  totalPix                Decimal      @default(0.00) @db.Decimal(10, 2)
+  funcionarioAberturaId   Int
+  funcionarioFechamentoId Int?
+  status                  CaixaStatus  @default(aberto)
+  observacoes             String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  funcionarioAbertura     Employee     @relation("CaixaFuncionarioAbertura", fields: [funcionarioAberturaId], references: [id])
+  funcionarioFechamento   Employee?    @relation("CaixaFuncionarioFechamento", fields: [funcionarioFechamentoId], references: [id])
+  vendas                  CaixaVenda[]
+
+  @@index([funcionarioAberturaId], map: "Caixa_funcionarioAberturaId_fkey")
+  @@index([funcionarioFechamentoId], map: "Caixa_funcionarioFechamentoId_fkey")
+}
+
+model CaixaVenda {
+  id             Int            @id @default(autoincrement())
+  caixaId        Int
+  vendaId        Int
+  valor          Decimal        @db.Decimal(10, 2)
+  formaPagamento FormaPagamento
+  dataVenda      DateTime
+  itensPagos     Json?
+  observacoes    String?
+  caixa          Caixa          @relation(fields: [caixaId], references: [id], onDelete: Cascade)
+  venda          Sale           @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  @@index([caixaId], map: "CaixaVenda_caixaId_fkey")
+  @@index([vendaId], map: "CaixaVenda_vendaId_fkey")
+}
+
+model VariationType {
+  id            Int        @id @default(autoincrement())
+  nome          String     @unique
+  maxOpcoes     Int        @default(1)
+  categoriasIds Json?
+  regraPreco    RegraPreco @default(mais_caro)
+  precoFixo     Decimal?   @db.Decimal(10, 2)
+  ativo         Boolean    @default(true)
+  dataInclusao  DateTime   @default(now())
+}
+
+enum TipoUsuario {
+  admin
+  funcionario
+}
+
+enum MesaStatus {
+  livre
+  ocupada
+  reservada
+  manutencao
+}
+
+enum MesaTipo {
+  interna
+  externa
+  vip
+  reservada
+  balcao
+}
+
+enum ModoEnvio {
+  impressora
+  whatsapp
+}
+
+enum PrintJobStatus {
+  queued
+  processing
+  done
+  failed
+}
+
+enum WhatsStatus {
+  queued
+  sent
+  failed
+}
+
+enum FormaPagamento {
+  dinheiro
+  cartao
+  pix
+}
+
+enum SaleStatus {
+  aberta
+  finalizada
+  cancelada
+}
+
+enum TipoVenda {
+  balcao
+  mesa
+  delivery
+  comanda
+}
+
+enum CaixaStatus {
+  aberto
+  fechado
+}
+
+enum RegraPreco {
+  mais_caro
+  media
+  fixo
+}
+
+model Company {
+  id                Int       @id @default(autoincrement())
+  // 1. Identificação
+  razaoSocial       String
+  nomeFantasia      String
+  cnpj              String    @unique
+  inscricaoEstadual String?
+  inscricaoMunicipal String?
+
+  // 2. Endereço Fiscal
+  logradouro        String?
+  numero            String?
+  complemento       String?
+  bairro            String?
+  cidade            String?
+  uf                String?
+  cep               String?
+  ibge              String?
+
+  // 3. Contato
+  telefone          String?
+  telefoneSecundario String?
+  email             String?
+  whatsapp          String?
+
+  // 4. Dados Fiscais
+  regimeTributario  RegimeTributario @default(simples_nacional)
+  cnae              String?
+  contribuinteIcms  Boolean   @default(true)
+  ambienteFiscal    AmbienteFiscal @default(homologacao)
+
+  // 5. Emissão e Impressão
+  logo              String?   // Caminho ou URL
+  nomeImpressao     String?   // Nome fantasia para NFC-e
+  mensagemRodape    String?
+  serieNfce         Int       @default(1)
+  numeroInicialNfce Int       @default(1)
+
+  // 6. Responsável Legal
+  respNome          String?
+  respCpf           String?
+  respCargo         String?
+  respTelefone      String?
+  respEmail         String?
+
+  // 7. Cobrança e Manutenção
+  plano             String?
+  valorMensalidade  Decimal?  @db.Decimal(10, 2)
+  diaVencimento     Int?
+  dataInicioCobranca DateTime?
+  status            CompanyStatus @default(ativa)
+  formaCobranca     FormaCobranca @default(boleto)
+  emailCobranca     String?
+
+  // 8. Dados Bancários
+  banco             String?
+  agencia           String?
+  conta             String?
+  tipoConta         String?
+  chavePix          String?
+
+  // 9. Controle
+  dataCadastro      DateTime  @default(now())
+  ultimoPagamento   DateTime?
+  proximoVencimento DateTime?
+  diasAtraso        Int       @default(0)
+  observacoes       String?   @db.Text
+  
+  updatedAt         DateTime  @updatedAt
+
+  // Delivery Config
+  latitude          Float?
+  longitude         Float?
+  deliveryRadius    Float?    // em km
+  deliveryRanges    DeliveryRange[]
+
+  // Configuração NFC-e
+  csc               String?   // Código de Segurança do Contribuinte
+  cscId             String?   // ID do Token (ex: 000001)
+  
+  certificadoNome   String?   // Nome do arquivo (opcional para display)
+  certificadoSenha  String?   
+  certificadoPath   String?   // Caminho absoluto para o arquivo .pfx
+  xmlFolder         String?   // Pasta base para salvar XMLs (ex: C:\Nfce\Xmls)
+}
+
+model DeliveryRange {
+  id        Int      @id @default(autoincrement())
+  minDist   Float    // km
+  maxDist   Float    // km
+  price     Decimal  @db.Decimal(10, 2)
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+}
+
+enum DeliveryStatus {
+  pending
+  out_for_delivery
+  delivered
+  cancelled
+}
+
+enum RegimeTributario {
+  simples_nacional
+  lucro_presumido
+  lucro_real
+}
+
+enum AmbienteFiscal {
+  homologacao
+  producao
+}
+
+enum CompanyStatus {
+  ativa
+  bloqueada
+  cancelada
+}
+
+enum FormaCobranca {
+  pix
+  boleto
+  cartao
+}
+
+model IdleTimeConfig {
+  id               Int      @id @default(autoincrement())
+  ativo            Boolean  @default(false)
+  usarHoraInclusao Boolean  @default(true)
+  estagios         Json     // Array de { tempo: string, cor: string }
+  updatedAt        DateTime @updatedAt
+
+  @@map("IdleTimeConfig")
+}
