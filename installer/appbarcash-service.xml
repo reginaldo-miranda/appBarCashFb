@@ -1,0 +1,24 @@
+<service>
+  <id>appbarcash-api</id>
+  <name>appBarCash API</name>
+  <description>Servidor Backend do Sistema appBarCash</description>
+  
+  <!-- Usar o Node.js global instalado no sistema -->
+  <executable>node.exe</executable>
+  
+  <!-- Diretorio de execucao -->
+  <workingdirectory>%BASE%\api</workingdirectory>
+  
+  <!-- Argumentos para iniciar o backend -->
+  <arguments>server.js</arguments>
+  
+  <startmode>Automatic</startmode>
+  <logmode>rotate</logmode>
+  <logpath>%BASE%\logs</logpath>
+  
+  <!-- Variaveis de ambiente para o servidor da API no cliente -->
+  <env name="PORT" value="4000"/>
+  <env name="DATABASE_URL" value="mysql://root:root@127.0.0.1:3306/appbarcash"/>
+  <env name="JWT_SECRET" value="thunder"/>
+  <env name="NODE_ENV" value="production"/>
+</service>

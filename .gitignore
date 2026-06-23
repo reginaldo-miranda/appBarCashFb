@@ -141,3 +141,12 @@ vite.config.ts.timestamp-*
 node_modules/
 dist/
 build/
+
+# Pastas de build, cache e saida do Inno Setup
+installer/build/
+installer/cache/
+installer/Output/
+
+# Binarios e instaladores pesados do Windows
+*.exe
+*.msi
