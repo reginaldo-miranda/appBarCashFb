@@ -41,8 +41,7 @@ Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\node.msi"" /qn /norestart"; Sta
 ; 2. Instalar MariaDB silenciosamente se necessário (Senha de root: root, porta: 3306)
 Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\mariadb.msi"" /qn /norestart PASSWORD=root PORT=3306 SERVICENAME=MariaDB ADD_TO_PATH=1"; StatusMsg: "Verificando e instalando Banco de Dados MariaDB..."; Flags: runhidden; Check: MariaDbNecessario
 
-; 3. Executar script de criação do banco e tabelas (configurar-banco.bat)
-Filename: "{app}\configurar-banco.bat"; StatusMsg: "Configurando banco de dados e tabelas do sistema..."; Flags: runhidden
+; 3. O script de configuração do banco e tabelas agora é chamado de forma controlada via código Pascal na etapa ssPostInstall
 
 ; 4. Registrar a API Node.js como Serviço do Windows usando WinSW
 Filename: "{app}\appbarcash-service.exe"; Parameters: "install"; StatusMsg: "Registrando Serviço de Sistema appBarCash..."; Flags: runhidden
@@ -79,6 +78,43 @@ begin
             not FileExists('C:\Program Files\MariaDB 11.2\bin\mysqld.exe') and
             not FileExists('C:\Program Files\MariaDB 11.3\bin\mysqld.exe') and
             not FileExists('C:\Program Files\MariaDB 11.4\bin\mysqld.exe');
+end;
+
+// Função para executar a configuração do banco e capturar erros pós-instalação
+function ExecutarConfigurarBanco(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := True;
+  // Executa o .bat de forma oculta e aguarda a finalização
+  if Exec(ExpandConstant('{app}\configurar-banco.bat'), '', ExpandConstant('{app}'),
+     SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    if ResultCode <> 0 then
+    begin
+      MsgBox('Aviso de Configuração:' + #13#10 +
+             'Houve um problema ao criar ou importar as tabelas no banco de dados.' + #13#10 +
+             'O sistema pode não funcionar corretamente.' + #13#10 +
+             'Por favor, verifique o arquivo de log para mais detalhes em:' + #13#10 +
+             ExpandConstant('{app}\registro_banco.log'), mbError, MB_OK);
+      Result := False;
+    end;
+  end
+  else
+  begin
+    MsgBox('Erro Crítico:' + #13#10 +
+           'Não foi possível executar o script de configuração de banco de dados.', mbError, MB_OK);
+    Result := False;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    // Executa a configuração do banco e importação de tabelas
+    ExecutarConfigurarBanco();
+  end;
 end;
 
 procedure CurUninstallStepChanged(JustAfterAnsiNextStep: TUninstallStep);

@@ -118,7 +118,8 @@ Write-Host "Instalando dependencias de producao na API..." -ForegroundColor Gree
 Push-Location $ApiDest
 try {
     npm install --omit=dev
-    npx prisma generate
+    # Usar o Prisma CLI local instalado na pasta original de desenvolvimento para garantir compatibilidade de versao (v6)
+    & "$ProjectRoot\api\node_modules\.bin\prisma.cmd" generate
 } finally {
     Pop-Location
 }
