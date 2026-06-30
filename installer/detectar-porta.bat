@@ -186,7 +186,9 @@ if "%SENHA_ROOT%"=="" (
 echo [INFO] Atualizando arquivo .env da API...
 (
     echo PORT=4000
-    echo DATABASE_URL="%DB_URL%"
+    echo # Variavel principal usada pelo Prisma schema
+    echo DATABASE_URL_LOCAL="%DB_URL%"
+    echo # DATABASE_URL="%DB_URL%"
     echo JWT_SECRET="thunder"
     echo NODE_ENV="production"
 ) > "%~dp0api\.env"
@@ -206,6 +208,7 @@ echo [INFO] Atualizando appbarcash-service.xml com executavel: %NODE_EXE%...
     echo   ^<logmode^>rotate^</logmode^>
     echo   ^<logpath^>%%BASE%%\logs^</logpath^>
     echo   ^<env name="PORT" value="4000"/^>
+    echo   ^<env name="DATABASE_URL_LOCAL" value="%DB_URL%"/^>
     echo   ^<env name="DATABASE_URL" value="%DB_URL%"/^>
     echo   ^<env name="JWT_SECRET" value="thunder"/^>
     echo   ^<env name="NODE_ENV" value="production"/^>

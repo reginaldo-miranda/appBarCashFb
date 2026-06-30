@@ -189,9 +189,14 @@ api.interceptors.request.use(
         }
       }
       
-      // Se nada acima detectou um IP válido de rede local, usa o IP atual do usuário como fallback de último recurso
-      if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
-        hostname = '192.168.1.145';
+      // Se nada acima detectou um hostname válido, usa o hostname atual da página (funciona para localhost e IP de rede)
+      if (!hostname) {
+        if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+          hostname = window.location.hostname;
+        } else {
+          // Fallback para mobile nativo quando não há window.location
+          hostname = '192.168.1.145';
+        }
       }
       
       // Montamos sempre a API local. IGNORA QUALQUER ASYNC_STORAGE e NUVEM PARA GARANTIR.

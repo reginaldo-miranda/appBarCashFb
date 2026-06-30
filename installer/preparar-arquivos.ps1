@@ -104,7 +104,9 @@ Copy-Item -Path (Join-Path -Path $MobilePath -ChildPath "dist\*") -Destination $
 # Criar arquivo .env de producao com a senha de root configurada
 $EnvContent = @"
 PORT=4000
-DATABASE_URL="mysql://root:root@127.0.0.1:3306/appbarcash"
+# Variavel principal usada pelo Prisma schema
+DATABASE_URL_LOCAL="mysql://root:root@127.0.0.1:3306/appbarcash"
+# DATABASE_URL="mysql://root:root@127.0.0.1:3306/appbarcash"
 JWT_SECRET="thunder"
 NODE_ENV="production"
 "@
