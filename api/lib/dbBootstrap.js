@@ -733,4 +733,94 @@ export async function runDbBootstrap(prisma) {
   await run("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `roleId` INT DEFAULT NULL;", 'user.roleId');
 
   console.log('✅ [dbBootstrap] Verificação de tabelas concluída com sucesso!');
+
+  // Executar sementes (seeds) de dados padrões
+  await runSeeds(prisma);
 }
+
+/**
+ * Insere registros padrões caso as tabelas correspondentes estejam vazias.
+ * @param {import('@prisma/client').PrismaClient} prisma
+ */
+async function runSeeds(prisma) {
+  console.log('🌱 [dbBootstrap] Verificando sementes (seeds) de dados padrões...');
+
+  // 1. Tipos
+  try {
+    const countTipos = await prisma.tipo.count();
+    if (countTipos === 0) {
+      console.log('🌱 [dbBootstrap] Inserindo tipos padrões...');
+      await prisma.tipo.createMany({
+        data: [
+          { nome: 'alcoolicos', descricao: 'Bebidas alcoólicas' },
+          { nome: 'nao alcoolicos', descricao: 'Bebidas não alcoólicas' },
+          { nome: 'aliementos', descricao: 'Alimentos em geral' },
+          { nome: 'importado', descricao: 'Produtos importados' },
+          { nome: 'nacional', descricao: 'Produtos nacionais' }
+        ]
+      });
+      console.log('🌱 [dbBootstrap] Tipos padrões inseridos com sucesso!');
+    }
+  } catch (err) {
+    console.error('❌ [dbBootstrap] Erro ao inserir tipos padrões:', err.message);
+  }
+
+  // 2. Categorias
+  try {
+    const countCategorias = await prisma.categoria.count();
+    if (countCategorias === 0) {
+      console.log('🌱 [dbBootstrap] Inserindo categorias padrões...');
+      await prisma.categoria.createMany({
+        data: [
+          { nome: 'cervejas', descricao: 'Cervejas em lata e garrafa' },
+          { nome: 'refrigerantes', descricao: 'Refrigerantes e sucos' },
+          { nome: 'salgados', descricao: 'Salgados assados e fritos' },
+          { nome: 'doces', descricao: 'Doces e sobremesas' },
+          { nome: 'doses', descricao: 'Doses de destilados' },
+          { nome: 'lanches', descricao: 'Lanches e hambúrgueres' },
+          { nome: 'porcoes', descricao: 'Porções variadas' }
+        ]
+      });
+      console.log('🌱 [dbBootstrap] Categorias padrões inseridas com sucesso!');
+    }
+  } catch (err) {
+    console.error('❌ [dbBootstrap] Erro ao inserir categorias padrões:', err.message);
+  }
+
+  // 3. Unidades de Medidas
+  try {
+    const countUnidades = await prisma.unidadeMedida.count();
+    if (countUnidades === 0) {
+      console.log('🌱 [dbBootstrap] Inserindo unidades de medida padrões...');
+      await prisma.unidadeMedida.createMany({
+        data: [
+          { nome: 'quilo', sigla: 'kg', descricao: 'Quilo' },
+          { nome: 'unidades', sigla: 'un', descricao: 'Unidades' },
+          { nome: 'peças', sigla: 'pc', descricao: 'Peças' }
+        ]
+      });
+      console.log('🌱 [dbBootstrap] Unidades de medida padrões inseridas com sucesso!');
+    }
+  } catch (err) {
+    console.error('❌ [dbBootstrap] Erro ao inserir unidades de medida padrões:', err.message);
+  }
+
+  // 4. Setores
+  try {
+    const countSetores = await prisma.setorImpressao.count();
+    if (countSetores === 0) {
+      console.log('🌱 [dbBootstrap] Inserindo setores de impressão padrões...');
+      await prisma.setorImpressao.createMany({
+        data: [
+          { nome: 'bar', descricao: 'Setor de preparo de bebidas', modoEnvio: 'impressora' },
+          { nome: 'cozinha', descricao: 'Setor de preparo de pratos', modoEnvio: 'impressora' },
+          { nome: 'chapa', descricao: 'Setor de preparo de lanches', modoEnvio: 'impressora' }
+        ]
+      });
+      console.log('🌱 [dbBootstrap] Setores de impressão padrões inseridos com sucesso!');
+    }
+  } catch (err) {
+    console.error('❌ [dbBootstrap] Erro ao inserir setores padrões:', err.message);
+  }
+}
+
