@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
+import mysql from "mysql2/promise";
 
 // Helper para construir URL do banco - FORÇADO LOCAL APENAS
 const buildDatabaseUrl = () => {
@@ -20,12 +21,44 @@ const buildDatabaseUrl = () => {
   }
 
   // Fallback com credenciais conhecidas
-  const finalUrl = "mysql://root:saguides%40123@localhost:3306/appBarCash"; 
+  const finalUrl = "mysql://root:root@localhost:3306/appbarcash"; 
   console.log('🔌 DB: Usando URL fallback (nenhuma env encontrada)');
   return finalUrl; 
 };
 
+// Função para garantir que o banco de dados existe antes do Prisma inicializar
+const ensureDatabaseExists = async (urlStr) => {
+  try {
+    const u = new URL(urlStr);
+    const host = u.hostname || "localhost";
+    const port = u.port || 3306;
+    const username = u.username || "root";
+    const password = decodeURIComponent(u.password || "");
+    const database = u.pathname.replace(/^\//, "");
+
+    if (!database) return;
+
+    console.log(`🔌 [DB-Bootstrap] Garantindo que o banco de dados '${database}' existe no servidor ${host}:${port}...`);
+    
+    const connection = await mysql.createConnection({
+      host,
+      port: Number(port),
+      user: username,
+      password,
+    });
+
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+    );
+    await connection.end();
+    console.log(`🔌 [DB-Bootstrap] Banco de dados '${database}' verificado/criado com sucesso!`);
+  } catch (err) {
+    console.warn(`⚠️ [DB-Bootstrap] Não foi possível verificar/criar o banco de dados automaticamente:`, err.message);
+  }
+};
+
 const urlLocal = buildDatabaseUrl();
+await ensureDatabaseExists(urlLocal);
 const prismaLocal = new PrismaClient({ datasources: { db: { url: urlLocal } } });
 
 // Força sempre local

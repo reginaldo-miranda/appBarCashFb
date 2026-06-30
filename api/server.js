@@ -139,6 +139,7 @@ app.get('/api/health', (req, res) => {
 // Novo endpoint: alternar alvo do banco (local/railway) dinamicamente
 import prisma, { switchDbTarget, getProductsForTarget, getSchemaSummaryForTarget } from "./lib/prisma.js";
 import { getSaleUpdates, onSaleUpdate } from "./lib/events.js";
+import { runDbBootstrap } from "./lib/dbBootstrap.js";
 app.post('/api/admin/db-target', async (req, res) => {
   try {
     const { target } = req.body || {};
@@ -327,6 +328,14 @@ const dbTarget = 'local';
 prisma.$connect()
   .then(async () => {
     console.log(`✅ Conectado ao MySQL (${dbTarget})`);
+
+    // Verificar e criar tabelas automaticamente no startup
+    try {
+      await runDbBootstrap(prisma);
+    } catch (e) {
+      console.error('❌ [dbBootstrap] Erro inesperado durante o bootstrap:', e?.message || e);
+    }
+
     // Iniciar job de contingência NFC-e
     try {
       const { iniciarContingenciaJob } = await import('./services/ContingenciaJobService.js');
@@ -336,76 +345,6 @@ prisma.$connect()
     }
   })
   .catch(err => console.error("❌ Erro ao conectar MySQL:", err));
-
-
-(async () => {
-  try {
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `SetorImpressao` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `nome` VARCHAR(191) NOT NULL,\n        `descricao` VARCHAR(191) NULL,\n        `modoEnvio` ENUM('impressora','whatsapp') NOT NULL DEFAULT 'impressora',\n        `whatsappDestino` VARCHAR(191) NULL,\n        `ativo` BOOLEAN NOT NULL DEFAULT true,\n        `dataInclusao` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        UNIQUE INDEX `SetorImpressao_nome_key`(`nome`),\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `Printer` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `nome` VARCHAR(191) NOT NULL,\n        `modelo` VARCHAR(191) NULL,\n        `address` VARCHAR(191) NULL,\n        `driver` VARCHAR(191) NULL,\n        `ativo` BOOLEAN NOT NULL DEFAULT true,\n        `dataInclusao` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        UNIQUE INDEX `Printer_nome_key`(`nome`),\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `SetorImpressao` ADD COLUMN IF NOT EXISTS `printerId` INTEGER NULL;"
-    );
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `PrintJob` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `saleId` INTEGER NULL,\n        `productId` INTEGER NOT NULL,\n        `setorId` INTEGER NOT NULL,\n        `printerId` INTEGER NULL,\n        `content` TEXT NOT NULL,\n        `status` ENUM('queued','processing','done','failed') NOT NULL DEFAULT 'queued',\n        `error` TEXT NULL,\n        `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        `processedAt` DATETIME(3) NULL,\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `AppSetting` (\n        `key` VARCHAR(191) NOT NULL,\n        `value` VARCHAR(191) NULL,\n        `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        PRIMARY KEY (`key`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `SetorImpressao` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `nome` VARCHAR(191) NOT NULL,\n        `descricao` TEXT NULL,\n        `modoEnvio` ENUM('impressora','whatsapp') NOT NULL DEFAULT 'impressora',\n        `whatsappDestino` VARCHAR(191) NULL,\n        `printerId` INTEGER NULL,\n        `ativo` TINYINT(1) NOT NULL DEFAULT 1,\n        `dataInclusao` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `WhatsAppMessageLog` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `saleId` INTEGER NULL,\n        `destino` VARCHAR(191) NOT NULL,\n        `content` TEXT NOT NULL,\n        `status` ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',\n        `error` TEXT NULL,\n        `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        `sentAt` DATETIME(3) NULL,\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `SaleItem` MODIFY COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'pendente';"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `SaleItem` ADD COLUMN IF NOT EXISTS `origem` VARCHAR(20) NULL DEFAULT 'default';"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `Product` ADD COLUMN IF NOT EXISTS `temVariacao` TINYINT(1) NOT NULL DEFAULT 0;"
-    );
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `VariationType` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `nome` VARCHAR(191) NOT NULL,\n        `maxOpcoes` INTEGER NOT NULL DEFAULT 1,\n        `categoriasIds` JSON NULL,\n        `regraPreco` ENUM('mais_caro','media','fixo') NOT NULL DEFAULT 'mais_caro',\n        `precoFixo` DECIMAL(10,2) NULL,\n        `ativo` TINYINT(1) NOT NULL DEFAULT 1,\n        `dataInclusao` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        UNIQUE INDEX `VariationType_nome_key`(`nome`),\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `SaleItem` ADD COLUMN IF NOT EXISTS `variacaoTipo` VARCHAR(50) NULL;"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `SaleItem` ADD COLUMN IF NOT EXISTS `variacaoOpcoes` JSON NULL;"
-    );
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `SaleItem` ADD COLUMN IF NOT EXISTS `variacaoRegraPreco` ENUM('mais_caro','media','fixo') NULL;"
-    );
-     await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `idletimeconfig` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `ativo` TINYINT(1) NOT NULL DEFAULT 0,\n        `usarHoraInclusao` TINYINT(1) NOT NULL DEFAULT 1,\n        `estagios` JSON NOT NULL,\n        `updatedAt` DATETIME(3) NOT NULL,\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-    // ── Migração: Campos de Contingência NFC-e na tabela Nfce ──
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `tpEmis` INTEGER NOT NULL DEFAULT 1;");
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `dhCont` DATETIME(3) NULL;");
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `xJust` VARCHAR(255) NULL;");
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `tentativas` INTEGER NOT NULL DEFAULT 0;");
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `ultimaTentativa` DATETIME(3) NULL;");
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `prazoLimite` DATETIME(3) NULL;");
-    await prisma.$executeRawUnsafe("ALTER TABLE `Nfce` ADD COLUMN IF NOT EXISTS `erroUltimo` TEXT NULL;");
-    // Atualizar enum NfceStatus para incluir novos valores de contingência
-    try {
-      await prisma.$executeRawUnsafe(
-        "ALTER TABLE `Nfce` MODIFY COLUMN `status` ENUM('PENDENTE','PROCESSANDO','AUTORIZADA','REJEITADA','CANCELADA','DENEGADA','CONTINGENCIA','CONTINGENCIA_REJEITADA','CONTINGENCIA_EXPIRADA','INUTILIZADA') NOT NULL DEFAULT 'PENDENTE';"
-      );
-    } catch {}
-    // Criar tabela NfceEvent se não existir
-    await prisma.$executeRawUnsafe(
-      "CREATE TABLE IF NOT EXISTS `NfceEvent` (\n        `id` INTEGER NOT NULL AUTO_INCREMENT,\n        `nfceId` INTEGER NOT NULL,\n        `tipo` VARCHAR(191) NOT NULL,\n        `sequencia` INTEGER NOT NULL DEFAULT 1,\n        `xmlEnvio` TEXT NULL,\n        `xmlRetorno` TEXT NULL,\n        `status` VARCHAR(191) NULL,\n        `motivo` VARCHAR(191) NULL,\n        `protocolo` VARCHAR(191) NULL,\n        `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n        INDEX `NfceEvent_nfceId_fkey`(`nfceId`),\n        PRIMARY KEY (`id`)\n      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    );
-  } catch {}
-})();
 
 // WebSocket server para eventos em tempo real (LAN, sem localhost)
 (async () => {

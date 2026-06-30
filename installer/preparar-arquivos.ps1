@@ -69,14 +69,11 @@ Copy-Item -Path $WinSwCache -Destination (Join-Path -Path $BuildDir -ChildPath "
 # 4. Copiar arquivos de configuracao do servico e banco
 Copy-Item -Path (Join-Path -Path $InstallerDir -ChildPath "appbarcash-service.xml") -Destination (Join-Path -Path $BuildDir -ChildPath "appbarcash-service.xml")
 Copy-Item -Path (Join-Path -Path $InstallerDir -ChildPath "configurar-banco.bat") -Destination (Join-Path -Path $BuildDir -ChildPath "configurar-banco.bat")
+Copy-Item -Path (Join-Path -Path $InstallerDir -ChildPath "detectar-porta.bat") -Destination (Join-Path -Path $BuildDir -ChildPath "detectar-porta.bat")
 
-# 5. Copiar dump do banco de dados
-$SqlDumpSrc = Join-Path -Path $ProjectRoot -ChildPath "dump_mysql.sql"
-if (Test-Path -Path $SqlDumpSrc) {
-    Copy-Item -Path $SqlDumpSrc -Destination (Join-Path -Path $BuildDir -ChildPath "database_setup.sql")
-} else {
-    Write-Host "AVISO: dump_mysql.sql nao encontrado na raiz!" -ForegroundColor Red
-}
+# 5. (dump_mysql.sql nao e mais necessario no instalador)
+#    As tabelas sao criadas automaticamente pelo sistema na primeira execucao.
+#    Apenas o banco vazio 'appbarcash' e criado pelo configurar-banco.bat.
 
 # 6. Gerar Build Web do Frontend Mobile
 Write-Host "Gerando Build de Produção Web do Frontend (Expo)..." -ForegroundColor Green
@@ -118,8 +115,8 @@ Write-Host "Instalando dependencias de producao na API..." -ForegroundColor Gree
 Push-Location $ApiDest
 try {
     npm install --omit=dev
-    # Usar o Prisma CLI local instalado na pasta original de desenvolvimento para garantir compatibilidade de versao (v6)
-    & "$ProjectRoot\api\node_modules\.bin\prisma.cmd" generate
+    # Usar npx para executar o prisma generate de forma portátil
+    npx prisma generate
 } finally {
     Pop-Location
 }

@@ -2,121 +2,142 @@
 chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 
-:: Redirecionar todas as saídas (stdout e stderr) para o arquivo registro_banco.log para diagnóstico
+:: ============================================================
+:: configurar-banco.bat (v2)
+:: Cria o banco de dados 'appbarcash' vazio.
+:: As tabelas são criadas automaticamente pela API (dbBootstrap.js).
+::
+:: Lê a porta e senha detectadas pelo detectar-porta.bat
+:: ============================================================
+
 call :main > registro_banco.log 2>&1
 exit /b %errorlevel%
 
 :main
 echo ======================================================
-echo    appBarCash - Configuração do Banco de Dados
+echo    appBarCash - Configuração Inicial do Banco
 echo    Data/Hora: %DATE% %TIME%
 echo ======================================================
 echo.
 
-:: Caminho padrão para o mysql.exe
-set "MYSQL_BIN=mysql.exe"
+:: ─────────────────────────────────────────────────────────
+:: PASSO 1: Ler porta e senha detectadas
+:: ─────────────────────────────────────────────────────────
+set "DB_PORT=3306"
+set "DB_PASS=root"
 
-:: Verificar se mysql está no PATH
-where mysql >nul 2>&1
-if %errorlevel% neq 0 (
-    echo mysql.exe não está no PATH do sistema. Procurando em diretórios padrão do MariaDB...
-    if exist "C:\Program Files\MariaDB 10.11\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 10.11\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MySQL\MySQL Server 8.1\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.1\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MySQL\MySQL Server 8.2\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.2\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MySQL\MySQL Server 8.3\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.3\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MySQL\MySQL Server 5.7\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 5.7\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MariaDB 10.5\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 10.5\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MariaDB 11.0\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 11.0\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MariaDB 11.1\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 11.1\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MariaDB 11.2\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 11.2\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MariaDB 11.3\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 11.3\bin\mysql.exe"
-    ) else if exist "C:\Program Files\MariaDB 11.4\bin\mysql.exe" (
-        set "MYSQL_BIN=C:\Program Files\MariaDB 11.4\bin\mysql.exe"
-    ) else (
-        echo [ERRO] mysql.exe não foi encontrado no PATH e nem nos caminhos padrões do MariaDB/MySQL!
-        echo Configuração cancelada.
-        exit /b 1
-    )
+if exist "%~dp0porta_detectada.txt" (
+    set /p DB_PORT=<"%~dp0porta_detectada.txt"
+    echo [INFO] Porta lida do detectar-porta: %DB_PORT%
+) else (
+    echo [INFO] Usando porta padrao: %DB_PORT%
 )
 
-echo Usando binário do banco: "%MYSQL_BIN%"
+if exist "%~dp0senha_detectada.txt" (
+    set /p DB_PASS=<"%~dp0senha_detectada.txt"
+    echo [INFO] Senha lida do detectar-porta.
+) else (
+    echo [INFO] Usando senha padrao: root
+)
+
+:: ─────────────────────────────────────────────────────────
+:: PASSO 2: Localizar binário mysql.exe
+:: ─────────────────────────────────────────────────────────
+set "MYSQL_BIN=mysql.exe"
+
+where mysql >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [INFO] mysql.exe nao esta no PATH. Procurando em diretorios padrao...
+
+    :: MariaDB
+    for %%V in (11.4 11.3 11.2 11.1 11.0 10.11 10.5) do (
+        if exist "C:\Program Files\MariaDB %%V\bin\mysql.exe" (
+            set "MYSQL_BIN=C:\Program Files\MariaDB %%V\bin\mysql.exe"
+            goto :achou_mysql
+        )
+    )
+
+    :: MySQL
+    for %%V in (9.0 8.4 8.3 8.2 8.1 8.0 5.7) do (
+        if exist "C:\Program Files\MySQL\MySQL Server %%V\bin\mysql.exe" (
+            set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server %%V\bin\mysql.exe"
+            goto :achou_mysql
+        )
+    )
+
+    echo [ERRO] mysql.exe nao foi encontrado no PATH nem nos caminhos padrao!
+    echo Verifique se o MariaDB ou MySQL foi instalado corretamente.
+    exit /b 1
+)
+
+:achou_mysql
+echo [OK] Usando binario do banco: "%MYSQL_BIN%"
+echo [OK] Porta do banco: %DB_PORT%
 echo.
 
-:: Loop de teste de conexão com o banco de dados (máximo 30 segundos)
-echo Aguardando inicialização do banco de dados MariaDB na porta 3306...
+:: ─────────────────────────────────────────────────────────
+:: PASSO 3: Aguardar banco ficar disponível (até 30 tentativas)
+:: ─────────────────────────────────────────────────────────
+echo Aguardando inicializacao do banco na porta %DB_PORT%...
 set "CONNECTED=0"
+
 for /L %%i in (1,1,30) do (
-    "%MYSQL_BIN%" -u root -proot -e "SELECT 1;" >nul 2>&1
-    if errorlevel 0 (
-        :: Se o comando SELECT 1 der sucesso (errorlevel 0), define como conectado
+    if "%DB_PASS%"=="" (
+        "%MYSQL_BIN%" -u root -P %DB_PORT% -h 127.0.0.1 -e "SELECT 1;" >nul 2>&1
+    ) else (
+        "%MYSQL_BIN%" -u root -p%DB_PASS% -P %DB_PORT% -h 127.0.0.1 -e "SELECT 1;" >nul 2>&1
+    )
+    if not errorlevel 1 (
         set "CONNECTED=1"
         goto :connected
     )
-    echo Tentativa %%i/30: banco de dados ainda não respondeu. Aguardando 1 segundo...
-    timeout /t 1 /nobreak >nul
+    echo Tentativa %%i/30: banco ainda nao respondeu na porta %DB_PORT%. Aguardando 2 segundos...
+    timeout /t 2 /nobreak >nul
 )
 
 :connected
 if "%CONNECTED%"=="0" (
-    echo [ERRO] O banco de dados MariaDB não respondeu após 30 segundos.
-    echo Verifique se o serviço 'MariaDB' está em execução no Windows.
+    echo [ERRO] O banco de dados nao respondeu apos 60 segundos na porta %DB_PORT%.
+    echo.
+    echo Possíveis causas:
+    echo   - O servico MariaDB/MySQL nao esta em execucao
+    echo   - A senha de root nao e '%DB_PASS%'
+    echo   - A porta %DB_PORT% esta bloqueada pelo firewall
+    echo.
+    echo Verifique o Gerenciador de Servicos do Windows.
     exit /b 1
 )
-echo Banco de dados conectado com sucesso!
+echo [OK] Banco de dados conectado com sucesso na porta %DB_PORT%!
 echo.
 
-:: Criar banco de dados se não existir
-echo Criando o banco de dados 'appbarcash' (caso não exista)...
-"%MYSQL_BIN%" -u root -proot -e "CREATE DATABASE IF NOT EXISTS appbarcash;"
+:: ─────────────────────────────────────────────────────────
+:: PASSO 4: Criar banco de dados 'appbarcash' (se não existir)
+:: ─────────────────────────────────────────────────────────
+echo Criando banco de dados 'appbarcash' (caso nao exista)...
+if "%DB_PASS%"=="" (
+    "%MYSQL_BIN%" -u root -P %DB_PORT% -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS appbarcash CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+) else (
+    "%MYSQL_BIN%" -u root -p%DB_PASS% -P %DB_PORT% -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS appbarcash CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+)
 if %errorlevel% neq 0 (
-    echo [ERRO] Não foi possível criar o banco de dados 'appbarcash'.
-    echo Verifique se a senha do usuário 'root' é realmente 'root'.
+    echo [ERRO] Nao foi possivel criar o banco de dados 'appbarcash'.
+    echo Verifique se a senha do usuario 'root' e '%DB_PASS%'.
     exit /b %errorlevel%
 )
-echo Banco de dados verificado/criado com sucesso!
+echo [SUCESSO] Banco de dados 'appbarcash' verificado/criado!
+echo.
+echo [INFO] As tabelas serao criadas automaticamente pelo sistema
+echo [INFO] na primeira vez que o appBarCash for iniciado (dbBootstrap.js).
 echo.
 
-:: Contar o número de tabelas existentes no banco appbarcash
-set "TABLE_COUNT=0"
-for /F "tokens=1" %%A in ('"%MYSQL_BIN%" -u root -proot -s -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'appbarcash';" 2^>nul') do (
-    set "TABLE_COUNT=%%A"
-)
-echo Número de tabelas encontradas no banco 'appbarcash': %TABLE_COUNT%
-echo.
+:: ─────────────────────────────────────────────────────────
+:: PASSO 5: Limpar arquivos temporários
+:: ─────────────────────────────────────────────────────────
+if exist "%~dp0porta_detectada.txt" del "%~dp0porta_detectada.txt"
+if exist "%~dp0senha_detectada.txt" del "%~dp0senha_detectada.txt"
 
-:: Carregar estrutura se o banco estiver vazio ou incompleto (menos de 5 tabelas)
-if %TABLE_COUNT% lss 5 (
-    echo O banco de dados está vazio ou incompleto (menos de 5 tabelas). Iniciando importação das tabelas...
-    if exist "database_setup.sql" (
-        "%MYSQL_BIN%" -u root -proot appbarcash < database_setup.sql
-        if %errorlevel% neq 0 (
-            echo [ERRO] Falha ao importar o arquivo database_setup.sql.
-            exit /b %errorlevel%
-        )
-        echo [SUCESSO] Tabelas importadas com sucesso!
-    ) else (
-        echo [AVISO] O arquivo database_setup.sql não foi encontrado! A importação foi pulada.
-    )
-) else (
-    echo [INFO] O banco de dados já possui %TABLE_COUNT% tabelas. A importação foi ignorada para preservar seus dados existentes.
-)
-
-echo.
 echo ======================================================
-echo    Configuração finalizada com sucesso!
+echo    Configuracao inicial do banco concluida!
+echo    Porta: %DB_PORT% | Banco: appbarcash
 echo ======================================================
 exit /b 0

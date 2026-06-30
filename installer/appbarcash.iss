@@ -1,5 +1,11 @@
 ; Script do Inno Setup para o appBarCash
 ; Gera o instalador executável final (.exe) do sistema para Windows.
+;
+; CORREÇÕES v2:
+;   - Detecção expandida: verifica MySQL E MariaDB antes de instalar
+;   - Porta dinâmica: se 3306 está ocupada, usa 3307
+;   - Nome do banco padronizado: sempre 'appbarcash' (minúsculo)
+;   - Novo passo: detectar-porta.bat roda ANTES do configurar-banco.bat
 
 [Setup]
 AppId={{D1F4F9B3-75B0-4A3C-9C5A-2ED9EF74DCF5}
@@ -38,18 +44,25 @@ Name: "{group}\Desinstalar appBarCash"; Filename: "{uninstallexe}"
 ; 1. Instalar Node.js silenciosamente se necessário
 Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\node.msi"" /qn /norestart"; StatusMsg: "Verificando e instalando Node.js (Ambiente de Execução)..."; Flags: runhidden; Check: NodeNecessario
 
-; 2. Instalar MariaDB silenciosamente se necessário (Senha de root: root, porta: 3306)
-Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\mariadb.msi"" /qn /norestart PASSWORD=root PORT=3306 SERVICENAME=MariaDB ADD_TO_PATH=1"; StatusMsg: "Verificando e instalando Banco de Dados MariaDB..."; Flags: runhidden; Check: MariaDbNecessario
+; 2. Instalar MariaDB silenciosamente se necessário
+;    A porta é determinada pela função GetMariaDbPortParam() que verifica se 3306 está em uso
+Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\mariadb.msi"" /qn /norestart PASSWORD=root PORT={code:GetMariaDbPortParam} SERVICENAME=MariaDB ADD_TO_PATH=1"; StatusMsg: "Verificando e instalando Banco de Dados MariaDB..."; Flags: runhidden; Check: MariaDbNecessario
 
-; 3. O script de configuração do banco e tabelas agora é chamado de forma controlada via código Pascal na etapa ssPostInstall
+; 3. Detectar porta do banco e atualizar configurações (.env, service.xml)
+;    DEVE rodar ANTES do configurar-banco.bat
+Filename: "{cmd}"; Parameters: "/c ""{app}\detectar-porta.bat"""; StatusMsg: "Detectando configuração do banco de dados..."; Flags: runhidden waituntilterminated
 
-; 4. Registrar a API Node.js como Serviço do Windows usando WinSW
+; 4. Configurar banco de dados (criar banco vazio 'appbarcash')
+;    As tabelas são criadas automaticamente pela API no primeiro startup (dbBootstrap.js)
+Filename: "{cmd}"; Parameters: "/c ""{app}\configurar-banco.bat"""; StatusMsg: "Configurando banco de dados..."; Flags: runhidden waituntilterminated
+
+; 5. Registrar a API Node.js como Serviço do Windows usando WinSW
 Filename: "{app}\appbarcash-service.exe"; Parameters: "install"; StatusMsg: "Registrando Serviço de Sistema appBarCash..."; Flags: runhidden
 
-; 5. Iniciar o Serviço do Windows recém-registrado
+; 6. Iniciar o Serviço do Windows recém-registrado
 Filename: "{app}\appbarcash-service.exe"; Parameters: "start"; StatusMsg: "Iniciando Serviço do Sistema..."; Flags: runhidden
 
-; 6. Abrir a aplicação no navegador no final da instalação
+; 7. Abrir a aplicação no navegador no final da instalação
 Filename: "cmd.exe"; Parameters: "/c start http://localhost:4000"; Description: "Iniciar o appBarCash agora"; Flags: postinstall nowait
 
 [UninstallRun]
@@ -67,53 +80,65 @@ begin
             not FileExists('C:\Program Files (x86)\nodejs\node.exe');
 end;
 
-// Função para checar se o MariaDB já está instalado
-function MariaDbNecessario(): Boolean;
-begin
-  // Retorna True se nenhuma pasta padrão de instalação do MariaDB for encontrada
-  Result := not FileExists('C:\Program Files\MariaDB 10.11\bin\mysqld.exe') and 
-            not FileExists('C:\Program Files\MariaDB 10.5\bin\mysqld.exe') and
-            not FileExists('C:\Program Files\MariaDB 11.0\bin\mysqld.exe') and
-            not FileExists('C:\Program Files\MariaDB 11.1\bin\mysqld.exe') and
-            not FileExists('C:\Program Files\MariaDB 11.2\bin\mysqld.exe') and
-            not FileExists('C:\Program Files\MariaDB 11.3\bin\mysqld.exe') and
-            not FileExists('C:\Program Files\MariaDB 11.4\bin\mysqld.exe');
-end;
-
-// Função para executar a configuração do banco e capturar erros pós-instalação
-function ExecutarConfigurarBanco(): Boolean;
+// Determina a porta para instalar o MariaDB
+// Se a porta 3306 está em uso (por um MySQL existente que não foi reconhecido acima), usa 3307
+function GetMariaDbPortParam(Param: String): String;
 var
   ResultCode: Integer;
 begin
-  Result := True;
-  // Executa o .bat de forma oculta e aguarda a finalização
-  if Exec(ExpandConstant('{app}\configurar-banco.bat'), '', ExpandConstant('{app}'),
-     SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  // Executa netstat para verificar se a porta 3306 está em uso
+  // Se netstat encontrar LISTENING na 3306, usa porta alternativa
+  if Exec('cmd.exe', '/c netstat -ano | findstr "LISTENING" | findstr ":3306 "', '',
+          SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
-    if ResultCode <> 0 then
+    if ResultCode = 0 then
     begin
-      MsgBox('Aviso de Configuração:' + #13#10 +
-             'Houve um problema ao criar ou importar as tabelas no banco de dados.' + #13#10 +
-             'O sistema pode não funcionar corretamente.' + #13#10 +
-             'Por favor, verifique o arquivo de log para mais detalhes em:' + #13#10 +
-             ExpandConstant('{app}\registro_banco.log'), mbError, MB_OK);
-      Result := False;
+      // Porta 3306 está em uso — instalar na 3307
+      Result := '3307';
+    end
+    else
+    begin
+      // Porta 3306 está livre — usar padrão
+      Result := '3306';
     end;
   end
   else
   begin
-    MsgBox('Erro Crítico:' + #13#10 +
-           'Não foi possível executar o script de configuração de banco de dados.', mbError, MB_OK);
-    Result := False;
+    // Falha ao executar netstat — usar padrão por segurança
+    Result := '3306';
   end;
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+// Função para checar se QUALQUER banco de dados compatível (MariaDB OU MySQL) já está instalado e ativo como serviço
+function MariaDbNecessario(): Boolean;
+var
+  PortaParam: String;
 begin
-  if CurStep = ssPostInstall then
+  PortaParam := GetMariaDbPortParam('');
+  
+  // Se a porta 3306 está em uso, precisamos instalar o MariaDB na porta 3307.
+  // Mas se o serviço MariaDB já estiver registrado (de uma instalação anterior na 3307), não reinstalamos.
+  if PortaParam = '3307' then
   begin
-    // Executa a configuração do banco e importação de tabelas
-    ExecutarConfigurarBanco();
+    if RegKeyExists(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\MariaDB') then
+      Result := False
+    else
+      Result := True;
+    Exit;
+  end;
+
+  // Se a porta 3306 está livre, verificamos se existe algum serviço de banco de dados registrado.
+  // Se houver algum serviço de MySQL ou MariaDB ativo, assumimos que já está instalado e não precisa de nova instalação.
+  if RegKeyExists(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\MariaDB') or
+     RegKeyExists(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\MySQL') or
+     RegKeyExists(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\MySQL80') or
+     RegKeyExists(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\wampmysqld64') then
+  begin
+    Result := False;
+  end
+  else
+  begin
+    Result := True;
   end;
 end;
 
