@@ -104,7 +104,12 @@ function obterIpLanCardapio() {
     }
   } catch (e) {}
 
-  return '192.168.1.145';
+  // Fallback to the current hostname if in browser, otherwise localhost.
+  // We cannot use a hardcoded network IP because the machine IP might change.
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return '127.0.0.1';
 }
 
 function obterPortaCardapio() {
@@ -152,9 +157,94 @@ export default function MesasScreen() {
   const [cancelMesaModalVisible, setCancelMesaModalVisible] = useState(false);
   const [cancelMesaTarget, setCancelMesaTarget] = useState<Mesa | null>(null);
 
-  // Estado para QR Code da mesa
   const [qrCodeModalVisible, setQrCodeModalVisible] = useState(false);
   const [qrCodeMesa, setQrCodeMesa] = useState<Mesa | null>(null);
+
+  const [ipLan, setIpLan] = useState<string>(obterIpLanCardapio());
+
+  useEffect(() => {
+    const obterIpDinamico = async () => {
+      // 1. Tentar ler IP Fixo configurado no banco de dados
+      try {
+        const configRes = await api.get('/config/cardapio-ip');
+        if (configRes?.data?.ip) {
+          setIpLan(configRes.data.ip);
+          return;
+        }
+      } catch (e) {
+        console.log('Erro ao carregar IP Fixo do banco para mesas:', e);
+      }
+
+      // 2. Tentar usar hostname se for Web e não local
+      const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
+      let hostname = '';
+      try {
+        if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+          hostname = window.location.hostname;
+        }
+      } catch {}
+
+      if (hostname && !LOCAL_HOSTS.includes(hostname)) {
+        setIpLan(hostname);
+        return;
+      }
+
+      // Helper para extrair IP das variáveis do Expo
+      const tryExtractLanIp = (): string | null => {
+        try {
+          const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+          if (apiUrl) {
+            const parsed = new URL(apiUrl);
+            if (!LOCAL_HOSTS.includes(parsed.hostname)) return parsed.hostname;
+          }
+        } catch {}
+        
+        try {
+          const currentUrl = getCurrentBaseUrl();
+          if (currentUrl) {
+            const parsed = new URL(currentUrl);
+            if (!LOCAL_HOSTS.includes(parsed.hostname)) return parsed.hostname;
+          }
+        } catch {}
+        return null;
+      };
+
+      // 3. Em modo de DESENVOLVIMENTO, priorizar a extração das variáveis do Metro (dinâmicas)
+      const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+      if (isDev) {
+        const extractedIp = tryExtractLanIp();
+        if (extractedIp) {
+          setIpLan(extractedIp);
+          return;
+        }
+      }
+
+      // 4. Em PRODUÇÃO (cliente), buscar IP real do servidor local via API de saúde (/health)
+      try {
+        const resHealth = await api.get('/health');
+        if (resHealth?.data?.lanIp && !LOCAL_HOSTS.includes(resHealth.data.lanIp)) {
+          setIpLan(resHealth.data.lanIp);
+          return;
+        }
+      } catch (e) {
+        console.log('Erro ao buscar IP da API em mesas:', e);
+      }
+
+      // 5. Fallback para produção se a API falhar
+      if (!isDev) {
+        const extractedIp = tryExtractLanIp();
+        if (extractedIp) {
+          setIpLan(extractedIp);
+          return;
+        }
+      }
+
+      // 6. Fallback padrão
+      setIpLan(obterIpLanCardapio());
+    };
+
+    obterIpDinamico();
+  }, []);
 
   // Estados para busca de clientes no Abrir Mesa
   const [clients, setClients] = useState<any[]>([]);
@@ -2699,7 +2789,6 @@ useEffect(() => {
             </View>
 
             {qrCodeMesa && (() => {
-              const ipLan = obterIpLanCardapio();
               const porta = obterPortaCardapio();
               const linkCardapio = `http://${ipLan}:${porta}/cardapio/${qrCodeMesa._id}`;
               return (

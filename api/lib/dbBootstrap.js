@@ -732,6 +732,67 @@ export async function runDbBootstrap(prisma) {
   // User - campo roleId
   await run("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `roleId` INT DEFAULT NULL;", 'user.roleId');
 
+  // ============================================================
+  // ETAPA 12: Controle de Estoque (Supplier e StockMovement)
+  // ============================================================
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS \`supplier\` (
+      \`id\`           INT NOT NULL AUTO_INCREMENT,
+      \`razaoSocial\`  VARCHAR(191) NOT NULL,
+      \`nomeFantasia\` VARCHAR(191) DEFAULT NULL,
+      \`cnpj\`         VARCHAR(191) NOT NULL,
+      \`telefone\`     VARCHAR(191) DEFAULT NULL,
+      \`email\`        VARCHAR(191) DEFAULT NULL,
+      \`nomeContato\`  VARCHAR(191) DEFAULT NULL,
+      \`tipo\`         VARCHAR(191) DEFAULT NULL,
+      \`logradouro\`   VARCHAR(191) DEFAULT NULL,
+      \`numero\`       VARCHAR(191) DEFAULT NULL,
+      \`complemento\`  VARCHAR(191) DEFAULT NULL,
+      \`bairro\`       VARCHAR(191) DEFAULT NULL,
+      \`cidade\`       VARCHAR(191) DEFAULT NULL,
+      \`uf\`           VARCHAR(2) DEFAULT NULL,
+      \`cep\`          VARCHAR(20) DEFAULT NULL,
+      \`ativo\`        TINYINT(1) NOT NULL DEFAULT 1,
+      \`dataCadastro\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`Supplier_cnpj_key\` (\`cnpj\`)
+    ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  `, 'supplier');
+
+  // Migrações adicionais para Supplier (idempotente caso a tabela já exista de builds anteriores)
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `nomeContato` VARCHAR(191) DEFAULT NULL;", 'supplier.nomeContato');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `tipo` VARCHAR(191) DEFAULT NULL;", 'supplier.tipo');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `logradouro` VARCHAR(191) DEFAULT NULL;", 'supplier.logradouro');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `numero` VARCHAR(191) DEFAULT NULL;", 'supplier.numero');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `complemento` VARCHAR(191) DEFAULT NULL;", 'supplier.complemento');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `bairro` VARCHAR(191) DEFAULT NULL;", 'supplier.bairro');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `cidade` VARCHAR(191) DEFAULT NULL;", 'supplier.cidade');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `uf` VARCHAR(2) DEFAULT NULL;", 'supplier.uf');
+  await run("ALTER TABLE `supplier` ADD COLUMN IF NOT EXISTS `cep` VARCHAR(20) DEFAULT NULL;", 'supplier.cep');
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS \`stockmovement\` (
+      \`id\`           INT NOT NULL AUTO_INCREMENT,
+      \`productId\`    INT NOT NULL,
+      \`tipo\`         ENUM('ENTRADA','SAIDA','AJUSTE') NOT NULL DEFAULT 'ENTRADA',
+      \`origem\`       ENUM('MANUAL','VENDA','XML_NFE') NOT NULL DEFAULT 'MANUAL',
+      \`quantidade\`   INT NOT NULL,
+      \`precoCusto\`   DECIMAL(10,2) DEFAULT NULL,
+      \`motivo\`       VARCHAR(191) DEFAULT NULL,
+      \`observacao\`   VARCHAR(191) DEFAULT NULL,
+      \`chaveNfe\`     VARCHAR(191) DEFAULT NULL,
+      \`supplierId\`   INT DEFAULT NULL,
+      \`usuarioId\`    INT DEFAULT NULL,
+      \`dataCadastro\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (\`id\`),
+      KEY \`StockMovement_productId_fkey\` (\`productId\`),
+      KEY \`StockMovement_supplierId_fkey\` (\`supplierId\`),
+      CONSTRAINT \`StockMovement_productId_fkey\` FOREIGN KEY (\`productId\`) REFERENCES \`product\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT \`StockMovement_supplierId_fkey\` FOREIGN KEY (\`supplierId\`) REFERENCES \`supplier\` (\`id\`) ON DELETE SET NULL ON UPDATE CASCADE
+    ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  `, 'stockmovement');
+
   console.log('✅ [dbBootstrap] Verificação de tabelas concluída com sucesso!');
 
   // Executar sementes (seeds) de dados padrões

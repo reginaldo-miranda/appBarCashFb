@@ -10,7 +10,7 @@
 [Setup]
 AppId={{D1F4F9B3-75B0-4A3C-9C5A-2ED9EF74DCF5}
 AppName=appBarCash
-AppVersion=1.0.0
+AppVersion=1.0.1
 AppPublisher=appBarCash
 DefaultDirName=C:\appBarCash
 DefaultGroupName=appBarCash
@@ -59,13 +59,18 @@ Filename: "{cmd}"; Parameters: "/c ""{app}\configurar-banco.bat"""; StatusMsg: "
 ; 5. Registrar a API Node.js como Serviço do Windows usando WinSW
 Filename: "{app}\appbarcash-service.exe"; Parameters: "install"; StatusMsg: "Registrando Serviço de Sistema appBarCash..."; Flags: runhidden
 
-; 6. Iniciar o Serviço do Windows recém-registrado
+; 6. Liberar porta 4000 e 4001 no Firewall do Windows para acesso externo
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""appBarCash API"" dir=in action=allow protocol=TCP localport=4000,4001"; StatusMsg: "Configurando Firewall do Windows..."; Flags: runhidden
+
+; 7. Iniciar o Serviço do Windows recém-registrado
 Filename: "{app}\appbarcash-service.exe"; Parameters: "start"; StatusMsg: "Iniciando Serviço do Sistema..."; Flags: runhidden
 
-; 7. Abrir a aplicação no navegador no final da instalação
+; 8. Abrir a aplicação no navegador no final da instalação
 Filename: "cmd.exe"; Parameters: "/c start http://localhost:4000"; Description: "Iniciar o appBarCash agora"; Flags: postinstall nowait
 
 [UninstallRun]
+; Remover a regra do firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""appBarCash API"""; Flags: runhidden; RunOnceId: "DeleteFirewallRule"
 ; Parar o serviço da API antes de desinstalar os arquivos
 Filename: "{app}\appbarcash-service.exe"; Parameters: "stop"; Flags: runhidden; RunOnceId: "StopService"
 ; Remover o serviço do Windows

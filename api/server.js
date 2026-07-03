@@ -65,6 +65,7 @@ import systemRoutes from "./routes/system.js";
 import idleTimeConfigRoutes from "./routes/idleTimeConfig.js";
 import roleRoutes from "./routes/roles.js";
 import configRoutes from "./routes/config.js";
+import stockRoutes from "./routes/stock.js";
 
 // dotenv configured at top
 
@@ -89,7 +90,7 @@ app.get('/dev/start-api', (req, res) => {
   res.json({ ok: true, message: 'API já está rodando' });
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   // Determina alvo do banco (local vs railway) com base nas variáveis atuais
   const dbTarget = process.env.DB_TARGET || (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost') ? 'local' : 'railway');
 
@@ -113,22 +114,51 @@ app.get('/api/health', (req, res) => {
 
   // Detecta o IP local da LAN dinamicamente
   let lanIp = null;
+
+  // Tenta ler IP Fixo configurado no banco
   try {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      for (const iface of interfaces[name]) {
-        if (iface.family === 'IPv4' && !iface.internal) {
-          const addr = iface.address;
-          if (addr.startsWith('192.168.') || addr.startsWith('10.') || addr.startsWith('172.')) {
-            lanIp = addr;
-            break;
-          }
-        }
-      }
-      if (lanIp) break;
+    const ipFixoSetting = await prisma.appSetting.findUnique({ where: { key: 'cardapio_ip_fixo' } });
+    if (ipFixoSetting && ipFixoSetting.value && ipFixoSetting.value.trim() !== '') {
+      lanIp = ipFixoSetting.value.trim();
     }
   } catch (e) {
-    console.error('Erro ao detectar interfaces de rede:', e);
+    // Silencia erros caso a tabela ainda não exista ou esteja inacessível
+    console.log('Erro ao ler cardapio_ip_fixo em health:', e.message);
+  }
+
+  // Se não houver IP Fixo configurado no banco, prossegue com a detecção dinâmica das interfaces
+  if (!lanIp) {
+    try {
+      const interfaces = os.networkInterfaces();
+      for (const name of Object.keys(interfaces)) {
+        const lowerName = name.toLowerCase();
+        // Ignorar adaptadores virtuais de virtualização para não pegar IPs de loopback virtual (ex: VMware, VirtualBox, WSL)
+        if (lowerName.includes('vmware') || 
+            lowerName.includes('vmnet') || 
+            lowerName.includes('virtualbox') || 
+            lowerName.includes('vbox') || 
+            lowerName.includes('wsl') || 
+            lowerName.includes('docker') || 
+            lowerName.includes('vethernet') || 
+            lowerName.includes('host-only') ||
+            lowerName.includes('virtual adapter')) {
+          continue;
+        }
+        
+        for (const iface of interfaces[name]) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            const addr = iface.address;
+            if (addr.startsWith('192.168.') || addr.startsWith('10.') || addr.startsWith('172.')) {
+              lanIp = addr;
+              break;
+            }
+          }
+        }
+        if (lanIp) break;
+      }
+    } catch (e) {
+      console.error('Erro ao detectar interfaces de rede:', e);
+    }
   }
 
   const db = getDbInfo();
@@ -309,6 +339,7 @@ app.use("/api/system", systemRoutes); // Public for setup
 app.use("/api/idle-time-config", authenticate, idleTimeConfigRoutes);
 app.use("/api/roles", authenticate, roleRoutes); 
 app.use("/api/config", authenticate, configRoutes); // FIM ROTAS API
+app.use("/api/stock", authenticate, stockRoutes);
 
 // Tratamento de 404 para rotas da API que não existem
 app.all('/api/*', (req, res) => {

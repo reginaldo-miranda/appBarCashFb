@@ -57,11 +57,21 @@ function obterIpLanCardapio() {
     console.log('Erro ao ler expoConfig hostUri:', e);
   }
 
-  return '192.168.1.145';
+  // Fallback to the current hostname if in browser, otherwise localhost.
+  // We cannot use a hardcoded network IP because the machine IP might change.
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return '127.0.0.1';
 }
 
 function obterPortaCardapio() {
-  return '8081';
+  try {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.port) {
+      return window.location.port;
+    }
+  } catch (e) {}
+  return '8082';
 }
 
 function parseTimeToMs(timeStr: string) {
@@ -102,9 +112,94 @@ export default function ComandasAbertasScreen() {
   const [cancelComandaModalVisible, setCancelComandaModalVisible] = useState(false);
   const [cancelComandaTarget, setCancelComandaTarget] = useState<Comanda | null>(null);
 
-  // Estados para QR Code
   const [qrCodeModalVisible, setQrCodeModalVisible] = useState(false);
   const [qrCodeComanda, setQrCodeComanda] = useState<Comanda | null>(null);
+
+  const [ipLan, setIpLan] = useState<string>(obterIpLanCardapio());
+
+  useEffect(() => {
+    const obterIpDinamico = async () => {
+      // 1. Tentar ler IP Fixo configurado no banco de dados
+      try {
+        const configRes = await api.get('/config/cardapio-ip');
+        if (configRes?.data?.ip) {
+          setIpLan(configRes.data.ip);
+          return;
+        }
+      } catch (e) {
+        console.log('Erro ao carregar IP Fixo do banco para comandas:', e);
+      }
+
+      // 2. Tentar usar hostname se for Web e não local
+      const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
+      let hostname = '';
+      try {
+        if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+          hostname = window.location.hostname;
+        }
+      } catch {}
+
+      if (hostname && !LOCAL_HOSTS.includes(hostname)) {
+        setIpLan(hostname);
+        return;
+      }
+
+      // Helper para extrair IP das variáveis do Expo
+      const tryExtractLanIp = (): string | null => {
+        try {
+          const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+          if (apiUrl) {
+            const parsed = new URL(apiUrl);
+            if (!LOCAL_HOSTS.includes(parsed.hostname)) return parsed.hostname;
+          }
+        } catch {}
+        
+        try {
+          const currentUrl = getCurrentBaseUrl();
+          if (currentUrl) {
+            const parsed = new URL(currentUrl);
+            if (!LOCAL_HOSTS.includes(parsed.hostname)) return parsed.hostname;
+          }
+        } catch {}
+        return null;
+      };
+
+      // 3. Em modo de DESENVOLVIMENTO, priorizar a extração das variáveis do Metro (dinâmicas)
+      const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+      if (isDev) {
+        const extractedIp = tryExtractLanIp();
+        if (extractedIp) {
+          setIpLan(extractedIp);
+          return;
+        }
+      }
+
+      // 4. Em PRODUÇÃO (cliente), buscar IP real do servidor local via API de saúde (/health)
+      try {
+        const resHealth = await api.get('/health');
+        if (resHealth?.data?.lanIp && !LOCAL_HOSTS.includes(resHealth.data.lanIp)) {
+          setIpLan(resHealth.data.lanIp);
+          return;
+        }
+      } catch (e) {
+        console.log('Erro ao buscar IP da API em comandas:', e);
+      }
+
+      // 5. Fallback para produção se a API falhar
+      if (!isDev) {
+        const extractedIp = tryExtractLanIp();
+        if (extractedIp) {
+          setIpLan(extractedIp);
+          return;
+        }
+      }
+
+      // 6. Fallback padrão
+      setIpLan(obterIpLanCardapio());
+    };
+
+    obterIpDinamico();
+  }, []);
 
   const abrirQrCodeComanda = (comanda: Comanda) => {
     setQrCodeComanda(comanda);
@@ -972,7 +1067,6 @@ useEffect(() => {
             </View>
 
             {qrCodeComanda && (() => {
-              const ipLan = obterIpLanCardapio();
               const porta = obterPortaCardapio();
               const linkCardapio = `http://${ipLan}:${porta}/cardapio/comanda/${qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda}`;
               return (

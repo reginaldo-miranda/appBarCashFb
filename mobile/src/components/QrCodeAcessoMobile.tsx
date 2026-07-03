@@ -48,49 +48,63 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
       return;
     }
 
-    // Tentar extrair IP da LAN das variáveis de ambiente do Expo
-    const tryExtractLanIp = (): string | null => {
-      try {
-        const apiUrl = (typeof process !== 'undefined')
-          ? (process.env?.EXPO_PUBLIC_API_URL || '')
-          : '';
-        if (apiUrl) {
-          const parsed = new URL(apiUrl);
-          if (!LOCAL_HOSTS.includes(parsed.hostname)) {
-            return parsed.hostname;
-          }
-        }
-      } catch {}
-      try {
-        const packagerHost = (typeof process !== 'undefined')
-          ? (process.env?.REACT_NATIVE_PACKAGER_HOSTNAME || '')
-          : '';
-        if (packagerHost && !LOCAL_HOSTS.includes(packagerHost)) {
-          return packagerHost;
-        }
-      } catch {}
-      return null;
-    };
-
-    const lanIp = tryExtractLanIp();
-    if (lanIp) {
-      setUrl(`http://${lanIp}:${webPort}`);
-      return;
-    }
-
-    // Fallback: tentar buscar IP via API de saúde (a API roda na mesma máquina)
+    // Fluxo assíncrono para obter IP dinâmico
     (async () => {
+      const tryExtractLanIp = (): string | null => {
+        try {
+          const apiUrl = (typeof process !== 'undefined')
+            ? (process.env?.EXPO_PUBLIC_API_URL || '')
+            : '';
+          if (apiUrl) {
+            const parsed = new URL(apiUrl);
+            if (!LOCAL_HOSTS.includes(parsed.hostname)) {
+              return parsed.hostname;
+            }
+          }
+        } catch {}
+        try {
+          const packagerHost = (typeof process !== 'undefined')
+            ? (process.env?.REACT_NATIVE_PACKAGER_HOSTNAME || '')
+            : '';
+          if (packagerHost && !LOCAL_HOSTS.includes(packagerHost)) {
+            return packagerHost;
+          }
+        } catch {}
+        return null;
+      };
+
+      // 1. Em DESENVOLVIMENTO, priorizar a extração das variáveis do Metro (dinâmicas)
+      const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+      if (isDev) {
+        const lanIp = tryExtractLanIp();
+        if (lanIp) {
+          setUrl(`http://${lanIp}:${webPort}`);
+          return;
+        }
+      }
+
+      // 2. Em PRODUÇÃO (cliente), tentar buscar IP via API de saúde (/health) em tempo real
       try {
         const res = await fetch(`http://localhost:4000/api/health`, { signal: AbortSignal.timeout(3000) });
         const data = await res.json();
-        // O servidor pode retornar info de rede, se não, usar heurística
         if (data?.lanIp && !LOCAL_HOSTS.includes(data.lanIp)) {
           setUrl(`http://${data.lanIp}:${webPort}`);
           return;
         }
-      } catch {}
+      } catch (e) {
+        console.log('Erro ao consultar /health no acesso mobile:', e);
+      }
 
-      // Último recurso: usar WebRTC para detectar IP local
+      // 3. Fallback para produção se o /health falhar
+      if (!isDev) {
+        const lanIp = tryExtractLanIp();
+        if (lanIp) {
+          setUrl(`http://${lanIp}:${webPort}`);
+          return;
+        }
+      }
+
+      // 4. Fallback: usar WebRTC para detectar IP local
       try {
         const pc = new RTCPeerConnection({ iceServers: [] });
         pc.createDataChannel('');
@@ -110,10 +124,9 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
         });
       } catch {}
 
-      // Se nada funcionou, mostrar o IP local da máquina em vez de localhost para que o celular consiga acessar
+      // 5. Último recurso: usar o fallback fixo (neste caso, mantemos o hostname)
       if (!url) {
-        const fallbackHost = (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') ? '192.168.1.145' : hostname;
-        setUrl(`http://${fallbackHost}:${webPort}`);
+        setUrl(`http://${hostname}:${webPort}`);
       }
     })();
   }, []);

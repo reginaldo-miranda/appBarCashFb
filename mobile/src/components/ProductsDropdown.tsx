@@ -231,6 +231,37 @@ const ProductsDropdown: React.FC<ProductsDropdownProps> = ({ visible, onClose })
         },
       ],
     },
+    {
+      id: 'estoque',
+      title: 'Estoque',
+      description: 'Movimentações e Notas Fiscais',
+      icon: 'bar-chart-outline',
+      color: '#E91E63',
+      subItems: [
+        {
+          id: 'movimentar-estoque',
+          title: 'Lançar Movimentação',
+          description: 'Lançar entradas, saídas ou importar XML',
+          icon: 'swap-vertical-outline',
+          color: '#E91E63',
+          onPress: () => {
+            router.push('/estoque/movimentacao' as any);
+            onClose();
+          },
+        },
+        {
+          id: 'historico-estoque',
+          title: 'Histórico de Estoque',
+          description: 'Auditar movimentações do estoque',
+          icon: 'time-outline',
+          color: '#E91E63',
+          onPress: () => {
+            router.push('/estoque/historico' as any);
+            onClose();
+          },
+        },
+      ],
+    },
   ];
 
   useEffect(() => {

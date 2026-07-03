@@ -18,7 +18,8 @@ import { useRouter } from 'expo-router';
 import ScreenIdentifier from '../src/components/ScreenIdentifier';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, getSecureItem, setSecureItem } from '../src/services/storage';
-import { testApiConnection, API_URL, printerService } from '../src/services/api';
+import api, { testApiConnection, API_URL, printerService } from '../src/services/api';
+import { configService } from '../src/services/api/configService';
 import { scanWifiNetworks, connectToWifi, isWifiConnectionRealPossible } from '../src/services/wifi';
 import { SafeIcon } from '../components/SafeIcon';
 import * as DocumentPicker from 'expo-document-picker';
@@ -33,6 +34,11 @@ export default function ConfiguracoesScreen() {
   const [googleMapsKey, setGoogleMapsKey] = useState('');
   const [testing, setTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<null | { ok: boolean; message: string }>(null);
+
+  // Cardapio IP Config
+  const [cardapioIpFixo, setCardapioIpFixo] = useState('');
+  const [cardapioIpDetectado, setCardapioIpDetectado] = useState('');
+  const [salvandoCardapioIp, setSalvandoCardapioIp] = useState(false);
 
   // Printers
   const [printers, setPrinters] = useState<any[]>([]);
@@ -119,9 +125,45 @@ export default function ConfiguracoesScreen() {
          } catch (e) {
              console.log("Ainda não conectou ou erro ao buscar config fiscal");
          }
+
+         try {
+             carregarConfiguracoesCardapio();
+         } catch (e) {
+             console.log("Erro ao inicializar configurações do cardápio:", e);
+         }
       }
     })();
   }, []);
+
+  const carregarConfiguracoesCardapio = async () => {
+    try {
+      const resIp = await configService.getCardapioIpConfig();
+      if (resIp?.data?.ip) {
+        setCardapioIpFixo(resIp.data.ip);
+      }
+      
+      const resHealth = await api.get('/health');
+      if (resHealth?.data?.lanIp) {
+        setCardapioIpDetectado(resHealth.data.lanIp);
+      }
+    } catch (e) {
+      console.log('Erro ao carregar configurações do cardápio:', e);
+    }
+  };
+
+  const handleSaveCardapioIp = async () => {
+    setSalvandoCardapioIp(true);
+    try {
+      await configService.saveCardapioIpConfig(cardapioIpFixo);
+      Alert.alert('Sucesso', 'Configuração de IP do cardápio salva com sucesso!');
+      await carregarConfiguracoesCardapio();
+    } catch (error: any) {
+      console.error('Erro ao salvar IP do cardápio:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o IP do cardápio: ' + (error?.response?.data?.message || error.message));
+    } finally {
+      setSalvandoCardapioIp(false);
+    }
+  };
 
   const loadPrinters = async () => {
     setLoadingPrinters(true);
@@ -607,6 +649,48 @@ const getEnvApiUrl = (): string | undefined => {
             </Text>
           </View>
         )}
+      </View>
+
+      {/* Seção Cardápio */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="restaurant" size={20} color="#2196F3" />
+          <Text style={styles.sectionTitle}>Configuração do Cardápio (Mesas / Comandas)</Text>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>IP Fixo do Cardápio (Opcional)</Text>
+          <TextInput
+            placeholder="Ex: 192.168.1.100"
+            style={styles.input}
+            value={cardapioIpFixo}
+            onChangeText={setCardapioIpFixo}
+            autoCapitalize="none"
+          />
+          <Text style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
+            Se configurado, este IP será utilizado nas URLs do QR Code de mesas e comandas. Se deixado em branco, o sistema usará a detecção automática inteligente abaixo.
+          </Text>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>IP da Máquina Detectado pela API:</Text>
+          <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginTop: 4 }}>
+            {cardapioIpDetectado || 'Não detectado (verifique a API)'}
+          </Text>
+        </View>
+
+        <View style={styles.row}>
+          <TouchableOpacity style={[styles.button, styles.primaryButton, { flex: 1 }]} onPress={handleSaveCardapioIp} activeOpacity={0.8}>
+            {salvandoCardapioIp ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <SafeIcon name="save" size={18} color="#fff" fallbackText="💾" />
+                <Text style={styles.primaryButtonText}> Salvar IP do Cardápio</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Seção WiFi */}

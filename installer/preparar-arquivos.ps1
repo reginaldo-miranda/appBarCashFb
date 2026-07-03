@@ -116,9 +116,16 @@ $EnvContent | Out-File -FilePath (Join-Path -Path $ApiDest -ChildPath ".env") -E
 Write-Host "Instalando dependencias de producao na API..." -ForegroundColor Green
 Push-Location $ApiDest
 try {
+    # Copiar .env se existir
+    if (Test-Path "$ProjectRoot/api/.env") {
+        Copy-Item -Path "$ProjectRoot/api/.env" -Destination "$BuildDir/api/" -Force
+    }
+    
+    Write-Host "Instalando dependencias de producao na API..." -ForegroundColor Yellow
     npm install --omit=dev
-    # Usar npx para executar o prisma generate de forma portátil
-    npx prisma generate
+    
+    # Usar npx com a versao 6 do prisma para evitar erros de incompatibilidade do Prisma v7
+    npx prisma@6.19.1 generate
 } finally {
     Pop-Location
 }

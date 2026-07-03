@@ -19,5 +19,13 @@ export const configService = {
 
     exportXmls: async (data: { folder: string, sendEmail: boolean, emailTo?: string }) => {
         return api.post('/nfce/export-xmls', data);
+    },
+
+    getCardapioIpConfig: async () => {
+        return api.get('/config/cardapio-ip');
+    },
+
+    saveCardapioIpConfig: async (ip: string) => {
+        return api.post('/config/cardapio-ip', { ip });
     }
 };

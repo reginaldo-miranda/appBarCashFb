@@ -77,6 +77,7 @@ model Product {
   setoresImpressao    ProductSetorImpressao[]
   tamanhos            ProductSize[]
   temTamanhos         Boolean          @default(false)
+  movements           StockMovement[]
 
 
   @@index([categoriaId], map: "Product_categoriaId_fkey")
@@ -685,3 +686,60 @@ model AppSetting {
   value     String?
   updatedAt DateTime @default(now()) @updatedAt
 }
+
+model Supplier {
+  id           Int             @id @default(autoincrement())
+  razaoSocial  String
+  nomeFantasia String?
+  cnpj         String          @unique
+  telefone     String?
+  email        String?
+  nomeContato  String?         // Nome do vendedor ou contato principal
+  tipo         String?         // Categoria (bebidas, pão, carnes, etc.)
+  
+  // Endereço Completo
+  logradouro   String?
+  numero       String?
+  complemento  String?
+  bairro       String?
+  cidade       String?
+  uf           String?
+  cep          String?
+  
+  ativo        Boolean         @default(true)
+  dataCadastro DateTime        @default(now())
+  movements    StockMovement[]
+}
+
+model StockMovement {
+  id           Int             @id @default(autoincrement())
+  productId    Int
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tipo         TipoMovimento   @default(ENTRADA)
+  origem       OrigemMovimento @default(MANUAL)
+  quantidade   Int
+  precoCusto   Decimal?        @db.Decimal(10, 2)
+  motivo       String?         // Ex: "VENCIDO", "DANIFICADO", "CONSUMO_INTERNO", "AJUSTE", "COMPRA"
+  observacao   String?
+  chaveNfe     String?
+  supplierId   Int?
+  supplier     Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  usuarioId    Int?
+  dataCadastro DateTime        @default(now())
+
+  @@index([productId])
+  @@index([supplierId])
+}
+
+enum TipoMovimento {
+  ENTRADA
+  SAIDA
+  AJUSTE
+}
+
+enum OrigemMovimento {
+  MANUAL
+  VENDA
+  XML_NFE
+}
+

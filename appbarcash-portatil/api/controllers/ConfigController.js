@@ -92,3 +92,25 @@ export const testSmtpConnection = async (req, res) => {
     res.status(500).json({ ok: false, message: 'Falha ao conectar no servidor SMTP: ' + error.message });
   }
 };
+
+export const getCardapioIpConfig = async (req, res) => {
+  try {
+    const ip = await getConfigValue('cardapio_ip_fixo');
+    res.json({ ok: true, ip });
+  } catch (error) {
+    console.error('Erro ao buscar IP fixo do cardápio:', error);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar configurações' });
+  }
+};
+
+export const saveCardapioIpConfig = async (req, res) => {
+  try {
+    const { ip } = req.body;
+    await setConfigValue('cardapio_ip_fixo', ip ? ip.trim() : '');
+    res.json({ ok: true, message: 'IP do cardápio salvo com sucesso' });
+  } catch (error) {
+    console.error('Erro ao salvar IP do cardápio:', error);
+    res.status(500).json({ ok: false, message: 'Erro ao salvar configurações' });
+  }
+};
+

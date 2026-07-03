@@ -105,11 +105,10 @@ function resolveApiBaseUrl() {
   } catch {}
 
   if (Platform.OS === 'android') {
-    // Fallback prioritário para IP da LAN real (físico)
-    return `http://192.168.1.145:${DEFAULT_PORT}/api`;
-    // return `http://10.0.2.2:${DEFAULT_PORT}/api`; // Emulator
+    // Emulator
+    return `http://10.0.2.2:${DEFAULT_PORT}/api`;
   }
-  return `http://192.168.1.145:${DEFAULT_PORT}/api`; // Remote Server Fallback
+  return `http://localhost:${DEFAULT_PORT}/api`; // Fallback
 }
 
 // Primeiro: variável de ambiente pública
@@ -163,10 +162,16 @@ api.interceptors.request.use(
       // FORÇAR A REDE LOCAL DINAMICAMENTE
       let hostname = '';
       
-      if (typeof window !== 'undefined' && window.location.hostname) {
-        hostname = window.location.hostname;
+      // Se for Web (navegador), o hostname da API deve ser SEMPRE o hostname da página no navegador (localhost ou IP de rede)
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+          hostname = window.location.hostname;
+        }
+        if (!hostname) {
+          hostname = 'localhost';
+        }
       } else {
-        // No celular (Expo Go / Native), extrai o IP de forma dinâmica da baseURL resolvida
+        // Se for Celular (Native/Expo Go), extrai o IP de forma dinâmica da baseURL resolvida (AsyncStorage/Metro)
         try {
           const currentBase = api.defaults.baseURL || '';
           if (currentBase) {
@@ -187,15 +192,15 @@ api.interceptors.request.use(
             }
           } catch {}
         }
-      }
-      
-      // Se nada acima detectou um hostname válido, usa o hostname atual da página (funciona para localhost e IP de rede)
-      if (!hostname) {
-        if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-          hostname = window.location.hostname;
-        } else {
-          // Fallback para mobile nativo quando não há window.location
-          hostname = '192.168.1.145';
+        
+        // Se mesmo assim cair em localhost no celular, usa o fallback padrão de desenvolvimento local
+        if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+          // Emuladores Android usam 10.0.2.2 para mapear para o localhost do hospedeiro
+          if (Platform.OS === 'android') {
+            hostname = '10.0.2.2';
+          } else {
+             hostname = '127.0.0.1';
+          }
         }
       }
       
