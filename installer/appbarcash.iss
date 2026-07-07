@@ -34,11 +34,18 @@ Source: "build\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Exc
 Source: "build\prerequisites\node.msi"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "build\prerequisites\mariadb.msi"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
+; Manual do sistema em PDF
+Source: "..\manual_sistema.pdf"; DestDir: "{app}"; Flags: ignoreversion
+
 [Icons]
 ; Atalho na Area de Trabalho que abre a aplicacao no navegador padrao
 Name: "{commondesktop}\appBarCash"; Filename: "http://localhost:4000"; IconFilename: "{app}\api\public\favicon.ico"; Comment: "Iniciar appBarCash"
 Name: "{group}\appBarCash"; Filename: "http://localhost:4000"; IconFilename: "{app}\api\public\favicon.ico"
 Name: "{group}\Desinstalar appBarCash"; Filename: "{uninstallexe}"
+
+; Atalhos para o Manual do Sistema
+Name: "{commondesktop}\Manual appBarCash"; Filename: "{app}\manual_sistema.pdf"; Comment: "Manual do Sistema appBarCash"
+Name: "{group}\Manual do Sistema"; Filename: "{app}\manual_sistema.pdf"; Comment: "Manual do Sistema appBarCash"
 
 [Run]
 ; 1. Instalar Node.js silenciosamente se necessário

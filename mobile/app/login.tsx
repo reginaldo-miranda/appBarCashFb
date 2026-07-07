@@ -40,8 +40,8 @@ const BackgroundGradient = ({ children, style }: any) => {
 
 export default function LoginScreen() {
   // const [email, setEmail] = useState("admin@barapp.com");
-  const [email, setEmail] = useState("admin@admin.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, loading, clearAllStorage } = useAuth();
   const [loginLoading, setLoginLoading] = useState(false);
@@ -711,6 +711,8 @@ export default function LoginScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    autoComplete="off"
+                    textContentType="none"
                     returnKeyType="next"
                     blurOnSubmit={false}
                     onSubmitEditing={() => passwordRef.current?.focus()}
@@ -731,6 +733,8 @@ export default function LoginScreen() {
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
+                    autoComplete="off"
+                    textContentType="oneTimeCode"
                     returnKeyType="go"
                     onSubmitEditing={handleLogin}
                   />
