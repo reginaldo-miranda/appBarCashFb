@@ -47,7 +47,19 @@ export const emitirNfce = async (req, res) => {
                           ...(dbItem.product || {}),
                           ncm: overlayProduct.ncm || (dbItem.product?.ncm || ''),
                           cfop: overlayProduct.cfop || (dbItem.product?.cfop || ''),
-                          csosn: overlayProduct.csosn || (dbItem.product?.csosn || '')
+                          csosn: overlayProduct.csosn || (dbItem.product?.csosn || ''),
+                          cest: overlayProduct.cest !== undefined ? overlayProduct.cest : (dbItem.product?.cest || ''),
+                          icmsSituacao: overlayProduct.icmsSituacao !== undefined ? overlayProduct.icmsSituacao : (dbItem.product?.icmsSituacao || ''),
+                          icmsAliquota: overlayProduct.icmsAliquota !== undefined ? overlayProduct.icmsAliquota : (dbItem.product?.icmsAliquota || null),
+                          origem: overlayProduct.origem !== undefined ? overlayProduct.origem : (dbItem.product?.origem || 0),
+                          // Reforma Tributária — IBS/CBS/IS
+                          ibsCst: overlayProduct.ibsCst !== undefined ? overlayProduct.ibsCst : (dbItem.product?.ibsCst || ''),
+                          ibsClassTrib: overlayProduct.ibsClassTrib !== undefined ? overlayProduct.ibsClassTrib : (dbItem.product?.ibsClassTrib || ''),
+                          ibsAliquota: overlayProduct.ibsAliquota !== undefined ? overlayProduct.ibsAliquota : (dbItem.product?.ibsAliquota || null),
+                          cbsCst: overlayProduct.cbsCst !== undefined ? overlayProduct.cbsCst : (dbItem.product?.cbsCst || ''),
+                          cbsClassTrib: overlayProduct.cbsClassTrib !== undefined ? overlayProduct.cbsClassTrib : (dbItem.product?.cbsClassTrib || ''),
+                          cbsAliquota: overlayProduct.cbsAliquota !== undefined ? overlayProduct.cbsAliquota : (dbItem.product?.cbsAliquota || null),
+                          isAliquota: overlayProduct.isAliquota !== undefined ? overlayProduct.isAliquota : (dbItem.product?.isAliquota || null),
                       };
                  }
                  return dbItem;

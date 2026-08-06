@@ -244,6 +244,14 @@ class NfceService {
     
     let totalProdutosCalculado = 0;
 
+    // Acumuladores Reforma Tributária (IBS/CBS/IS) — NT 2025.002
+    let totalBCIBSCBS = 0;
+    let totalIBSUF = 0;
+    let totalIBSMun = 0;
+    let totalIBS = 0;
+    let totalCBS = 0;
+    let totalIS  = 0;
+
     itens.forEach((item, index) => {
         const prod = item.product || item.produto || {};
         const nItem = index + 1;
@@ -347,6 +355,83 @@ class NfceService {
         cofins.ele('vBC').txt(vProd).up();
         cofins.ele('pCOFINS').txt('0.0000').up();
         cofins.ele('vCOFINS').txt('0.00').up();
+
+        // ════════════════════════════════════════════════════════
+        // GRUPO IBSCBS / IS — Reforma Tributária (NT 2025.002 v1.40)
+        // Estrutura OFICIAL (conforme exemplo da Receita Federal):
+        //   <IBSCBS> + <cClassTrib> + <gIBSCBS> (vBC + gIBSUF + gIBSMun + vIBS + gCBS) + </IBSCBS>
+        //   <IS> (grupo separado, opcional, só se alíquota > 0)
+        // ════════════════════════════════════════════════════════
+        // Fallback seguro caso produto não tenha cadastro
+        const prodIbsCst = String(prod.ibsCst || item.ibsCst || '000').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
+        const prodIbsClTr = String(prod.ibsClassTrib || item.ibsClassTrib || '410031').replace(/\D/g, '').padStart(6, '0').substring(0, 6);
+        const prodIbsAliq = Number(prod.ibsAliquota || item.ibsAliquota || 0);
+
+        const prodCbsCst = String(prod.cbsCst || item.cbsCst || '000').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
+        const prodCbsClTr = String(prod.cbsClassTrib || item.cbsClassTrib || '410031').replace(/\D/g, '').padStart(6, '0').substring(0, 6);
+        const prodCbsAliq = Number(prod.cbsAliquota || item.cbsAliquota || 0);
+
+        const prodIsAliq = Number(prod.isAliquota || item.isAliquota || 0);
+
+        // vBC do item = valor do produto
+        const vBCItem = Number(vProd || 0);
+
+        // --- Cálculo IBS (Estadual + Municipal) ---
+        // Em 2026 só a alíquota UF é exigida. Municipal fica 0% por enquanto (vigência 2027-2028).
+        const pIBSUFDf = prodIbsAliq;          // alíquota cadastrada = IBS UF
+        const pIBSMunDf = 0;                   // 0% por enquanto
+        const vIBSUFItem = pIBSUFDf > 0 ? Number((vBCItem * (pIBSUFDf / 100)).toFixed(2)) : 0;
+        const vIBSMunItem = pIBSMunDf > 0 ? Number((vBCItem * (pIBSMunDf / 100)).toFixed(2)) : 0;
+        const vIBSItem = Number((vIBSUFItem + vIBSMunItem).toFixed(2));
+
+        // --- Cálculo CBS ---
+        const pCBSDf = prodCbsAliq;
+        const vCBSItem = pCBSDf > 0 ? Number((vBCItem * (pCBSDf / 100)).toFixed(2)) : 0;
+
+        // --- Cálculo IS ---
+        const vISItem = prodIsAliq > 0 ? Number((vBCItem * (prodIsAliq / 100)).toFixed(2)) : 0;
+
+        // --- Acumula totais para grupo IBSCBSTot ---
+        totalBCIBSCBS += vBCItem;
+        totalIBSUF += vIBSUFItem;
+        totalIBSMun += vIBSMunItem;
+        totalIBS += vIBSItem;
+        totalCBS += vCBSItem;
+        totalIS += vISItem;
+
+        // ════════════════════ MONTA O GRUPO <IBSCBS> ════════════════════
+        // (Sempre geramos — mesmo alíquotas zero — pois a regra UB12-10 entrará em vigor)
+        const ibscbs = imposto.ele('IBSCBS');
+        ibscbs.ele('CST').txt(prodIbsCst).up();
+        ibscbs.ele('cClassTrib').txt(prodIbsClTr).up();
+
+        const gIBSCBS = ibscbs.ele('gIBSCBS');
+        gIBSCBS.ele('vBC').txt(vBCItem.toFixed(2)).up();
+
+        const gIBSUF = gIBSCBS.ele('gIBSUF');
+        gIBSUF.ele('pIBSUF').txt(pIBSUFDf.toFixed(4)).up();
+        gIBSUF.ele('vIBSUF').txt(vIBSUFItem.toFixed(2)).up();
+        gIBSUF.up();
+
+        const gIBSMun = gIBSCBS.ele('gIBSMun');
+        gIBSMun.ele('pIBSMun').txt(pIBSMunDf.toFixed(4)).up();
+        gIBSMun.ele('vIBSMun').txt(vIBSMunItem.toFixed(2)).up();
+        gIBSMun.up();
+
+        gIBSCBS.ele('vIBS').txt(vIBSItem.toFixed(2)).up();
+
+        const gCBS = gIBSCBS.ele('gCBS');
+        gCBS.ele('pCBS').txt(pCBSDf.toFixed(4)).up();
+        gCBS.ele('vCBS').txt(vCBSItem.toFixed(2)).up();
+        gCBS.up();
+
+        // ── IS (Imposto Seletivo) — GRUPO SEPARADO, opcional (só se > 0) ──
+        if (prodIsAliq > 0 || vISItem > 0) {
+            const isNode = imposto.ele('IS');
+            isNode.ele('vBC').txt(vBCItem.toFixed(2)).up();
+            isNode.ele('pIS').txt(prodIsAliq.toFixed(4)).up();
+            isNode.ele('vIS').txt(vISItem.toFixed(2)).up();
+        }
     });
 
     // 4. Totais
@@ -360,6 +445,10 @@ class NfceService {
     const vNF = vNFVal.toFixed(2);
     
     const total = root.ele('total');
+    // ════════════════════════════════════════════════════════
+    // Grupo ICMSTot — SOMENTE campos antigos!
+    // Campos de IBS/CBS NÃO podem ficar aqui.
+    // ════════════════════════════════════════════════════════
     const icmsTot = total.ele('ICMSTot');
     icmsTot.ele('vBC').txt('0.00').up();
     icmsTot.ele('vICMS').txt('0.00').up();
@@ -368,8 +457,8 @@ class NfceService {
     icmsTot.ele('vBCST').txt('0.00').up();
     icmsTot.ele('vST').txt('0.00').up();
     icmsTot.ele('vFCPST').txt('0.00').up();
-    icmsTot.ele('vFCPSTRet').txt('0.00').up(); 
-    icmsTot.ele('vProd').txt(totalProdutosCalculado.toFixed(2)).up(); 
+    icmsTot.ele('vFCPSTRet').txt('0.00').up();
+    icmsTot.ele('vProd').txt(totalProdutosCalculado.toFixed(2)).up();
     icmsTot.ele('vFrete').txt('0.00').up(); // Frete ZERADO para NFC-e
     icmsTot.ele('vSeg').txt('0.00').up();
     icmsTot.ele('vDesc').txt('0.00').up();
@@ -380,6 +469,38 @@ class NfceService {
     icmsTot.ele('vCOFINS').txt('0.00').up();
     icmsTot.ele('vOutro').txt(vOutroStr).up(); // Inclui Taxa de Entrega aqui (vOutro)
     icmsTot.ele('vNF').txt(vNF).up(); // Total Final
+
+    // ════════════════════════════════════════════════════════
+    // Grupo IBSCBSTot — TOTAL SEPARADO da Reforma Tributária
+    // (DEPOIS do ICMSTot, conforme exemplo da Receita Federal)
+    // ════════════════════════════════════════════════════════
+    const ibscbsTot = total.ele('IBSCBSTot');
+    ibscbsTot.ele('vBCIBSCBS').txt(totalBCIBSCBS.toFixed(2)).up();
+    const gIBSTot = ibscbsTot.ele('gIBS');
+    const gIBSUFTot = gIBSTot.ele('gIBSUF');
+    gIBSUFTot.ele('vDif').txt('0.00').up();
+    gIBSUFTot.ele('vDevTrib').txt('0.00').up();
+    gIBSUFTot.ele('vIBSUF').txt(totalIBSUF.toFixed(2)).up();
+    gIBSUFTot.up();
+    const gIBSMunTot = gIBSTot.ele('gIBSMun');
+    gIBSMunTot.ele('vDif').txt('0.00').up();
+    gIBSMunTot.ele('vDevTrib').txt('0.00').up();
+    gIBSMunTot.ele('vIBSMun').txt(totalIBSMun.toFixed(2)).up();
+    gIBSMunTot.up();
+    gIBSTot.ele('vIBS').txt(totalIBS.toFixed(2)).up();
+    gIBSTot.ele('vCredPres').txt('0.00').up();
+    gIBSTot.ele('vCredPresCondSus').txt('0.00').up();
+    gIBSTot.up();
+    const gCBSTot = ibscbsTot.ele('gCBS');
+    gCBSTot.ele('vDif').txt('0.00').up();
+    gCBSTot.ele('vDevTrib').txt('0.00').up();
+    gCBSTot.ele('vCBS').txt(totalCBS.toFixed(2)).up();
+    gCBSTot.ele('vCredPres').txt('0.00').up();
+    gCBSTot.ele('vCredPresCondSus').txt('0.00').up();
+    gCBSTot.up();
+
+    // Campo totalizador final (NT 2025.002) — mesmo valor que vNF
+    total.ele('vNFTot').txt(vNF).up();
 
     // 5. Transporte
     // Modalidade 9 (Sem frete) obrigatória para evitar rejeição em NFC-e com valor no campo frete

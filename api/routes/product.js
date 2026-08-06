@@ -46,7 +46,16 @@ const mapProduct = (p) => {
     csosn: p.csosn || '',
     origem: p.origem || 0,
     icmsSituacao: p.icmsSituacao || '',
-    icmsAliquota: p.icmsAliquota ? num(p.icmsAliquota) : null
+    icmsAliquota: p.icmsAliquota ? num(p.icmsAliquota) : null,
+
+    // Novos campos Reforma Tributária (IBS/CBS/IS)
+    ibsCst: p.ibsCst || '',
+    ibsClassTrib: p.ibsClassTrib || '',
+    ibsAliquota: p.ibsAliquota ? num(p.ibsAliquota) : null,
+    cbsCst: p.cbsCst || '',
+    cbsClassTrib: p.cbsClassTrib || '',
+    cbsAliquota: p.cbsAliquota ? num(p.cbsAliquota) : null,
+    isAliquota: p.isAliquota ? num(p.isAliquota) : null
   };
 };
 
@@ -78,6 +87,7 @@ router.post("/create", async (req, res) => {
             temTamanhos, tamanhos,
             // Fiscal
             ncm, cest, cfop, csosn, origem,
+            ibsCst, ibsClassTrib, ibsAliquota, cbsCst, cbsClassTrib, cbsAliquota, isAliquota,
             codigoBarras // Added
         } = productData;
 
@@ -127,7 +137,16 @@ router.post("/create", async (req, res) => {
                 cest: cest ? String(cest).replace(/\D/g, '') : null,
                 cfop: cfop ? String(cfop).replace(/\D/g, '') : null,
                 csosn: csosn ? String(csosn) : null,
-                origem: origem !== undefined ? Number(origem) : 0
+                origem: origem !== undefined ? Number(origem) : 0,
+
+                // Reforma Tributária (IBS/CBS/IS)
+                ibsCst: ibsCst ? String(ibsCst).replace(/\D/g, '') : null,
+                ibsClassTrib: ibsClassTrib ? String(ibsClassTrib).replace(/\D/g, '') : null,
+                ibsAliquota: ibsAliquota !== undefined && ibsAliquota !== null && ibsAliquota !== '' ? String(Number(ibsAliquota)) : null,
+                cbsCst: cbsCst ? String(cbsCst).replace(/\D/g, '') : null,
+                cbsClassTrib: cbsClassTrib ? String(cbsClassTrib).replace(/\D/g, '') : null,
+                cbsAliquota: cbsAliquota !== undefined && cbsAliquota !== null && cbsAliquota !== '' ? String(Number(cbsAliquota)) : null,
+                isAliquota: isAliquota !== undefined && isAliquota !== null && isAliquota !== '' ? String(Number(isAliquota)) : null
             }
         });
 
@@ -178,7 +197,8 @@ router.post("/create", async (req, res) => {
         estoque, quantidade, estoqueMinimo, ativo, dadosFiscais, imagem, tempoPreparoMinutos, 
         disponivel, temVariacao, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, 
         temTamanhos, tamanhos,
-        ncm, cest, cfop, csosn, origem
+        ncm, cest, cfop, csosn, origem,
+        ibsCst, ibsClassTrib, ibsAliquota, cbsCst, cbsClassTrib, cbsAliquota, isAliquota
     } = req.body;
 
     const pv = precoVenda ?? preco ?? 0;
@@ -223,7 +243,16 @@ router.post("/create", async (req, res) => {
         cest: cest ? String(cest).replace(/\D/g, '') : null,
         cfop: cfop ? String(cfop).replace(/\D/g, '') : null,
         csosn: csosn ? String(csosn) : null,
-        origem: origem !== undefined ? Number(origem) : 0
+        origem: origem !== undefined ? Number(origem) : 0,
+
+        // Reforma Tributária (IBS/CBS/IS)
+        ibsCst: ibsCst ? String(ibsCst).replace(/\D/g, '') : null,
+        ibsClassTrib: ibsClassTrib ? String(ibsClassTrib).replace(/\D/g, '') : null,
+        ibsAliquota: ibsAliquota !== undefined && ibsAliquota !== null && ibsAliquota !== '' ? String(Number(ibsAliquota)) : null,
+        cbsCst: cbsCst ? String(cbsCst).replace(/\D/g, '') : null,
+        cbsClassTrib: cbsClassTrib ? String(cbsClassTrib).replace(/\D/g, '') : null,
+        cbsAliquota: cbsAliquota !== undefined && cbsAliquota !== null && cbsAliquota !== '' ? String(Number(cbsAliquota)) : null,
+        isAliquota: isAliquota !== undefined && isAliquota !== null && isAliquota !== '' ? String(Number(isAliquota)) : null
       }
     });
 
@@ -283,7 +312,8 @@ router.post("/bulk-create", async (req, res) => {
                 nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, 
                 estoque, quantidade, estoqueMinimo, ativo, dadosFiscais, imagem, tempoPreparoMinutos, 
                 disponivel, temVariacao, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, 
-                temTamanhos, tamanhos, ncm, cest, cfop, csosn, origem
+                temTamanhos, tamanhos, ncm, cest, cfop, csosn, origem,
+                ibsCst, ibsClassTrib, ibsAliquota, cbsCst, cbsClassTrib, cbsAliquota, isAliquota
             } = productData;
     
             const pv = precoVenda ?? preco ?? 0;
@@ -328,7 +358,16 @@ router.post("/bulk-create", async (req, res) => {
                     cest: cest ? String(cest).replace(/\D/g, '') : null,
                     cfop: cfop ? String(cfop).replace(/\D/g, '') : null,
                     csosn: csosn ? String(csosn) : null,
-                    origem: origem !== undefined ? Number(origem) : 0
+                    origem: origem !== undefined ? Number(origem) : 0,
+
+                    // Reforma Tributária (IBS/CBS/IS)
+                    ibsCst: ibsCst ? String(ibsCst).replace(/\D/g, '') : null,
+                    ibsClassTrib: ibsClassTrib ? String(ibsClassTrib).replace(/\D/g, '') : null,
+                    ibsAliquota: ibsAliquota !== undefined && ibsAliquota !== null && ibsAliquota !== '' ? String(Number(ibsAliquota)) : null,
+                    cbsCst: cbsCst ? String(cbsCst).replace(/\D/g, '') : null,
+                    cbsClassTrib: cbsClassTrib ? String(cbsClassTrib).replace(/\D/g, '') : null,
+                    cbsAliquota: cbsAliquota !== undefined && cbsAliquota !== null && cbsAliquota !== '' ? String(Number(cbsAliquota)) : null,
+                    isAliquota: isAliquota !== undefined && isAliquota !== null && isAliquota !== '' ? String(Number(isAliquota)) : null
                 }
             });
     
@@ -655,6 +694,14 @@ router.put("/update/:id", async (req, res) => {
     }
 
     const { nome, descricao, precoCusto, precoVenda, categoria, tipo, grupo, unidade, ativo, dadosFiscais, quantidade, imagem, tempoPreparoMinutos, disponivel, temVariacao, preco, estoque, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, temTamanhos, tamanhos } = req.body;
+
+    const reqIbsCst = req.body.ibsCst;
+    const reqIbsClassTrib = req.body.ibsClassTrib;
+    const reqIbsAliquota = req.body.ibsAliquota;
+    const reqCbsCst = req.body.cbsCst;
+    const reqCbsClassTrib = req.body.cbsClassTrib;
+    const reqCbsAliquota = req.body.cbsAliquota;
+    const reqIsAliquota = req.body.isAliquota;
     
     const updateData = {
       nome,
@@ -683,11 +730,31 @@ router.put("/update/:id", async (req, res) => {
       cest: req.body.cest ? String(req.body.cest).replace(/\D/g, '') : undefined,
       cfop: req.body.cfop ? String(req.body.cfop).replace(/\D/g, '') : undefined,
       csosn: req.body.csosn ? String(req.body.csosn) : undefined,
-      origem: req.body.origem !== undefined ? Number(req.body.origem) : undefined
+      origem: req.body.origem !== undefined ? Number(req.body.origem) : undefined,
+
+      // Reforma Tributária (IBS/CBS/IS)
+      // Sempre que o campo vier no body (mesmo que vazio), define como null ou valor.
+      // Se NÃO vier no body (undefined), mantém o valor atual no banco (não toca).
+      ibsCst: req.body.ibsCst !== undefined ? (req.body.ibsCst !== null && String(req.body.ibsCst).trim() !== '' ? String(req.body.ibsCst).replace(/\D/g, '') : null) : undefined,
+      ibsClassTrib: req.body.ibsClassTrib !== undefined ? (req.body.ibsClassTrib !== null && String(req.body.ibsClassTrib).trim() !== '' ? String(req.body.ibsClassTrib).replace(/\D/g, '') : null) : undefined,
+      ibsAliquota: req.body.ibsAliquota !== undefined ? (req.body.ibsAliquota !== null && String(req.body.ibsAliquota).trim() !== '' ? String(Number(req.body.ibsAliquota)) : null) : undefined,
+      cbsCst: req.body.cbsCst !== undefined ? (req.body.cbsCst !== null && String(req.body.cbsCst).trim() !== '' ? String(req.body.cbsCst).replace(/\D/g, '') : null) : undefined,
+      cbsClassTrib: req.body.cbsClassTrib !== undefined ? (req.body.cbsClassTrib !== null && String(req.body.cbsClassTrib).trim() !== '' ? String(req.body.cbsClassTrib).replace(/\D/g, '') : null) : undefined,
+      cbsAliquota: req.body.cbsAliquota !== undefined ? (req.body.cbsAliquota !== null && String(req.body.cbsAliquota).trim() !== '' ? String(Number(req.body.cbsAliquota)) : null) : undefined,
+      isAliquota: req.body.isAliquota !== undefined ? (req.body.isAliquota !== null && String(req.body.isAliquota).trim() !== '' ? String(Number(req.body.isAliquota)) : null) : undefined
     };
 
     // Log payload for debugging
     console.log(`[DEBUG] Update Product ${id} payload sectors:`, setoresImpressaoIds);
+    console.log(`[DEBUG] IBS/CBS updateData:`, {
+      ibsCst: updateData.ibsCst,
+      ibsClassTrib: updateData.ibsClassTrib,
+      ibsAliquota: updateData.ibsAliquota,
+      cbsCst: updateData.cbsCst,
+      cbsClassTrib: updateData.cbsClassTrib,
+      cbsAliquota: updateData.cbsAliquota,
+      isAliquota: updateData.isAliquota,
+    });
 
     const updatedProduct = await prisma.product.update({ where: { id }, data: updateData });
 
@@ -762,6 +829,14 @@ router.put("/:id", async (req, res) => {
     }
 
     const { nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, estoque, quantidade, estoqueMinimo, ativo, categoriaId, tipoId, unidadeMedidaId, groupId } = req.body;
+
+    const altIbsCst = req.body.ibsCst;
+    const altIbsClassTrib = req.body.ibsClassTrib;
+    const altIbsAliquota = req.body.ibsAliquota;
+    const altCbsCst = req.body.cbsCst;
+    const altCbsClassTrib = req.body.cbsClassTrib;
+    const altCbsAliquota = req.body.cbsAliquota;
+    const altIsAliquota = req.body.isAliquota;
     
     const updateData = {
       nome,
@@ -784,7 +859,19 @@ router.put("/:id", async (req, res) => {
       cest: req.body.cest ? String(req.body.cest).replace(/\D/g, '') : undefined,
       cfop: req.body.cfop ? String(req.body.cfop).replace(/\D/g, '') : undefined,
       csosn: req.body.csosn ? String(req.body.csosn) : undefined,
-      origem: req.body.origem !== undefined ? Number(req.body.origem) : undefined
+      origem: req.body.origem !== undefined ? Number(req.body.origem) : undefined,
+
+      // Reforma Tributária (IBS/CBS/IS)
+      // Mesma regra da rota /update/:id:
+      // Se campo vier no body → salva como valor ou null
+      // Se NÃO vier no body (undefined) → mantém valor atual no banco
+      ibsCst: req.body.ibsCst !== undefined ? (req.body.ibsCst !== null && String(req.body.ibsCst).trim() !== '' ? String(req.body.ibsCst).replace(/\D/g, '') : null) : undefined,
+      ibsClassTrib: req.body.ibsClassTrib !== undefined ? (req.body.ibsClassTrib !== null && String(req.body.ibsClassTrib).trim() !== '' ? String(req.body.ibsClassTrib).replace(/\D/g, '') : null) : undefined,
+      ibsAliquota: req.body.ibsAliquota !== undefined ? (req.body.ibsAliquota !== null && String(req.body.ibsAliquota).trim() !== '' ? String(Number(req.body.ibsAliquota)) : null) : undefined,
+      cbsCst: req.body.cbsCst !== undefined ? (req.body.cbsCst !== null && String(req.body.cbsCst).trim() !== '' ? String(req.body.cbsCst).replace(/\D/g, '') : null) : undefined,
+      cbsClassTrib: req.body.cbsClassTrib !== undefined ? (req.body.cbsClassTrib !== null && String(req.body.cbsClassTrib).trim() !== '' ? String(req.body.cbsClassTrib).replace(/\D/g, '') : null) : undefined,
+      cbsAliquota: req.body.cbsAliquota !== undefined ? (req.body.cbsAliquota !== null && String(req.body.cbsAliquota).trim() !== '' ? String(Number(req.body.cbsAliquota)) : null) : undefined,
+      isAliquota: req.body.isAliquota !== undefined ? (req.body.isAliquota !== null && String(req.body.isAliquota).trim() !== '' ? String(Number(req.body.isAliquota)) : null) : undefined
     };
 
     const produtoAtualizado = await prisma.product.update({

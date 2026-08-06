@@ -1228,3 +1228,53 @@
 [2026-06-18T12:13:27.629Z] [Finalize] Recalculated Subtotal: 220
 [2026-06-18T12:13:27.658Z] [DEBUG] Finalize - FreshCV Count: 0
 [2026-06-18T12:13:27.659Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-06T16:52:07.511Z] [Finalize] ID: 44 (Int: 44). FreshItens: 2, FreshCV: 0
+[2026-08-06T16:52:07.514Z] [Finalize] Recalculated Subtotal: 78
+[2026-08-06T16:52:07.917Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-06T16:52:07.918Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-06T16:52:07.966Z] [Controller] emitirNfce. Body: {"saleId":44,"itemsOverlay":[{"id":53,"saleId":44,"productId":3,"nomeProduto":"bauru simples","quantidade":3,"precoUnitario":18,"subtotal":54,"status":"pendente","createdAt":"2026-06-30T19:25:32.314Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"53","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":54,"saleId":44,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":2,"precoUnitario":12,"subtotal":24,"status":"pendente","createdAt":"2026-06-30T19:25:48.578Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"54","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-08-06T16:52:07.975Z] [EmitirNfce] Sale ID: 44
+[2026-08-06T16:52:07.976Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-06T16:52:07.977Z] [EmitirNfce] Delivery Fee: null
+[2026-08-06T16:52:07.978Z] [EmitirNfce] Total Venda: 78
+[2026-08-06T16:52:07.979Z] [EmitirNfce] Subtotal: 78
+[2026-08-06T17:55:53.391Z] [Finalize] ID: 21 (Int: 21). FreshItens: 1, FreshCV: 0
+[2026-08-06T17:55:53.707Z] [Finalize] Recalculated Subtotal: 18
+[2026-08-06T17:55:53.729Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-06T17:55:53.730Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-06T17:55:53.798Z] [Controller] emitirNfce. Body: {"saleId":21,"itemsOverlay":[{"id":23,"saleId":21,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-05-21T13:00:55.709Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"23","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
+[2026-08-06T17:55:53.807Z] [EmitirNfce] Sale ID: 21
+[2026-08-06T17:55:53.808Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-06T17:55:53.809Z] [EmitirNfce] Delivery Fee: null
+[2026-08-06T17:55:53.810Z] [EmitirNfce] Total Venda: 18
+[2026-08-06T17:55:53.811Z] [EmitirNfce] Subtotal: 18
+[2026-08-06T18:56:52.128Z] [Finalize] ID: 3 (Int: 3). FreshItens: 1, FreshCV: 0
+[2026-08-06T18:56:52.168Z] [Finalize] Recalculated Subtotal: 12
+[2026-08-06T18:56:52.192Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-06T18:56:52.194Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-06T18:56:52.242Z] [Controller] emitirNfce. Body: {"saleId":3,"itemsOverlay":[{"id":56,"saleId":3,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-06T18:56:42.821Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"56","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-08-06T18:56:52.260Z] [EmitirNfce] Sale ID: 3
+[2026-08-06T18:56:52.262Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-06T18:56:52.275Z] [EmitirNfce] Delivery Fee: null
+[2026-08-06T18:56:52.276Z] [EmitirNfce] Total Venda: 12
+[2026-08-06T18:56:52.278Z] [EmitirNfce] Subtotal: 12
+[2026-08-06T19:07:41.337Z] [Finalize] ID: 46 (Int: 46). FreshItens: 1, FreshCV: 0
+[2026-08-06T19:07:41.340Z] [Finalize] Recalculated Subtotal: 12
+[2026-08-06T19:07:41.368Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-06T19:07:41.370Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-06T19:07:41.419Z] [Controller] emitirNfce. Body: {"saleId":46,"itemsOverlay":[{"id":57,"saleId":46,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-06T19:07:31.869Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"57","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-08-06T19:07:41.438Z] [EmitirNfce] Sale ID: 46
+[2026-08-06T19:07:41.441Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-06T19:07:41.442Z] [EmitirNfce] Delivery Fee: null
+[2026-08-06T19:07:41.444Z] [EmitirNfce] Total Venda: 12
+[2026-08-06T19:07:41.445Z] [EmitirNfce] Subtotal: 12
+[2026-08-06T19:10:29.272Z] [Finalize] ID: 47 (Int: 47). FreshItens: 1, FreshCV: 0
+[2026-08-06T19:10:29.275Z] [Finalize] Recalculated Subtotal: 12
+[2026-08-06T19:10:29.302Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-06T19:10:29.304Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-06T19:10:29.348Z] [Controller] emitirNfce. Body: {"saleId":47,"itemsOverlay":[{"id":58,"saleId":47,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-06T19:10:16.932Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"58","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
+[2026-08-06T19:10:29.367Z] [EmitirNfce] Sale ID: 47
+[2026-08-06T19:10:29.369Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-06T19:10:29.371Z] [EmitirNfce] Delivery Fee: null
+[2026-08-06T19:10:29.373Z] [EmitirNfce] Total Venda: 12
+[2026-08-06T19:10:29.374Z] [EmitirNfce] Subtotal: 12

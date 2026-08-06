@@ -64,6 +64,15 @@ model Product {
   icmsAliquota        Decimal?         @db.Decimal(5, 2)
   origem              Int              @default(0) // 0 - Nacional, etc.
 
+  // ── NOVOS CAMPOS REFORMA TRIBUTÁRIA (IBS/CBS/IS) ──
+  ibsCst              String?          // CST IBS (3 dígitos - NT 2025.002)
+  ibsClassTrib        String?          // cClassTrib IBS (6 dígitos)
+  ibsAliquota         Decimal?         @db.Decimal(5, 4) // Alíquota IBS (ex: 0.1000 = 10%)
+  cbsCst              String?          // CST CBS (3 dígitos)
+  cbsClassTrib        String?          // cClassTrib CBS (6 dígitos)
+  cbsAliquota         Decimal?         @db.Decimal(5, 4) // Alíquota CBS (ex: 0.0900 = 9%)
+  isAliquota          Decimal?         @db.Decimal(5, 4) // Alíquota Imposto Seletivo (opcional)
+
   categoriaId         Int?
   groupId             Int?
   tipoId              Int?

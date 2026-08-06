@@ -89,7 +89,11 @@ export default function CadastroProduto() {
         setoresImpressaoIds: selectedSetores,
         // Fiscal
         codigoBarras,
-        ncm, cest, cfop, csosn, origem
+        ncm, cest, cfop, csosn, origem,
+        // Reforma Tributária (IBS/CBS/IS)
+        ibsCst, ibsClassTrib, ibsAliquota,
+        cbsCst, cbsClassTrib, cbsAliquota,
+        isAliquota
     };
   };
 
@@ -140,6 +144,15 @@ export default function CadastroProduto() {
   const [cfop, setCfop] = useState('5102'); // Padrão
   const [csosn, setCsosn] = useState('102'); // Padrão Simples
   const [origem, setOrigem] = useState('0'); // 0 - Nacional
+
+  // Reforma Tributária (IBS/CBS/IS)
+  const [ibsCst, setIbsCst] = useState('000');       // 3 dígitos
+  const [ibsClassTrib, setIbsClassTrib] = useState('410031'); // 6 dígitos
+  const [ibsAliquota, setIbsAliquota] = useState('');  // Alíquota decimal (ex: 0.1000)
+  const [cbsCst, setCbsCst] = useState('000');       // 3 dígitos
+  const [cbsClassTrib, setCbsClassTrib] = useState('410031'); // 6 dígitos
+  const [cbsAliquota, setCbsAliquota] = useState('');  // Alíquota decimal
+  const [isAliquota, setIsAliquota] = useState('');   // Alíquota Imposto Seletivo (opcional)
 
   // Estados para feedback visual
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -377,6 +390,15 @@ export default function CadastroProduto() {
         setCsosn((produto as any).csosn || '102');
         setOrigem((produto as any).origem !== undefined ? String((produto as any).origem) : '0');
 
+        // Carregar Reforma Tributária (IBS/CBS/IS)
+        setIbsCst((produto as any).ibsCst || '000');
+        setIbsClassTrib((produto as any).ibsClassTrib || '410031');
+        setIbsAliquota((produto as any).ibsAliquota !== null && (produto as any).ibsAliquota !== undefined ? String((produto as any).ibsAliquota) : '');
+        setCbsCst((produto as any).cbsCst || '000');
+        setCbsClassTrib((produto as any).cbsClassTrib || '410031');
+        setCbsAliquota((produto as any).cbsAliquota !== null && (produto as any).cbsAliquota !== undefined ? String((produto as any).cbsAliquota) : '');
+        setIsAliquota((produto as any).isAliquota !== null && (produto as any).isAliquota !== undefined ? String((produto as any).isAliquota) : '');
+
       } else {
         setLoadError('Produto não encontrado.');
         Alert.alert('Erro', 'Produto não encontrado.');
@@ -467,7 +489,16 @@ export default function CadastroProduto() {
         cest: cest.replace(/\D/g, ''),
         cfop: cfop.replace(/\D/g, ''),
         csosn: csosn,
-        origem: parseInt(origem)
+        origem: parseInt(origem),
+
+        // Reforma Tributária (IBS/CBS/IS)
+        ibsCst: ibsCst.replace(/\D/g, ''),
+        ibsClassTrib: ibsClassTrib.replace(/\D/g, ''),
+        ibsAliquota: ibsAliquota !== '' ? parseFloat(ibsAliquota.replace(',', '.')) : null,
+        cbsCst: cbsCst.replace(/\D/g, ''),
+        cbsClassTrib: cbsClassTrib.replace(/\D/g, ''),
+        cbsAliquota: cbsAliquota !== '' ? parseFloat(cbsAliquota.replace(',', '.')) : null,
+        isAliquota: isAliquota !== '' ? parseFloat(isAliquota.replace(',', '.')) : null
       };
 
       // Só envia setores se tiverem sido carregados corretamente ou modificados
@@ -961,6 +992,99 @@ export default function CadastroProduto() {
                      onChangeText={setCsosn} 
                      keyboardType="numeric" 
                      maxLength={4} 
+                   />
+                 </View>
+              </View>
+
+              {/* ── LINHA 2: IBS ── */}
+              <View style={{ flexDirection: 'row', gap: 8, width: '100%', paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#eee' }}>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#6A1B9A' }]}>CST IBS</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={ibsCst} 
+                     onChangeText={setIbsCst} 
+                     keyboardType="numeric" 
+                     maxLength={3} 
+                     placeholder="000" 
+                   />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#6A1B9A' }]}>Cl.Trib.IBS</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={ibsClassTrib} 
+                     onChangeText={setIbsClassTrib} 
+                     keyboardType="numeric" 
+                     maxLength={6} 
+                     placeholder="410031" 
+                   />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#6A1B9A' }]}>Alíq.IBS %</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={ibsAliquota} 
+                     onChangeText={setIbsAliquota} 
+                     keyboardType="decimal-pad" 
+                     placeholder="0.0000" 
+                   />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4 }]}>Origem</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={origem} 
+                     onChangeText={setOrigem} 
+                     keyboardType="numeric" 
+                     maxLength={1} 
+                     placeholder="0" 
+                   />
+                 </View>
+              </View>
+
+              {/* ── LINHA 3: CBS + Imposto Seletivo ── */}
+              <View style={{ flexDirection: 'row', gap: 8, width: '100%', paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#eee' }}>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#E65100' }]}>CST CBS</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={cbsCst} 
+                     onChangeText={setCbsCst} 
+                     keyboardType="numeric" 
+                     maxLength={3} 
+                     placeholder="000" 
+                   />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#E65100' }]}>Cl.Trib.CBS</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={cbsClassTrib} 
+                     onChangeText={setCbsClassTrib} 
+                     keyboardType="numeric" 
+                     maxLength={6} 
+                     placeholder="410031" 
+                   />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#E65100' }]}>Alíq.CBS %</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={cbsAliquota} 
+                     onChangeText={setCbsAliquota} 
+                     keyboardType="decimal-pad" 
+                     placeholder="0.0000" 
+                   />
+                 </View>
+                 <View style={{ flex: 1 }}>
+                   <Text style={[styles.label, { fontSize: 10, marginBottom: 4, color: '#B71C1C' }]}>IS %</Text>
+                   <TextInput 
+                     style={[styles.input, { height: 38, fontSize: 11 }]} 
+                     value={isAliquota} 
+                     onChangeText={setIsAliquota} 
+                     keyboardType="decimal-pad" 
+                     placeholder="0.00" 
                    />
                  </View>
               </View>
