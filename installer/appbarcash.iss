@@ -10,7 +10,7 @@
 [Setup]
 AppId={{D1F4F9B3-75B0-4A3C-9C5A-2ED9EF74DCF5}
 AppName=appBarCash
-AppVersion=1.0.1
+AppVersion=1.1.0
 AppPublisher=appBarCash
 DefaultDirName=C:\appBarCash
 DefaultGroupName=appBarCash
