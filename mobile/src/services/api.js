@@ -171,31 +171,30 @@ api.interceptors.request.use(
           hostname = 'localhost';
         }
       } else {
-        // Se for Celular (Native/Expo Go), extrai o IP de forma dinâmica da baseURL resolvida (AsyncStorage/Metro)
+        // Se for Celular (Native/Expo Go), resolve dinamicamente do host atual do Metro bundler
         try {
-          const currentBase = api.defaults.baseURL || '';
-          if (currentBase) {
-            const u = new URL(currentBase);
-            if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
-              hostname = u.hostname;
-            }
+          const resolved = resolveApiBaseUrl();
+          const u = new URL(resolved);
+          if (u.hostname && !LOCAL_HOSTNAMES.has(u.hostname)) {
+            hostname = u.hostname;
           }
         } catch {}
         
-        // Se mesmo assim for localhost ou inválido, roda o resolveApiBaseUrl()
-        if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Se a resolução dinâmica não achou IP de LAN, tenta api.defaults.baseURL
+        if (!hostname || LOCAL_HOSTNAMES.has(hostname)) {
           try {
-            const resolved = resolveApiBaseUrl();
-            const u = new URL(resolved);
-            if (u.hostname && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
-              hostname = u.hostname;
+            const currentBase = api.defaults.baseURL || '';
+            if (currentBase) {
+              const u = new URL(currentBase);
+              if (u.hostname && !LOCAL_HOSTNAMES.has(u.hostname)) {
+                hostname = u.hostname;
+              }
             }
           } catch {}
         }
         
         // Se mesmo assim cair em localhost no celular, usa o fallback padrão de desenvolvimento local
-        if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
-          // Emuladores Android usam 10.0.2.2 para mapear para o localhost do hospedeiro
+        if (!hostname || LOCAL_HOSTNAMES.has(hostname)) {
           if (Platform.OS === 'android') {
             hostname = '10.0.2.2';
           } else {
@@ -204,7 +203,7 @@ api.interceptors.request.use(
         }
       }
       
-      // Montamos sempre a API local. IGNORA QUALQUER ASYNC_STORAGE e NUVEM PARA GARANTIR.
+      // Montamos sempre a API local.
       config.baseURL = `http://${hostname}:4000/api`;
 
 
@@ -430,7 +429,7 @@ export const employeeService = {
 
 export const customerService = {
   getAll: () => api.get('/customer/list'),
-  getByCpf: (cpf) => api.get(`/customer/by-cpf/${cpf}`),
+  getByCpf: (cpf) => api.get('/customer/by-cpf', { params: { cpf } }),
   getById: (id) => api.get(`/customer/${id}`),
   create: (data) => api.post('/customer/create', data),
   update: (id, data) => api.put(`/customer/update/${id}`, data),

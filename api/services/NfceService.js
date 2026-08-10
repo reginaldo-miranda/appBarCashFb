@@ -170,7 +170,7 @@ class NfceService {
 
     // 2. Emitente
     const emit = root.ele('emit');
-    emit.ele('CNPJ').txt(company.cnpj.replace(/\D/g, '')).up();
+    emit.ele('CNPJ').txt((company.cnpj || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).up();
     emit.ele('xNome').txt(this.sanitizeString(company.razaoSocial).substring(0, 60)).up();
     
     const enderEmit = emit.ele('enderEmit');
@@ -191,16 +191,16 @@ class NfceService {
     }
     emit.ele('CRT').txt('1').up(); // 1 = Simples Nacional (Mandatory)
 
-    // 2.5 Destinatário (Opcional - mas se cliente existir na venda e tiver CPF, deve ir)
-    if (sale.cliente && sale.cliente.cpf) {
-        const cpfRaw = (sale.cliente.cpf || '').replace(/\D/g, '');
+    // 2.5 Destinatário (Opcional - mas se cliente existir na venda e tiver CPF/CNPJ, deve ir)
+    if (sale.cliente && (sale.cliente.cpf || sale.cliente.cnpj)) {
+        const docRaw = ((sale.cliente.cpf || sale.cliente.cnpj) || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
         // Apenas adiciona grupo dest se tiver CPF ou CNPJ válido
-        if (cpfRaw.length === 11 || cpfRaw.length === 14) {
+        if (docRaw.length === 11 || docRaw.length === 14) {
             const dest = root.ele('dest');
-            if (cpfRaw.length === 11) {
-                dest.ele('CPF').txt(cpfRaw).up();
+            if (docRaw.length === 11) {
+                dest.ele('CPF').txt(docRaw).up();
             } else {
-                dest.ele('CNPJ').txt(cpfRaw).up();
+                dest.ele('CNPJ').txt(docRaw).up();
             }
 
             // xNome
@@ -219,9 +219,7 @@ class NfceService {
             dest.ele('indIEDest').txt('9').up();
 
             // Endereço (Opcional em NFC-e).
-            // Se tiver dados completos, poderiamos enviar, mas exige cMun (IBGE) valido.
             // Para "CPF na Nota", apenas CPF e Nome (opcional) bastam.
-            // Vamos dar 'up' no dest.
             dest.up(); 
         }
     }
@@ -611,8 +609,8 @@ class NfceService {
         const now = new Date();
         const AAMM = `${String(now.getFullYear()).substring(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-        // 3. CNPJ
-        let CNPJ = (company.cnpj || '').replace(/\D/g, '');
+        // 3. CNPJ (Alfanumérico)
+        let CNPJ = (company.cnpj || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
         if (!CNPJ || CNPJ.length === 0) throw new Error("CNPJ da empresa não encontrado para geração da chave");
         CNPJ = CNPJ.padStart(14, '0');
 
@@ -649,12 +647,13 @@ class NfceService {
             throw new Error(`Erro interno na montagem da chave (len=${keyBase.length})`);
         }
 
-        // 9. Dígito Verificador
+        // 9. Dígito Verificador (Módulo 11 com suporte a CNPJ Alfanumérico)
         const weights = [2, 3, 4, 5, 6, 7, 8, 9];
         let sum = 0;
         for (let i = 0; i < keyBase.length; i++) {
-            const digit = parseInt(keyBase.charAt(keyBase.length - 1 - i));
-            sum += digit * weights[i % 8];
+            const char = keyBase.charAt(keyBase.length - 1 - i);
+            const val = /[0-9]/.test(char) ? parseInt(char, 10) : (char.charCodeAt(0) - 48);
+            sum += val * weights[i % 8];
         }
         const remainder = sum % 11;
         const cDV = (remainder === 0 || remainder === 1) ? 0 : 11 - remainder;
@@ -1046,7 +1045,7 @@ class NfceService {
       const cUF = this.getUfCode(company);
       const now = new Date();
       const AAMM = `${String(now.getFullYear()).substring(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const CNPJ = (company.cnpj || '').replace(/\D/g, '').padStart(14, '0');
+      const CNPJ = (company.cnpj || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().padStart(14, '0');
       const mod = '65';
       const serie = String(company.serieNfce || 1).padStart(3, '0');
       const nNFIni = String(numInicial).padStart(9, '0');

@@ -3,7 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "node ./node_modules/expo/bin/cli start --host lan",
+    "prestart": "bash ./scripts/ensure-api.sh",
+    "start": "node ./node_modules/expo/bin/cli start --host lan --port 8082 -c",
     "start:lan": "bash ../start-mobile.sh",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "node ./node_modules/expo/bin/cli start --android --host lan",

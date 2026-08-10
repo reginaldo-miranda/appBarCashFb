@@ -344,6 +344,13 @@ export async function runDbBootstrap(prisma) {
       \`icmsSituacao\`        VARCHAR(191) DEFAULT NULL,
       \`ncm\`                 VARCHAR(191) DEFAULT NULL,
       \`origem\`              INT NOT NULL DEFAULT 0,
+      \`ibsCst\`              VARCHAR(191) DEFAULT NULL,
+      \`ibsClassTrib\`         VARCHAR(191) DEFAULT NULL,
+      \`ibsAliquota\`          DECIMAL(5,4) DEFAULT NULL,
+      \`cbsCst\`              VARCHAR(191) DEFAULT NULL,
+      \`cbsClassTrib\`         VARCHAR(191) DEFAULT NULL,
+      \`cbsAliquota\`          DECIMAL(5,4) DEFAULT NULL,
+      \`isAliquota\`           DECIMAL(5,4) DEFAULT NULL,
       PRIMARY KEY (\`id\`),
       KEY \`Product_categoriaId_fkey\` (\`categoriaId\`),
       KEY \`Product_tipoId_fkey\` (\`tipoId\`),
@@ -701,6 +708,13 @@ export async function runDbBootstrap(prisma) {
   await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `icmsSituacao` VARCHAR(191) DEFAULT NULL;", 'product.icmsSituacao');
   await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `icmsAliquota` DECIMAL(5,2) DEFAULT NULL;", 'product.icmsAliquota');
   await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `origem` INT NOT NULL DEFAULT 0;", 'product.origem');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `ibsCst` VARCHAR(191) DEFAULT NULL;", 'product.ibsCst');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `ibsClassTrib` VARCHAR(191) DEFAULT NULL;", 'product.ibsClassTrib');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `ibsAliquota` DECIMAL(5,4) DEFAULT NULL;", 'product.ibsAliquota');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `cbsCst` VARCHAR(191) DEFAULT NULL;", 'product.cbsCst');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `cbsClassTrib` VARCHAR(191) DEFAULT NULL;", 'product.cbsClassTrib');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `cbsAliquota` DECIMAL(5,4) DEFAULT NULL;", 'product.cbsAliquota');
+  await run("ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `isAliquota` DECIMAL(5,4) DEFAULT NULL;", 'product.isAliquota');
 
   // SetorImpressao - campo printerId
   await run("ALTER TABLE `setorimpressao` ADD COLUMN IF NOT EXISTS `printerId` INT DEFAULT NULL;", 'setorimpressao.printerId');

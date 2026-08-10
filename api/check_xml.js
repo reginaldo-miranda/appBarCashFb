@@ -6,7 +6,7 @@ function generateAccessKey(sale, company) {
     const cUF = company.ibge ? company.ibge.substring(0, 2) : '43'; // 43 = RS
     const now = new Date();
     const AAMM = `${String(now.getFullYear()).substring(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const CNPJ = company.cnpj.replace(/\D/g, '').padStart(14, '0');
+    const CNPJ = (company.cnpj || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().padStart(14, '0');
     const mod = '65';
     const serie = String(company.serieNfce).padStart(3, '0');
     const nNF = String(company.numeroInicialNfce).padStart(9, '0');
@@ -18,8 +18,9 @@ function generateAccessKey(sale, company) {
     const weights = [2, 3, 4, 5, 6, 7, 8, 9];
     let sum = 0;
     for (let i = 0; i < keyBase.length; i++) {
-        const digit = parseInt(keyBase.charAt(keyBase.length - 1 - i));
-        sum += digit * weights[i % 8];
+        const char = keyBase.charAt(keyBase.length - 1 - i);
+        const val = /[0-9]/.test(char) ? parseInt(char, 10) : (char.charCodeAt(0) - 48);
+        sum += val * weights[i % 8];
     }
     const remainder = sum % 11;
     const cDV = (remainder === 0 || remainder === 1) ? 0 : 11 - remainder;
@@ -62,7 +63,7 @@ async function buildXML(sale, company) {
 
     // 2. Emitente
     const emit = root.ele('emit');
-    emit.ele('CNPJ').txt(company.cnpj.replace(/\D/g, '')).up();
+    emit.ele('CNPJ').txt((company.cnpj || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).up();
     emit.ele('xNome').txt(company.razaoSocial.substring(0, 60)).up();
     
     const enderEmit = emit.ele('enderEmit');

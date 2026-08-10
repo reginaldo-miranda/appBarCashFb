@@ -368,11 +368,11 @@ export default function AdminConfiguracoesScreen() {
         Alert.alert("Aguarde", "Consultando CNPJ...");
     }
 
-    const cnpj = companyData.cnpj?.replace(/\D/g, '');
+    const cnpj = companyData.cnpj?.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
     if (!cnpj || cnpj.length !== 14) {
-      if (Platform.OS === 'web') window.alert('CNPJ Inválido. Digite 14 números.');
-      else Alert.alert('CNPJ Inválido', 'Digite um CNPJ válido com 14 números.');
+      if (Platform.OS === 'web') window.alert('CNPJ Inválido. Digite 14 caracteres.');
+      else Alert.alert('CNPJ Inválido', 'Digite um CNPJ válido com 14 caracteres.');
       return;
     }
 
@@ -1191,8 +1191,9 @@ export default function AdminConfiguracoesScreen() {
                         <TextInput 
                             style={[styles.inputField, (!companyData.cnpj || String(companyData.cnpj).trim() === '') && { borderColor: 'red', borderWidth: 1 }]}
                             value={companyData.cnpj} 
-                            onChangeText={(t) => setCompanyData({...companyData, cnpj: t})} 
-                            keyboardType="numeric"
+                            onChangeText={(t) => setCompanyData({...companyData, cnpj: t.toUpperCase()})} 
+                            keyboardType="default"
+                            autoCapitalize="characters"
                             placeholder="00.000.000/0000-00"
                             maxLength={18}
                         />

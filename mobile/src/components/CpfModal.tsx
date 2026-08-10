@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { customerService } from '../services/api';
+import { validarDocumento, type ResultadoValidacao } from '../utils/cpfCnpjValidator';
 
 interface CpfModalProps {
   visible: boolean;
@@ -27,6 +28,7 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
   const [endereco, setEndereco] = useState('');
   const [loading, setLoading] = useState(false);
   const [existingId, setExistingId] = useState<number | undefined>(undefined);
+  const [validacao, setValidacao] = useState<ResultadoValidacao | null>(null);
 
   const cpfInputRef = useRef<TextInput>(null);
   const nomeInputRef = useRef<TextInput>(null);
@@ -48,6 +50,7 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
           setNome('');
           setEndereco('');
           setExistingId(undefined);
+          setValidacao(null);
           setTimeout(() => cpfInputRef.current?.focus(), 100);
       }
     }
@@ -55,44 +58,54 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
 
   // Função para buscar cliente ao digitar CPF (pode ser no onBlur ou após X dígitos)
   const handleCpfChange = async (text: string) => {
-    // Remove caracteres não numéricos
-    const rawIds = text.replace(/\D/g, '');
+    // Remove caracteres especiais mantendo alfanuméricos em maiúsculo
+    const rawIds = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     setCpf(rawIds);
 
-    // Se tiver 11 dígitos (CPF) ou 14 (CNPJ), tenta buscar
+    // Validação em tempo real quando tem tamanho completo
     if (rawIds.length === 11 || rawIds.length === 14) {
-        if (loading) return;
-        setLoading(true);
-        try {
-            // Tenta buscar por CPF exato
-            // A API precisa suportar esse método. Vamos garantir que exista.
-            const response = await customerService.getByCpf(rawIds);
-            const customer = response.data;
-            
-            if (customer) {
-                setNome(customer.nome || '');
-                setEndereco(customer.endereco || '');
-                setExistingId(customer.id);
+        const resultado = validarDocumento(rawIds);
+        setValidacao(resultado);
+
+        // Se o documento for válido, tenta buscar no cadastro
+        if (resultado.valido) {
+            if (loading) return;
+            setLoading(true);
+            try {
+                const response = await customerService.getByCpf(rawIds);
+                const customer = response.data;
+                
+                if (customer) {
+                    setNome(customer.nome || '');
+                    setEndereco(customer.endereco || '');
+                    setExistingId(customer.id);
+                }
+            } catch (error) {
+                setExistingId(undefined);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            // Se não achar (404), limpa campos para cadastro novo
-            // Não é erro crítico, apenas não cadastrado
-            setExistingId(undefined);
-            // Mantém nome/endereço vazio ou limpa? Melhor limpar para evitar confusão
-            // Mas se o usuário já digitou nome antes de terminar CPF, não limpar.
-            // Assumindo fluxo sequencial: CPF -> Nome
-        } finally {
-            setLoading(false);
         }
+    } else if (rawIds.length > 0 && rawIds.length < 11) {
+        // Limpa validação enquanto digita (incompleto)
+        setValidacao(null);
+    } else if (rawIds.length === 0) {
+        setValidacao(null);
+    } else if (rawIds.length > 11 && rawIds.length < 14) {
+        setValidacao({ valido: false, tipo: null, mensagem: 'CNPJ incompleto. Deve ter 14 caracteres.' });
     }
   };
 
   const handleConfirm = () => {
-    if (!cpf || cpf.length < 11) {
+    const raw = (cpf || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const resultado = validarDocumento(raw);
+    setValidacao(resultado);
+    
+    if (!resultado.valido) {
         if (Platform.OS === 'web') {
-            window.alert('Atenção: Informe um CPF/CNPJ válido.');
+            window.alert(`Atenção: ${resultado.mensagem}`);
         } else {
-            Alert.alert('Atenção', 'Informe um CPF/CNPJ válido.');
+            Alert.alert('Atenção', resultado.mensagem);
         }
         return;
     }
@@ -147,17 +160,41 @@ export default function CpfModal({ visible, onClose, onConfirm, initialData }: C
             <View style={styles.content}>
                 <View style={styles.inputRow}>
                     <Text style={styles.label}>CPF/CNPJ</Text>
-                    <View style={{ flex: 1, maxWidth: 200, flexDirection: 'row', alignItems: 'center' }}>
-                         <TextInput
-                            ref={cpfInputRef}
-                            style={styles.input}
-                            value={cpf}
-                            onChangeText={handleCpfChange}
-                            keyboardType="numeric"
-                            maxLength={14}
-                            onSubmitEditing={() => nomeInputRef.current?.focus()}
-                         />
-                         {loading && <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />}
+                    <View style={{ flex: 1, maxWidth: 250, flexDirection: 'column' }}>
+                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                             <TextInput
+                                ref={cpfInputRef}
+                                style={[
+                                    styles.input,
+                                    { flex: 1 },
+                                    validacao && validacao.valido && { borderColor: '#4CAF50', borderWidth: 2 },
+                                    validacao && !validacao.valido && { borderColor: '#F44336', borderWidth: 2 }
+                                ]}
+                                value={cpf}
+                                onChangeText={handleCpfChange}
+                                keyboardType="default"
+                                autoCapitalize="characters"
+                                maxLength={18}
+                                onSubmitEditing={() => nomeInputRef.current?.focus()}
+                             />
+                             {loading && <ActivityIndicator size="small" color="#2196F3" style={{ marginLeft: 8 }} />}
+                             {validacao && validacao.valido && !loading && (
+                                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" style={{ marginLeft: 6 }} />
+                             )}
+                             {validacao && !validacao.valido && !loading && (
+                                 <Ionicons name="close-circle" size={20} color="#F44336" style={{ marginLeft: 6 }} />
+                             )}
+                         </View>
+                         {validacao && (
+                             <Text style={{
+                                 fontSize: 11,
+                                 marginTop: 3,
+                                 color: validacao.valido ? '#4CAF50' : '#F44336',
+                                 fontWeight: 'bold'
+                             }}>
+                                 {validacao.mensagem}
+                             </Text>
+                         )}
                     </View>
                 </View>
 

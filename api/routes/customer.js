@@ -3,6 +3,38 @@ import { getActivePrisma } from "../lib/prisma.js";
 
 const router = express.Router();
 
+const handleByCpf = async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const cpf = req.query.cpf || req.params.cpf || '';
+    if (!cpf) return res.status(400).json({ error: "CPF/CNPJ não informado" });
+    
+    const cpfRaw = String(cpf).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+    const customers = await prisma.customer.findMany({
+      take: 200,
+      orderBy: { id: 'desc' }
+    });
+
+    const customer = customers.find(c => {
+      if (!c.cpf) return false;
+      const cRaw = String(c.cpf).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      return cRaw === cpfRaw || String(c.cpf).toUpperCase() === String(cpf).toUpperCase();
+    });
+    
+    if (!customer) {
+      return res.status(404).json({ error: "Cliente não encontrado" });
+    }
+    res.json(customer);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar cliente por CPF" });
+  }
+};
+
+router.get("/by-cpf", handleByCpf);
+router.get("/by-cpf/:cpf", handleByCpf);
+
 // Rota para criar cliente
 router.post("/create", async (req, res) => {
   try {
@@ -139,35 +171,6 @@ router.delete("/delete/:id", async (req, res) => {
       return res.status(404).json({ error: "Cliente não encontrado" });
     }
     res.status(500).json({ error: "Erro ao deletar cliente" });
-  }
-});
-
-// Rota para buscar cliente por CPF
-router.get("/by-cpf/:cpf", async (req, res) => {
-  try {
-    const prisma = getActivePrisma();
-    const { cpf } = req.params;
-    
-    // Limpa a string de CPF recebida para usar apenas números
-    const cpfLimpo = cpf ? cpf.replace(/\D/g, '') : '';
-    
-    // Tenta encontrar cliente por CPF (pode estar com ou sem pontuação no banco)
-    let customer = await prisma.customer.findUnique({ where: { cpf: cpfLimpo } });
-    
-    if (!customer && cpfLimpo.length === 11) {
-        // Tenta também formatado no formato XXX.XXX.XXX-XX caso tenha sido salvo assim
-        const cpfFormatado = cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-        customer = await prisma.customer.findFirst({ where: { cpf: cpfFormatado } });
-    }
-    
-    if (!customer) {
-        return res.status(404).json({ error: "Cliente não encontrado" });
-    }
-    
-    res.json(customer);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro ao buscar cliente por CPF" });
   }
 });
 

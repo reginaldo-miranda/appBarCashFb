@@ -434,9 +434,9 @@ export default function PaymentSplitModal({
 
       try {
           let clienteId = customerData.id;
-          const cpfRaw = customerData.cpf ? String(customerData.cpf).replace(/\D/g, '') : '';
+          const cpfRaw = customerData.cpf ? String(customerData.cpf).replace(/[^A-Za-z0-9]/g, '').toUpperCase() : '';
 
-          // 1. Se não veio ID mas tem CPF, tenta buscar primeiro (Evita erro de duplicação se usuario clicou rapido)
+          // 1. Se não veio ID mas tem CPF/CNPJ, tenta buscar primeiro (Evita erro de duplicação se usuario clicou rapido)
           if (!clienteId && cpfRaw.length >= 11) {
               try {
                   const searchRes = await customerService.getByCpf(cpfRaw);

@@ -2541,6 +2541,17 @@ export default function SaleScreen() {
 
       <CpfModal
         visible={cpfModalVisible}
+        initialData={selectedCliente ? {
+            id: selectedCliente.id || selectedCliente._id,
+            nome: selectedCliente.nome || '',
+            cpf: selectedCliente.cpf || '',
+            endereco: selectedCliente.endereco || ''
+        } : ((sale as any)?.cliente ? {
+            id: (sale as any).cliente.id || (sale as any).cliente._id,
+            nome: (sale as any).cliente.nome || '',
+            cpf: (sale as any).cliente.cpf || '',
+            endereco: (sale as any).cliente.endereco || ''
+        } : undefined)}
         onClose={() => {
             setCpfModalVisible(false);
             // Se fechou sem informar CPF, finalizamos sem CPF.
@@ -2550,35 +2561,62 @@ export default function SaleScreen() {
             setCpfModalVisible(false);
             setLoading(true);
             try {
-                let currentClienteId = (sale as any)?.clienteId;
+                let currentClienteId = data.id || (sale as any)?.clienteId;
+                const cpfRaw = data.cpf ? data.cpf.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : '';
                 
-                // Tratar CPF. Pode vir cliente novo, ou já existente.
-                // Reutilizamos a lógica similar do PaymentSplitModal, ou fazemos uma simples:
-                if (data.id) {
-                    currentClienteId = data.id;
-                    await customerService.update(data.id, { nome: data.nome, endereco: data.endereco, cpf: data.cpf });
-                } else if (data.cpf && data.cpf.replace(/\D/g, '').length >= 11) {
+                // 1. Se já temos um ID de cliente (veio selecionado ou já existe)
+                if (currentClienteId) {
+                    await customerService.update(currentClienteId, {
+                        nome: data.nome,
+                        endereco: data.endereco,
+                        cpf: data.cpf
+                    });
+                } else if (cpfRaw.length >= 11) {
+                    // 2. Tenta buscar por CPF primeiro
                     try {
-                        const createRes = await customerService.create({
-                            nome: data.nome,
-                            endereco: data.endereco,
-                            cpf: data.cpf,
-                            ativo: true
-                        });
-                        currentClienteId = createRes.data?.customer?.id || createRes.data?.id;
-                    } catch (e: any) {
-                        // Se já existir, tentamos buscar
-                        if (e.response?.data?.error === 'CPF já cadastrado' || String(e).includes('CPF')) {
-                            const cpfRaw = data.cpf.replace(/\D/g, '');
-                            const searchRes = await customerService.getByCpf(cpfRaw);
-                            if (searchRes.data?.id) currentClienteId = searchRes.data.id;
+                        const searchRes = await customerService.getByCpf(cpfRaw);
+                        if (searchRes.data?.id) {
+                            currentClienteId = searchRes.data.id;
+                            await customerService.update(currentClienteId, {
+                                nome: data.nome,
+                                endereco: data.endereco,
+                                cpf: data.cpf
+                            });
+                        }
+                    } catch (e: any) {}
+
+                    // 3. Se ainda não achou, cria novo cliente
+                    if (!currentClienteId) {
+                        try {
+                            const createRes = await customerService.create({
+                                nome: data.nome || 'Consumidor',
+                                endereco: data.endereco,
+                                cpf: data.cpf,
+                                ativo: true
+                            });
+                            currentClienteId = createRes.data?.customer?.id || createRes.data?.id;
+                        } catch (e: any) {
+                            if (e.response?.data?.error === 'CPF já cadastrado' || String(e).includes('CPF')) {
+                                const searchRes = await customerService.getByCpf(cpfRaw);
+                                if (searchRes.data?.id) {
+                                    currentClienteId = searchRes.data.id;
+                                    await customerService.update(currentClienteId, {
+                                        nome: data.nome,
+                                        endereco: data.endereco,
+                                        cpf: data.cpf
+                                    });
+                                }
+                            }
                         }
                     }
                 }
                 
                 if (currentClienteId && sale) {
                     const saleId = (sale as any).id || (sale as any)._id;
-                    await saleService.update(saleId, { clienteId: currentClienteId });
+                    const res = await saleService.update(saleId, { clienteId: currentClienteId });
+                    if (res?.data) {
+                        setSale(res.data);
+                    }
                 }
             } catch (err) {
                 console.error("Erro vinculando CPF no CpfModal:", err);

@@ -1985,6 +1985,7 @@ router.post('/:id/receipt-print', async (req, res) => {
         ${venda.cliente ? `
             <div class="section-title">CLIENTE</div>
             <div><b>Nome:</b> ${venda.cliente.nome}</div>
+            ${venda.cliente.cpf ? `<div><b>CPF/CNPJ:</b> ${venda.cliente.cpf}</div>` : ''}
             ${venda.cliente.fone ? `<div><b>Tel:</b> ${venda.cliente.fone}</div>` : ''}
         ` : '<div><b>Cliente:</b> Consumidor Final</div>'}
       </div>

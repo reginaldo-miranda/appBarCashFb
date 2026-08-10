@@ -302,17 +302,41 @@ export const generatePdf = async (req, res) => {
              include: { 
                  itens: { include: { product: true } }, 
                  nfce: true,
-                 caixaVendas: true
+                 caixaVendas: true,
+                 cliente: true
              }
         });
 
 
 
 
-        if (!sale) return res.status(404).send('Venda não encontrada');
-        
-        // Buscar dados da empresa globalmente se nao estiver na venda
+        // Buscar dados da empresa globalmente
         const company = await prisma.company.findFirst();
+
+        // Extração dos dados do consumidor (Banco com fallback para o XML da NFC-e)
+        let consumidorDoc = sale.cliente?.cpf || sale.cliente?.cnpj || '';
+        let consumidorNome = sale.cliente?.nome || '';
+
+        if (!consumidorDoc && sale.nfce?.xml) {
+            try {
+                const xmlStr = String(sale.nfce.xml);
+                const cpfMatch = xmlStr.match(/<dest>[\s\S]*?<CPF>([^<]+)<\/CPF>/i);
+                const cnpjMatch = xmlStr.match(/<dest>[\s\S]*?<CNPJ>([^<]+)<\/CNPJ>/i);
+                const nomeMatch = xmlStr.match(/<dest>[\s\S]*?<xNome>([^<]+)<\/xNome>/i);
+
+                if (cpfMatch && cpfMatch[1]) {
+                    consumidorDoc = cpfMatch[1];
+                } else if (cnpjMatch && cnpjMatch[1]) {
+                    consumidorDoc = cnpjMatch[1];
+                }
+
+                if (nomeMatch && nomeMatch[1] && !nomeMatch[1].includes('SEM VALOR FISCAL')) {
+                    consumidorNome = nomeMatch[1];
+                }
+            } catch (errXml) {
+                console.warn("[NFC-e PDF] Erro ao extrair dest do XML:", errXml);
+            }
+        }
 
         // Regenerar imagem do QR Code
         let qrCodeImg = '';
@@ -502,7 +526,9 @@ export const generatePdf = async (req, res) => {
                 <div class="divider"></div>
                 
                 <div class="center">
-                    CONSUMIDOR ${sale.clienteId ? 'IDENTIFICADO' : 'NÃO IDENTIFICADO'}
+                    ${consumidorDoc ? 
+                        `CONSUMIDOR: ${consumidorDoc}${consumidorNome ? ' - ' + consumidorNome : ''}` : 
+                        (consumidorNome ? `CONSUMIDOR: ${consumidorNome}` : (sale.clienteId ? 'CONSUMIDOR IDENTIFICADO' : 'CONSUMIDOR NÃO IDENTIFICADO'))}
                 </div>
                 <div class="center">
                     Via Consumidor
