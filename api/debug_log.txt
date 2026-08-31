@@ -1228,193 +1228,23 @@
 [2026-06-18T12:13:27.629Z] [Finalize] Recalculated Subtotal: 220
 [2026-06-18T12:13:27.658Z] [DEBUG] Finalize - FreshCV Count: 0
 [2026-06-18T12:13:27.659Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-06T16:52:07.511Z] [Finalize] ID: 44 (Int: 44). FreshItens: 2, FreshCV: 0
-[2026-08-06T16:52:07.514Z] [Finalize] Recalculated Subtotal: 78
-[2026-08-06T16:52:07.917Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-06T16:52:07.918Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-06T16:52:07.966Z] [Controller] emitirNfce. Body: {"saleId":44,"itemsOverlay":[{"id":53,"saleId":44,"productId":3,"nomeProduto":"bauru simples","quantidade":3,"precoUnitario":18,"subtotal":54,"status":"pendente","createdAt":"2026-06-30T19:25:32.314Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"53","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}},{"id":54,"saleId":44,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":2,"precoUnitario":12,"subtotal":24,"status":"pendente","createdAt":"2026-06-30T19:25:48.578Z","preparedAt":null,"preparedById":null,"origem":"cardapio","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"54","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-06T16:52:07.975Z] [EmitirNfce] Sale ID: 44
-[2026-08-06T16:52:07.976Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-06T16:52:07.977Z] [EmitirNfce] Delivery Fee: null
-[2026-08-06T16:52:07.978Z] [EmitirNfce] Total Venda: 78
-[2026-08-06T16:52:07.979Z] [EmitirNfce] Subtotal: 78
-[2026-08-06T17:55:53.391Z] [Finalize] ID: 21 (Int: 21). FreshItens: 1, FreshCV: 0
-[2026-08-06T17:55:53.707Z] [Finalize] Recalculated Subtotal: 18
-[2026-08-06T17:55:53.729Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-06T17:55:53.730Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-06T17:55:53.798Z] [Controller] emitirNfce. Body: {"saleId":21,"itemsOverlay":[{"id":23,"saleId":21,"productId":3,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":18,"subtotal":18,"status":"pendente","createdAt":"2026-05-21T13:00:55.709Z","preparedAt":null,"preparedById":null,"origem":"default","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"23","produto":{"_id":"3","id":3,"nome":"bauru simples","preco":18,"ncm":"21069090","cfop":"5102","csosn":"102"}}]}
-[2026-08-06T17:55:53.807Z] [EmitirNfce] Sale ID: 21
-[2026-08-06T17:55:53.808Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-06T17:55:53.809Z] [EmitirNfce] Delivery Fee: null
-[2026-08-06T17:55:53.810Z] [EmitirNfce] Total Venda: 18
-[2026-08-06T17:55:53.811Z] [EmitirNfce] Subtotal: 18
-[2026-08-06T18:56:52.128Z] [Finalize] ID: 3 (Int: 3). FreshItens: 1, FreshCV: 0
-[2026-08-06T18:56:52.168Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-06T18:56:52.192Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-06T18:56:52.194Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-06T18:56:52.242Z] [Controller] emitirNfce. Body: {"saleId":3,"itemsOverlay":[{"id":56,"saleId":3,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-06T18:56:42.821Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"56","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-06T18:56:52.260Z] [EmitirNfce] Sale ID: 3
-[2026-08-06T18:56:52.262Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-06T18:56:52.275Z] [EmitirNfce] Delivery Fee: null
-[2026-08-06T18:56:52.276Z] [EmitirNfce] Total Venda: 12
-[2026-08-06T18:56:52.278Z] [EmitirNfce] Subtotal: 12
-[2026-08-06T19:07:41.337Z] [Finalize] ID: 46 (Int: 46). FreshItens: 1, FreshCV: 0
-[2026-08-06T19:07:41.340Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-06T19:07:41.368Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-06T19:07:41.370Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-06T19:07:41.419Z] [Controller] emitirNfce. Body: {"saleId":46,"itemsOverlay":[{"id":57,"saleId":46,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-06T19:07:31.869Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"57","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-06T19:07:41.438Z] [EmitirNfce] Sale ID: 46
-[2026-08-06T19:07:41.441Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-06T19:07:41.442Z] [EmitirNfce] Delivery Fee: null
-[2026-08-06T19:07:41.444Z] [EmitirNfce] Total Venda: 12
-[2026-08-06T19:07:41.445Z] [EmitirNfce] Subtotal: 12
-[2026-08-06T19:10:29.272Z] [Finalize] ID: 47 (Int: 47). FreshItens: 1, FreshCV: 0
-[2026-08-06T19:10:29.275Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-06T19:10:29.302Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-06T19:10:29.304Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-06T19:10:29.348Z] [Controller] emitirNfce. Body: {"saleId":47,"itemsOverlay":[{"id":58,"saleId":47,"productId":4,"nomeProduto":"cerveja skol 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-06T19:10:16.932Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"58","produto":{"_id":"4","id":4,"nome":"cerveja skol 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-06T19:10:29.367Z] [EmitirNfce] Sale ID: 47
-[2026-08-06T19:10:29.369Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-06T19:10:29.371Z] [EmitirNfce] Delivery Fee: null
-[2026-08-06T19:10:29.373Z] [EmitirNfce] Total Venda: 12
-[2026-08-06T19:10:29.374Z] [EmitirNfce] Subtotal: 12
-[2026-08-07T18:08:37.645Z] [Finalize] ID: 669 (Int: 669). FreshItens: 1, FreshCV: 0
-[2026-08-07T18:08:37.648Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-07T18:08:37.689Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-07T18:08:37.690Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-07T18:08:37.940Z] [Controller] emitirNfce. Body: {"saleId":669,"itemsOverlay":[{"id":814,"saleId":669,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-07T18:08:23.370Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"814","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-07T18:08:38.180Z] [EmitirNfce] Sale ID: 669
-[2026-08-07T18:08:38.180Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-07T18:08:38.181Z] [EmitirNfce] Delivery Fee: null
-[2026-08-07T18:08:38.207Z] [EmitirNfce] Total Venda: 12
-[2026-08-07T18:08:38.208Z] [EmitirNfce] Subtotal: 12
-[2026-08-07T18:14:41.988Z] [Finalize] ID: 670 (Int: 670). FreshItens: 1, FreshCV: 0
-[2026-08-07T18:14:41.989Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-07T18:14:42.128Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-07T18:14:42.128Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-07T18:14:42.268Z] [Controller] emitirNfce. Body: {"saleId":670,"itemsOverlay":[{"id":815,"saleId":670,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-07T18:14:31.959Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"815","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-07T18:14:42.323Z] [EmitirNfce] Sale ID: 670
-[2026-08-07T18:14:42.323Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-07T18:14:42.329Z] [EmitirNfce] Delivery Fee: null
-[2026-08-07T18:14:42.329Z] [EmitirNfce] Total Venda: 12
-[2026-08-07T18:14:42.329Z] [EmitirNfce] Subtotal: 12
-[2026-08-07T18:17:16.261Z] [Finalize] ID: 671 (Int: 671). FreshItens: 1, FreshCV: 0
-[2026-08-07T18:17:16.267Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-07T18:17:16.335Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-07T18:17:16.336Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-07T18:17:16.493Z] [Controller] emitirNfce. Body: {"saleId":671,"itemsOverlay":[{"id":816,"saleId":671,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-07T18:17:05.839Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"816","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-07T18:17:16.521Z] [EmitirNfce] Sale ID: 671
-[2026-08-07T18:17:16.521Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-07T18:17:16.527Z] [EmitirNfce] Delivery Fee: null
-[2026-08-07T18:17:16.527Z] [EmitirNfce] Total Venda: 12
-[2026-08-07T18:17:16.527Z] [EmitirNfce] Subtotal: 12
-[2026-08-07T18:25:41.448Z] [Finalize] ID: 672 (Int: 672). FreshItens: 1, FreshCV: 0
-[2026-08-07T18:25:41.449Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-07T18:25:41.537Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-07T18:25:41.537Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-07T18:25:41.783Z] [Controller] emitirNfce. Body: {"saleId":672,"itemsOverlay":[{"id":817,"saleId":672,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-07T18:25:31.064Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"817","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-07T18:25:41.805Z] [EmitirNfce] Sale ID: 672
-[2026-08-07T18:25:41.805Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-07T18:25:41.807Z] [EmitirNfce] Delivery Fee: null
-[2026-08-07T18:25:41.810Z] [EmitirNfce] Total Venda: 12
-[2026-08-07T18:25:41.811Z] [EmitirNfce] Subtotal: 12
-[2026-08-07T18:28:17.335Z] [Finalize] ID: 673 (Int: 673). FreshItens: 1, FreshCV: 0
-[2026-08-07T18:28:17.342Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-07T18:28:17.372Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-07T18:28:17.373Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-07T18:28:17.513Z] [Controller] emitirNfce. Body: {"saleId":673,"itemsOverlay":[{"id":818,"saleId":673,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-07T18:27:59.023Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"818","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-07T18:28:17.557Z] [EmitirNfce] Sale ID: 673
-[2026-08-07T18:28:17.557Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-07T18:28:17.558Z] [EmitirNfce] Delivery Fee: null
-[2026-08-07T18:28:17.558Z] [EmitirNfce] Total Venda: 12
-[2026-08-07T18:28:17.558Z] [EmitirNfce] Subtotal: 12
-[2026-08-07T18:57:55.048Z] [Finalize] ID: 674 (Int: 674). FreshItens: 1, FreshCV: 0
-[2026-08-07T18:57:55.050Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-07T18:57:55.094Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-07T18:57:55.095Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-07T18:57:55.323Z] [Controller] emitirNfce. Body: {"saleId":674,"itemsOverlay":[{"id":819,"saleId":674,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-07T18:57:26.651Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"819","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-07T18:57:55.369Z] [EmitirNfce] Sale ID: 674
-[2026-08-07T18:57:55.371Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-07T18:57:55.372Z] [EmitirNfce] Delivery Fee: null
-[2026-08-07T18:57:55.372Z] [EmitirNfce] Total Venda: 12
-[2026-08-07T18:57:55.373Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T18:21:21.533Z] [Finalize] ID: 675 (Int: 675). FreshItens: 1, FreshCV: 0
-[2026-08-10T18:21:21.535Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T18:21:21.689Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T18:21:21.689Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T18:21:21.954Z] [Controller] emitirNfce. Body: {"saleId":675,"itemsOverlay":[{"id":820,"saleId":675,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T18:21:06.288Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"820","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T18:21:21.978Z] [EmitirNfce] Sale ID: 675
-[2026-08-10T18:21:21.978Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T18:21:21.979Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T18:21:21.979Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T18:21:21.979Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T18:52:05.430Z] [Finalize] ID: 676 (Int: 676). FreshItens: 1, FreshCV: 0
-[2026-08-10T18:52:05.433Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T18:52:05.471Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T18:52:05.471Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T18:52:05.600Z] [Controller] emitirNfce. Body: {"saleId":676,"itemsOverlay":[{"id":821,"saleId":676,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T18:25:18.807Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"821","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T18:52:05.628Z] [EmitirNfce] Sale ID: 676
-[2026-08-10T18:52:05.629Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T18:52:05.638Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T18:52:05.642Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T18:52:06.263Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T18:55:49.654Z] [Finalize] ID: 677 (Int: 677). FreshItens: 1, FreshCV: 0
-[2026-08-10T18:55:49.655Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T18:55:49.686Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T18:55:49.686Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T18:55:49.800Z] [Controller] emitirNfce. Body: {"saleId":677,"itemsOverlay":[{"id":822,"saleId":677,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T18:55:07.441Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"822","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T18:55:49.842Z] [EmitirNfce] Sale ID: 677
-[2026-08-10T18:55:49.842Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T18:55:49.843Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T18:55:49.843Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T18:55:49.843Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T19:38:09.994Z] [Finalize] ID: 678 (Int: 678). FreshItens: 1, FreshCV: 0
-[2026-08-10T19:38:09.996Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T19:38:10.023Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T19:38:10.024Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T19:38:10.161Z] [Controller] emitirNfce. Body: {"saleId":678,"itemsOverlay":[{"id":823,"saleId":678,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T19:38:00.225Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"823","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T19:38:10.180Z] [EmitirNfce] Sale ID: 678
-[2026-08-10T19:38:10.180Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T19:38:10.180Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T19:38:10.180Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T19:38:10.181Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T20:19:09.179Z] [Finalize] ID: 679 (Int: 679). FreshItens: 1, FreshCV: 0
-[2026-08-10T20:19:09.240Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T20:19:09.270Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T20:19:09.270Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T20:19:09.397Z] [Controller] emitirNfce. Body: {"saleId":679,"itemsOverlay":[{"id":824,"saleId":679,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T20:18:56.570Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"824","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T20:19:09.466Z] [EmitirNfce] Sale ID: 679
-[2026-08-10T20:19:09.466Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T20:19:09.466Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T20:19:09.466Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T20:19:09.467Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T20:56:33.931Z] [Finalize] ID: 680 (Int: 680). FreshItens: 1, FreshCV: 0
-[2026-08-10T20:56:33.934Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T20:56:33.971Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T20:56:33.973Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T20:56:34.337Z] [Controller] emitirNfce. Body: {"saleId":680,"itemsOverlay":[{"id":825,"saleId":680,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T20:56:23.185Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"825","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T20:56:34.361Z] [EmitirNfce] Sale ID: 680
-[2026-08-10T20:56:34.362Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T20:56:34.363Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T20:56:34.363Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T20:56:34.363Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T21:01:54.705Z] [Finalize] ID: 681 (Int: 681). FreshItens: 1, FreshCV: 0
-[2026-08-10T21:01:54.706Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T21:01:54.733Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T21:01:54.733Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T21:01:54.957Z] [Controller] emitirNfce. Body: {"saleId":681,"itemsOverlay":[{"id":826,"saleId":681,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T21:01:44.412Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"826","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T21:01:55.012Z] [EmitirNfce] Sale ID: 681
-[2026-08-10T21:01:55.012Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T21:01:55.013Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T21:01:55.013Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T21:01:55.013Z] [EmitirNfce] Subtotal: 12
-[2026-08-10T21:07:53.516Z] [Finalize] ID: 682 (Int: 682). FreshItens: 1, FreshCV: 0
-[2026-08-10T21:07:53.518Z] [Finalize] Recalculated Subtotal: 12
-[2026-08-10T21:07:53.583Z] [DEBUG] Finalize - FreshCV Count: 0
-[2026-08-10T21:07:53.583Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
-[2026-08-10T21:07:53.892Z] [Controller] emitirNfce. Body: {"saleId":682,"itemsOverlay":[{"id":827,"saleId":682,"productId":2,"nomeProduto":"cerveja local imperio 600 ml","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-10T21:07:25.288Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"827","produto":{"_id":"2","id":2,"nome":"cerveja local imperio 600 ml","preco":12,"ncm":"22030000","cfop":"5102","csosn":"102"}}]}
-[2026-08-10T21:07:53.916Z] [EmitirNfce] Sale ID: 682
-[2026-08-10T21:07:53.916Z] [EmitirNfce] Cashback Usado: 0
-[2026-08-10T21:07:53.916Z] [EmitirNfce] Delivery Fee: null
-[2026-08-10T21:07:53.917Z] [EmitirNfce] Total Venda: 12
-[2026-08-10T21:07:53.917Z] [EmitirNfce] Subtotal: 12
+[2026-08-03T21:23:45.764Z] [Finalize] ID: 1 (Int: 1). FreshItens: 1, FreshCV: 0
+[2026-08-03T21:23:45.766Z] [Finalize] Recalculated Subtotal: 12
+[2026-08-03T21:23:45.857Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-03T21:23:45.859Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-03T21:23:46.079Z] [Controller] emitirNfce. Body: {"saleId":1,"itemsOverlay":[{"id":1,"saleId":1,"productId":1,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-03T21:23:38.175Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"1","produto":{"_id":"1","id":1,"nome":"bauru simples","preco":12,"ncm":"22090000","cfop":"5102","csosn":"102"}}]}
+[2026-08-03T21:23:46.098Z] [EmitirNfce] Sale ID: 1
+[2026-08-03T21:23:46.100Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-03T21:23:46.103Z] [EmitirNfce] Delivery Fee: null
+[2026-08-03T21:23:46.105Z] [EmitirNfce] Total Venda: 12
+[2026-08-03T21:23:46.107Z] [EmitirNfce] Subtotal: 12
+[2026-08-30T22:45:25.537Z] [Finalize] ID: 2 (Int: 2). FreshItens: 1, FreshCV: 0
+[2026-08-30T22:45:25.541Z] [Finalize] Recalculated Subtotal: 12
+[2026-08-30T22:45:25.607Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-08-30T22:45:25.608Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-08-30T22:45:25.817Z] [Controller] emitirNfce. Body: {"saleId":2,"itemsOverlay":[{"id":2,"saleId":2,"productId":1,"nomeProduto":"bauru simples","quantidade":1,"precoUnitario":12,"subtotal":12,"status":"pendente","createdAt":"2026-08-30T22:45:11.243Z","preparedAt":null,"preparedById":null,"origem":"tablet","variacaoOpcoes":null,"variacaoRegraPreco":null,"variacaoTipo":null,"_id":"2","produto":{"_id":"1","id":1,"nome":"bauru simples","preco":12,"ncm":"22090000","cfop":"5102","csosn":"102"}}]}
+[2026-08-30T22:45:25.837Z] [EmitirNfce] Sale ID: 2
+[2026-08-30T22:45:25.837Z] [EmitirNfce] Cashback Usado: 0
+[2026-08-30T22:45:25.838Z] [EmitirNfce] Delivery Fee: null
+[2026-08-30T22:45:25.838Z] [EmitirNfce] Total Venda: 12
+[2026-08-30T22:45:25.839Z] [EmitirNfce] Subtotal: 12

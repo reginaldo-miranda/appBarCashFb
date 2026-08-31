@@ -26,11 +26,13 @@ jest.mock('../src/services/api', () => {
   const mCategory = { getAll: jest.fn() };
   const mType = { getAll: jest.fn() };
   const mUn = { getAll: jest.fn() };
+  const mSetor = { getAll: jest.fn() };
   return {
     productService: mProduct,
     categoryService: mCategory,
     typeService: mType,
-    unidadeMedidaService: mUn
+    unidadeMedidaService: mUn,
+    setorImpressaoService: mSetor
   };
 });
 
@@ -38,7 +40,7 @@ const CadastroProduto = require('../app/produtos/cadastro').default;
 const { router } = require('expo-router');
 const { Alert } = require('react-native');
 jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-const { productService, categoryService, typeService, unidadeMedidaService } = require('../src/services/api');
+const { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService } = require('../src/services/api');
 
 describe('Tela de Cadastro/Edição de Produto', () => {
   beforeEach(() => {
@@ -118,6 +120,7 @@ describe('Tela de Cadastro/Edição de Produto', () => {
     categoryService.getAll.mockResolvedValue([{ id: '10', nome: 'Refrigerantes' }]);
     typeService.getAll.mockResolvedValue([{ id: '20', nome: 'Geral' }]);
     unidadeMedidaService.getAll.mockResolvedValue([{ id: '30', nome: 'Mililitro', sigla: 'ml' }]);
+    setorImpressaoService.getAll.mockResolvedValue([]);
     productService.getById.mockResolvedValue({ data: null });
 
     let tree: ReactTestRenderer.ReactTestRenderer;
@@ -131,5 +134,36 @@ describe('Tela de Cadastro/Edição de Produto', () => {
     expect(msgs.some(m => m.includes('Produto não encontrado.'))).toBeTruthy();
     expect(msgs.some(m => m.includes('Tentar novamente'))).toBeTruthy();
     expect(msgs.some(m => m.includes('Voltar'))).toBeTruthy();
+  }, 15000);
+
+  test('carrega classificacao por texto quando ids nao casam com as listas', async () => {
+    categoryService.getAll.mockResolvedValue([{ id: '10', nome: 'Refrigerantes' }]);
+    typeService.getAll.mockResolvedValue([{ id: '20', nome: 'Geral' }]);
+    unidadeMedidaService.getAll.mockResolvedValue([{ id: '30', nome: 'Mililitro', sigla: 'ml' }]);
+    setorImpressaoService.getAll.mockResolvedValue([]);
+    productService.getById.mockResolvedValue({
+      data: {
+        id: 1,
+        nome: 'Coca-Cola',
+        precoVenda: 10,
+        precoCusto: 7,
+        categoria: 'Refrigerantes',
+        tipo: 'Geral',
+        unidade: 'ml',
+        quantidade: 5,
+        ativo: true,
+        dataInclusao: new Date().toISOString(),
+      }
+    });
+
+    let tree: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = ReactTestRenderer.create(<CadastroProduto />);
+    });
+    await flushPromises();
+
+    const texts = tree!.root.findAllByType(Text).map(n => String(n.props.children));
+    expect(texts.some(t => t.includes('Mililitro (ml)'))).toBeTruthy();
+    expect(productService.getById).toHaveBeenCalledWith('1');
   }, 15000);
 });

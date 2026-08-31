@@ -22,6 +22,23 @@ export async function runDbBootstrap(prisma) {
 
   const run = async (sql, label) => {
     try {
+      // Compatibilidade com versões de MySQL que não suportam
+      // `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+      const normalized = String(sql).replace(/\s+/g, ' ').trim();
+      const addColumnMatch = normalized.match(/^ALTER TABLE `?([^`\s]+)`? ADD COLUMN IF NOT EXISTS `?([^`\s]+)`? (.+);?$/i);
+      if (addColumnMatch) {
+        const [, tableName, columnName, columnDef] = addColumnMatch;
+        const existing = await prisma.$queryRawUnsafe(`SHOW COLUMNS FROM \`${tableName}\` LIKE '${columnName}'`);
+        if (Array.isArray(existing) && existing.length > 0) {
+          return;
+        }
+
+        await prisma.$executeRawUnsafe(
+          `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDef.replace(/;$/, '')};`
+        );
+        return;
+      }
+
       await prisma.$executeRawUnsafe(sql);
     } catch (err) {
       // Ignora erros de "objeto já existe" que não sejam críticos
@@ -680,6 +697,9 @@ export async function runDbBootstrap(prisma) {
     "ALTER TABLE `nfce` MODIFY COLUMN `status` ENUM('PENDENTE','PROCESSANDO','AUTORIZADA','REJEITADA','CANCELADA','DENEGADA','CONTINGENCIA','CONTINGENCIA_REJEITADA','CONTINGENCIA_EXPIRADA','INUTILIZADA') NOT NULL DEFAULT 'PENDENTE';",
     'nfce.status enum update'
   );
+
+  // Company - compatibilidade com bancos criados antes da inclusão desse campo
+  await run("ALTER TABLE `company` ADD COLUMN IF NOT EXISTS `dataAbertura` VARCHAR(191) DEFAULT NULL;", 'company.dataAbertura');
 
   // Sale - campos de delivery e cashback
   await run("ALTER TABLE `sale` ADD COLUMN IF NOT EXISTS `deliveryAddress` TEXT DEFAULT NULL;", 'sale.deliveryAddress');

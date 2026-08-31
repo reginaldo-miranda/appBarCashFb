@@ -56,7 +56,7 @@ interface ValidationErrors {
 }
 
 export default function CadastroProduto() {
-  const { hasPermission } = useAuth() as any;
+  const { hasPermission, loading: authLoading, isAuthenticated } = useAuth() as any;
   const { triggerRefresh } = useProduct();
   const { id } = useLocalSearchParams();
   const isEditing = !!id;
@@ -159,6 +159,13 @@ export default function CadastroProduto() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const normalizeText = (value: any) => String(value ?? '').trim().toLowerCase();
+  const extractList = (payload: any) => (
+    Array.isArray(payload)
+      ? payload
+      : (Array.isArray(payload?.data) ? payload.data : [])
+  );
+
   // Validação em tempo real
   const validateField = (fieldName: string, value: string): string | undefined => {
     switch (fieldName) {
@@ -203,6 +210,9 @@ export default function CadastroProduto() {
   }, [nome, preco, categoriaId, descricao, estoque]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
     if (!hasPermission('produtos')) {
       Alert.alert(
         'Acesso Negado',
@@ -210,20 +220,23 @@ export default function CadastroProduto() {
         [{ text: 'OK' }]
       );
     }
-  }, [hasPermission]);
+  }, [authLoading, hasPermission]);
 
   // Carregar tipos e unidades da API
   useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
     loadCategorias();
     loadTipos();
     loadUnidades();
     loadSetores();
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   const loadCategorias = async () => {
     setLoadingCategorias(true);
     try {
-      const categoriasData = await categoryService.getAll();
+      const categoriasData = extractList(await categoryService.getAll());
       setCategorias(categoriasData.map((categoria: any) => ({
         id: String(categoria.id ?? categoria._id),
         nome: categoria.nome
@@ -239,7 +252,7 @@ export default function CadastroProduto() {
   const loadTipos = async () => {
     setLoadingTipos(true);
     try {
-      const tiposData = await typeService.getAll();
+      const tiposData = extractList(await typeService.getAll());
       setTipos(tiposData.map((tipo: any) => ({
         id: String(tipo.id ?? tipo._id),
         nome: tipo.nome
@@ -255,7 +268,7 @@ export default function CadastroProduto() {
   const loadUnidades = async () => {
     setLoadingUnidades(true);
     try {
-      const unidadesData = await unidadeMedidaService.getAll();
+      const unidadesData = extractList(await unidadeMedidaService.getAll());
       setUnidades(unidadesData.map((unidade: any) => ({
         id: String(unidade.id ?? unidade._id),
         nome: unidade.nome,
@@ -272,10 +285,7 @@ export default function CadastroProduto() {
   const loadSetores = async () => {
     setLoadingSetores(true);
     try {
-      const body = await setorImpressaoService.getAll();
-      const list = Array.isArray(body)
-        ? body
-        : (Array.isArray((body as any)?.data) ? (body as any).data : []);
+      const list = extractList(await setorImpressaoService.getAll());
       setSetores(list.map((s: any) => ({ id: String(s.id ?? s._id), nome: s.nome, modoEnvio: String(s.modoEnvio || 'impressora') as any })));
     } catch (error) {
       console.error('Erro ao carregar setores:', error);
@@ -305,31 +315,42 @@ export default function CadastroProduto() {
 
   // Carregar dados do produto para edição
   useEffect(() => {
-    if (isEditing && id && categorias.length > 0 && tipos.length > 0 && unidades.length > 0) {
+    if (isEditing && id && !loadingCategorias && !loadingTipos && !loadingUnidades) {
       loadProduct(id as string);
     }
-  }, [isEditing, id, categorias, tipos, unidades]);
+  }, [isEditing, id, loadingCategorias, loadingTipos, loadingUnidades]);
 
   const loadProduct = async (productId: string) => {
     setLoadingProduct(true);
     try {
       const response = await productService.getById(productId);
-      const produto = response.data;
+      const produto = response?.data ?? response;
       
       if (produto) {
+        setLoadError(null);
         setNome(produto.nome || '');
         setDescricao(produto.descricao || '');
-        setPreco(produto.precoVenda ? produto.precoVenda.toFixed(2) : '');
-        setPrecoCusto(produto.precoCusto ? produto.precoCusto.toFixed(2) : '');
+        setPreco(produto.precoVenda !== undefined && produto.precoVenda !== null ? Number(produto.precoVenda).toFixed(2) : '');
+        setPrecoCusto(produto.precoCusto !== undefined && produto.precoCusto !== null ? Number(produto.precoCusto).toFixed(2) : '');
         
         const prodCatIdStr = produto.categoriaId ? String(produto.categoriaId) : '';
         const categoriaPorId = prodCatIdStr ? categorias.find(c => c.id === prodCatIdStr) : undefined;
         if (categoriaPorId) {
           setCategoriaId(categoriaPorId.id);
         } else {
-          const alvo = String(produto.categoria || '').trim().toLowerCase();
-          const categoriaEncontrada = categorias.find(categoria => String(categoria.nome || '').trim().toLowerCase() === alvo);
-          setCategoriaId(categoriaEncontrada?.id || '');
+          const alvo = normalizeText(produto.categoria);
+          const categoriaEncontrada = categorias.find(categoria => normalizeText(categoria.nome) === alvo);
+          if (categoriaEncontrada) {
+            setCategoriaId(categoriaEncontrada.id);
+          } else if (alvo) {
+            const fallbackId = `legacy-cat:${String(produto.categoria).trim()}`;
+            setCategorias(prev => prev.some(c => c.id === fallbackId || normalizeText(c.nome) === alvo)
+              ? prev
+              : [...prev, { id: fallbackId, nome: String(produto.categoria).trim() }]);
+            setCategoriaId(fallbackId);
+          } else {
+            setCategoriaId('');
+          }
         }
         
         
@@ -338,9 +359,19 @@ export default function CadastroProduto() {
         if (tipoPorId) {
           setTipoId(tipoPorId.id);
         } else {
-          const alvoTipo = String(produto.tipo || '').trim().toLowerCase();
-          const tipoEncontrado = tipos.find(tipo => String(tipo.nome || '').trim().toLowerCase() === alvoTipo);
-          setTipoId(tipoEncontrado?.id || '');
+          const alvoTipo = normalizeText(produto.tipo);
+          const tipoEncontrado = tipos.find(tipo => normalizeText(tipo.nome) === alvoTipo);
+          if (tipoEncontrado) {
+            setTipoId(tipoEncontrado.id);
+          } else if (alvoTipo) {
+            const fallbackId = `legacy-tipo:${String(produto.tipo).trim()}`;
+            setTipos(prev => prev.some(t => t.id === fallbackId || normalizeText(t.nome) === alvoTipo)
+              ? prev
+              : [...prev, { id: fallbackId, nome: String(produto.tipo).trim() }]);
+            setTipoId(fallbackId);
+          } else {
+            setTipoId('');
+          }
         }
         
         
@@ -350,9 +381,30 @@ export default function CadastroProduto() {
           setUnidadeId(unidadePorId.id);
           setSelectedUnidade(unidadePorId);
         } else {
-          const unidadeEncontrada = unidades.find(unidade => unidade.sigla === produto.unidade);
-          setUnidadeId(unidadeEncontrada?.id || (unidades.length > 0 ? unidades[0].id : ''));
-          setSelectedUnidade(unidadeEncontrada || null);
+          const unidadeEncontrada = unidades.find(unidade =>
+            normalizeText(unidade.sigla) === normalizeText(produto.unidade) ||
+            normalizeText(unidade.nome) === normalizeText(produto.unidade)
+          );
+          if (unidadeEncontrada) {
+            setUnidadeId(unidadeEncontrada.id);
+            setSelectedUnidade(unidadeEncontrada);
+          } else if (normalizeText(produto.unidade)) {
+            const fallbackUnit = {
+              id: `legacy-unit:${String(produto.unidade).trim()}`,
+              nome: String(produto.unidade).trim(),
+              sigla: String(produto.unidade).trim(),
+            };
+            setUnidades(prev => prev.some(u =>
+              u.id === fallbackUnit.id ||
+              normalizeText(u.sigla) === normalizeText(fallbackUnit.sigla) ||
+              normalizeText(u.nome) === normalizeText(fallbackUnit.nome)
+            ) ? prev : [...prev, fallbackUnit]);
+            setUnidadeId(fallbackUnit.id);
+            setSelectedUnidade(fallbackUnit);
+          } else {
+            setUnidadeId('');
+            setSelectedUnidade(null);
+          }
         }
         
         setCodigoBarras(''); // Não existe no modelo atual
@@ -379,8 +431,17 @@ export default function CadastroProduto() {
           const sids = rawSids.map((n: any) => String(n));
           console.log('[DEBUG] loadProduct setores (raw):', rawSids, 'mapped:', sids);
           setSelectedSetores(sids);
+          setSetores(prev => {
+            const missing = sids.filter(id => !prev.some(s => String(s.id) === id));
+            if (missing.length === 0) return prev;
+            return [
+              ...prev,
+              ...missing.map(id => ({ id, nome: `Setor ${id}`, modoEnvio: 'impressora' as const }))
+            ];
+          });
         } else {
           console.warn('[WARN] loadProduct: setoresImpressaoIds não é um array válido:', rawSids);
+          setSelectedSetores([]);
         }
 
         // Carregar Fiscal
@@ -411,6 +472,17 @@ export default function CadastroProduto() {
       setLoadingProduct(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+          <Text style={styles.loadingText}>Carregando sessão...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!hasPermission('produtos')) {
     return (
