@@ -44,5 +44,5 @@ if (-not $apiHealthOk) {
   Start-Sleep -Seconds 5
 }
 
-# Iniciar Expo em modo LAN na porta 8082 com cache limpo
-npx expo start --host lan --port 8082 -c
+# Iniciar Expo em modo Web na porta 8082 com cache limpo
+npx expo start --web --port 8082 -c

@@ -1,5 +1,19 @@
 import api from './api';
 
+export interface CertificadoInfo {
+    exists: boolean;
+    valido?: boolean;
+    vencido?: boolean;
+    dataValidade?: string;
+    dataValidadeFormatada?: string;
+    dataInicioValidade?: string;
+    diasRestantes?: number;
+    titular?: string;
+    caminhoArquivo?: string;
+    error?: string;
+    message?: string;
+}
+
 export interface NfceConfig {
     cscId: string;
     csc: string;
@@ -11,6 +25,7 @@ export interface NfceConfig {
     chavePix?: string; // Chave PIX
     pixName?: string;  // Read-only (fetched from Razao Social)
     pixCity?: string;  // Read-only (fetched from Cidade)
+    certificadoInfo?: CertificadoInfo | null;
 }
 
 import { Platform } from 'react-native';
@@ -176,7 +191,8 @@ export const NfceService = {
                 xmlFolder: company.xmlFolder || '',
                 chavePix: company.chavePix || '',
                 pixName: company.nomeFantasia || company.razaoSocial || '',
-                pixCity: company.cidade || ''
+                pixCity: company.cidade || '',
+                certificadoInfo: company.certificadoInfo || null
             };
         } catch (error) {
             console.error("Erro ao buscar config NFC-e:", error);

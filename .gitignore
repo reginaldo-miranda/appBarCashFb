@@ -150,3 +150,11 @@ installer/Output/
 # Binarios e instaladores pesados do Windows
 *.exe
 *.msi
+
+# Certificados digitais e chaves privadas
+*.pfx
+*.p12
+*.key
+*.cer
+*.crt
+api/certs/*.pfx

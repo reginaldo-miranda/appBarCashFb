@@ -92,19 +92,19 @@ echo.
 echo         Iniciando API na porta 4000...
 
 :: Configurar variaveis de ambiente para a API
-set "API_CMD=cd /d \"%~dp0api\" && set HOST=0.0.0.0 && set PORT=4000 && node server.js"
+set "API_CMD=cd /d %~dp0api && set HOST=0.0.0.0 && set PORT=4000 && node server.js"
 start "appBarCash - API (porta 4000)" cmd /k "%API_CMD%"
 
 :: Aguardar a API iniciar
-echo         Aguardando API conectar ao banco (8 segundos)...
-timeout /t 8 /nobreak >nul
+echo         Aguardando API conectar ao banco (5 segundos)...
+ping 127.0.0.1 -n 6 >nul
 
 :: -----------------------------------------------
 :: 7. Iniciar Expo Web em nova janela
 :: -----------------------------------------------
 echo         Iniciando Expo Web...
 
-set "EXPO_CMD=cd /d \"%~dp0mobile\" && set REACT_NATIVE_PACKAGER_HOSTNAME=%LAN_IP% && set EXPO_PUBLIC_API_URL=http://%LAN_IP%:4000/api && npx expo start --host lan --port 8082 -c"
+set "EXPO_CMD=cd /d %~dp0mobile && set REACT_NATIVE_PACKAGER_HOSTNAME=%LAN_IP% && set EXPO_PUBLIC_API_URL=http://%LAN_IP%:4000/api && npx expo start --web --port 8082 -c"
 start "appBarCash - Expo Web (porta 8082)" cmd /k "%EXPO_CMD%"
 
 :: -----------------------------------------------

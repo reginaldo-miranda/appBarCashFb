@@ -73,6 +73,7 @@ export default function ConfiguracoesScreen() {
   const [savingFiscal, setSavingFiscal] = useState(false);
   const [showCertPassword, setShowCertPassword] = useState(false);
   const [savedCertPath, setSavedCertPath] = useState<string | null>(null);
+  const [certInfo, setCertInfo] = useState<any>(null);
   const [xmlFolder, setXmlFolder] = useState('');
   const [chavePix, setChavePix] = useState(''); // NEW state
   const [folderModalVisible, setFolderModalVisible] = useState(false);
@@ -121,6 +122,7 @@ export default function ConfiguracoesScreen() {
                  setSavedCertPath(config.certificadoPath || null);
                  if (config.xmlFolder) setXmlFolder(config.xmlFolder);
                  if (config.chavePix) setChavePix(config.chavePix); // Load saved PIX Key
+                 if (config.certificadoInfo) setCertInfo(config.certificadoInfo);
              }
          } catch (e) {
              console.log("Ainda não conectou ou erro ao buscar config fiscal");
@@ -516,7 +518,10 @@ const getEnvApiUrl = (): string | undefined => {
         xmlFolder,
         chavePix // Include in update
       };
-      await NfceService.updateConfig(config, selectedCert);
+      const res = await NfceService.updateConfig(config, selectedCert);
+      if (res?.certificadoInfo) {
+        setCertInfo(res.certificadoInfo);
+      }
       Alert.alert('Fiscal', 'Configurações fiscais salvas com sucesso.');
     } catch (e: any) {
       Alert.alert('Fiscal', typeof e === 'string' ? e : 'Erro ao salvar configurações.');
@@ -905,6 +910,51 @@ const getEnvApiUrl = (): string | undefined => {
              </Text>
           </TouchableOpacity>
         </View>
+
+        {certInfo && certInfo.exists && (
+          <View style={[
+            styles.certInfoCard,
+            certInfo.vencido ? styles.certInfoVencido : styles.certInfoValido
+          ]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Ionicons 
+                name={certInfo.vencido ? "alert-circle" : "checkmark-circle"} 
+                size={20} 
+                color={certInfo.vencido ? "#d32f2f" : "#2e7d32"} 
+              />
+              <Text style={[
+                styles.certInfoTitle,
+                { color: certInfo.vencido ? "#d32f2f" : "#2e7d32" }
+              ]}>
+                {certInfo.vencido ? " Certificado Digital VENCIDO" : " Certificado Digital VÁLIDO"}
+              </Text>
+            </View>
+            <Text style={styles.certInfoText}>
+              <Text style={{ fontWeight: 'bold' }}>Validade: </Text>
+              {certInfo.dataValidadeFormatada || certInfo.dataValidade}
+              {certInfo.vencido 
+                ? ` (Vencido há ${Math.abs(certInfo.diasRestantes || 0)} dias)`
+                : ` (Restam ${certInfo.diasRestantes || 0} dias)`}
+            </Text>
+            {certInfo.titular ? (
+              <Text style={styles.certInfoText} numberOfLines={1}>
+                <Text style={{ fontWeight: 'bold' }}>Titular: </Text>
+                {certInfo.titular}
+              </Text>
+            ) : null}
+            {certInfo.vencido && (
+              <Text style={[styles.certInfoText, { color: '#b71c1c', marginTop: 4, fontWeight: '600' }]}>
+                ⚠️ A SEFAZ rejeitará a emissão de NFC-e até que um novo certificado válido seja carregado.
+              </Text>
+            )}
+          </View>
+        )}
+        {certInfo && certInfo.error && (
+          <View style={[styles.certInfoCard, styles.certInfoVencido]}>
+            <Text style={{ color: '#d32f2f', fontWeight: 'bold' }}>⚠️ Alerta do Certificado:</Text>
+            <Text style={{ color: '#d32f2f', marginTop: 2, fontSize: 13 }}>{certInfo.error}</Text>
+          </View>
+        )}
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Senha do Certificado</Text>
@@ -1322,5 +1372,30 @@ const styles = StyleSheet.create({
     marginBottom: 8 
   },
   printerName: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  printerInfo: { fontSize: 12, color: '#666' }
+  printerInfo: { fontSize: 12, color: '#666' },
+  certInfoCard: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 6,
+    marginBottom: 14
+  },
+  certInfoVencido: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#EF9A9A'
+  },
+  certInfoValido: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#A5D6A7'
+  },
+  certInfoTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 6
+  },
+  certInfoText: {
+    fontSize: 13,
+    color: '#333',
+    marginTop: 2
+  }
 });

@@ -14,7 +14,7 @@ if ($lanIp -and $lanIp.Trim() -ne '') {
   Write-Host "Expo (LAN): http://$lanIp:8082"
 } else { Write-Host "IP LAN não detectado" }
 
-Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $root 'start-api.ps1')
+Start-Process powershell -ArgumentList '-NoExit','-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $root 'start-api.ps1')
 Start-Sleep -Seconds 6
-Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $root 'start-mobile.ps1')
+Start-Process powershell -ArgumentList '-NoExit','-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $root 'start-mobile.ps1')
 Write-Host "Serviços iniciados. Pressione Ctrl+C para sair deste shell."

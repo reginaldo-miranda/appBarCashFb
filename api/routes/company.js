@@ -4,6 +4,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios'; // Ensure axios is imported
+import { getCertInfo } from '../lib/certUtils.js';
 
 
 
@@ -43,7 +44,14 @@ router.get("/", async (req, res) => {
     const company = await prisma.company.findFirst({
       include: { deliveryRanges: true }
     });
-    res.json(company || {}); // Retorna objeto vazio se não houver cadastro ainda
+    if (!company) return res.json({});
+
+    let certificadoInfo = null;
+    if (company.certificadoPath) {
+      certificadoInfo = getCertInfo(company.certificadoPath, company.certificadoSenha);
+    }
+
+    res.json({ ...company, certificadoInfo });
   } catch (error) {
     console.error("Erro ao buscar dados da empresa:", error);
     res.status(500).json({ error: "Erro interno ao buscar empresa" });
@@ -276,7 +284,8 @@ router.post("/nfce-config", upload.single('certificado'), async (req, res) => {
         data: updateData
       });
       
-      return res.json({ message: "Configuração NFC-e salva com sucesso", company: updated });
+      const certificadoInfo = updated.certificadoPath ? getCertInfo(updated.certificadoPath, updated.certificadoSenha) : null;
+      return res.json({ message: "Configuração NFC-e salva com sucesso", company: updated, certificadoInfo });
     } else {
         // Se não existir empresa, Cria uma nova com dados padrão + config fiscal
         console.log("Nenhuma empresa encontrada. Criando nova para salvar config fiscal.");
@@ -307,7 +316,8 @@ router.post("/nfce-config", upload.single('certificado'), async (req, res) => {
             data: newCompanyData
         });
         
-        return res.status(201).json({ message: "Configuração NFC-e salva (Empresa criada)", company: created });
+        const certificadoInfo = created.certificadoPath ? getCertInfo(created.certificadoPath, created.certificadoSenha) : null;
+        return res.status(201).json({ message: "Configuração NFC-e salva (Empresa criada)", company: created, certificadoInfo });
     }
 
   } catch (error) {

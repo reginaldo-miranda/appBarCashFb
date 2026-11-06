@@ -5,8 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
 import puppeteer from 'puppeteer';
-
 import QRCode from 'qrcode';
+import { getCertInfo } from '../lib/certUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +74,63 @@ export const emitirNfce = async (req, res) => {
         let company = await prisma.company.findFirst();
         if (!company || !company.cnpj) {
              return res.status(400).json({ error: 'Configuração fiscal incompleta (CNPJ não encontrado)' });
+        }
+
+        // Validação prévia do Certificado Digital A1
+        if (!company.certificadoPath) {
+            return res.status(400).json({
+                success: false,
+                status: 'REJEITADA',
+                error: 'Rejeição: Certificado digital A1 não configurado.',
+                message: 'Nenhum certificado digital A1 foi enviado nas Configurações da Empresa.'
+            });
+        }
+
+        const certInfo = getCertInfo(company.certificadoPath, company.certificadoSenha);
+        if (certInfo.exists && certInfo.vencido) {
+            const dataVenc = certInfo.dataValidadeFormatada || 'data indeterminada';
+            const motivoVencido = `Rejeitada: Certificado digital vencido em ${dataVenc}`;
+            console.warn(`[NFC-e] Emissão pré-bloqueada: ${motivoVencido}`);
+
+            try {
+                if (sale.nfce) {
+                    await prisma.nfce.update({
+                        where: { id: sale.nfce.id },
+                        data: {
+                            status: 'REJEITADA',
+                            motivo: motivoVencido,
+                            ambiente: company.ambienteFiscal,
+                            numero: company.numeroInicialNfce,
+                            serie: company.serieNfce
+                        }
+                    });
+                } else {
+                    await prisma.nfce.create({
+                        data: {
+                            chave: `VENC-${Date.now()}-${sale.id}`,
+                            protocolo: '',
+                            xml: '',
+                            status: 'REJEITADA',
+                            motivo: motivoVencido,
+                            ambiente: company.ambienteFiscal,
+                            numero: company.numeroInicialNfce,
+                            serie: company.serieNfce,
+                            saleId: sale.id
+                        }
+                    });
+                }
+            } catch (dbErr) {
+                console.error('[NFC-e] Erro ao registrar rejeição por certificado vencido no banco:', dbErr);
+            }
+
+            return res.status(400).json({
+                success: false,
+                status: 'REJEITADA',
+                error: `${motivoVencido}. Atualize o certificado A1 nas Configurações da Empresa.`,
+                message: motivoVencido,
+                dataVencimento: certInfo.dataValidade,
+                dataVencimentoFormatada: certInfo.dataValidadeFormatada
+            });
         }
 
         let attempts = 0;
@@ -260,7 +317,7 @@ export const emitirNfce = async (req, res) => {
                     chave: lastResult.chave,
                     protocolo: lastResult.protocolo || '',
                     xml: '', // Não temos o XML final assinado aqui fácil sem rebuild, deixa vazio por enqto
-                    status: failure.status === 'ERRO_COMUNICACAO' ? 'ERRO' : 'REJEITADA',
+                    status: 'REJEITADA',
                     ambiente: company.ambienteFiscal,
                     motivo: failure.motivo || 'Rejeitada',
                     numero: company.numeroInicialNfce,
