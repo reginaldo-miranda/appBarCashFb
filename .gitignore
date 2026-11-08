@@ -158,3 +158,9 @@ installer/Output/
 *.cer
 *.crt
 api/certs/*.pfx
+
+# Debug logs de transmissao fiscal e XMLs locais
+api/debug_*.xml
+api/debug_log.txt
+xml_nfce/
+
