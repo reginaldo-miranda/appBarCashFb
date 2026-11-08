@@ -30,13 +30,47 @@ export interface NfceConfig {
 
 import { Platform } from 'react-native';
 
+// Helper robusto para extrair a mensagem descritiva de qualquer erro (Axios, SEFAZ, Network, etc)
+function extractErrorMessage(error: any, defaultMsg: string): string {
+    if (!error) return defaultMsg;
+    if (typeof error === 'string') return error;
+
+    const data = error.response?.data;
+    if (typeof data === 'string' && data.trim()) {
+        if (data.includes('<pre>') && data.includes('</pre>')) {
+            const match = data.match(/<pre>([\s\S]*?)<\/pre>/i);
+            if (match && match[1]) return match[1].replace(/<[^>]+>/g, '').trim();
+        }
+        return data.trim();
+    }
+
+    if (data && typeof data === 'object') {
+        const msg = data.error || data.message || data.motivo || data.nfce?.motivo;
+        if (typeof msg === 'string' && msg.trim()) return msg.trim();
+        if (data.detalhe && typeof data.detalhe === 'string') return data.detalhe.trim();
+    }
+
+    if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+        return 'Tempo limite de resposta excedido ao comunicar com o servidor/SEFAZ.';
+    }
+
+    if (error.message) {
+        if (/network error/i.test(error.message)) {
+            return 'Falha de conexão com o servidor local (Network Error). Verifique se o servidor está ativo.';
+        }
+        return error.message;
+    }
+
+    return defaultMsg;
+}
+
 export const NfceService = {
     emitir: async (saleId: number | string, itemsOverlay?: any[]) => {
         try {
             const response = await api.post('/nfce/emitir', { saleId, itemsOverlay });
             return response.data;
         } catch (error: any) {
-            const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao emitir NFC-e';
+            const errMsg = extractErrorMessage(error, 'Erro ao emitir NFC-e: falha de comunicação com o servidor.');
             throw errMsg;
         }
     },
@@ -164,7 +198,8 @@ export const NfceService = {
             const response = await api.post('/nfce/contingencia/emitir', { saleId, itemsOverlay });
             return response.data;
         } catch (error: any) {
-            throw error.response?.data?.error || 'Erro ao emitir NFC-e em contingência';
+            const errMsg = extractErrorMessage(error, 'Erro ao emitir NFC-e em contingência.');
+            throw errMsg;
         }
     },
 

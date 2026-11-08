@@ -408,6 +408,8 @@ export default function HistoricoScreen() {
           setNfceStatus('error');
           const motivoStr = res.motivo || res.message || res.error || 'Erro: Nota Rejeitada pela SEFAZ.';
           setNfceMessage(motivoStr);
+          setContingenciaSaleId(saleIdToEmit);
+          setContingenciaItems(itemsOverlay || []);
           
           // Captura e correção automática de dados fiscais rejeitados pela SEFAZ
           const match = motivoStr.match(/nItem:?\s*(\d+)/i);
@@ -512,6 +514,8 @@ export default function HistoricoScreen() {
       } else {
         setNfceStatus('error');
         setNfceMessage(msgErro);
+        setContingenciaSaleId(saleIdToEmit);
+        setContingenciaItems(itemsOverlay || []);
 
         // Captura e correção automática de dados fiscais rejeitados pela SEFAZ no bloco catch
         const match = msgErro.match(/nItem:?\s*(\d+)/i);

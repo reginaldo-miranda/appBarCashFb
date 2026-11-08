@@ -13,6 +13,25 @@ interface Props {
   onContingenciaPress?: () => void;
 }
 
+// Dica inteligente de solução baseada no motivo do erro
+const getErrorTip = (msg?: string) => {
+  if (!msg) return null;
+  const m = msg.toLowerCase();
+  if (m.includes('duplicidade') || m.includes('204') || m.includes('539')) {
+    return 'Dica: A numeração fiscal já foi usada na SEFAZ. Ajuste o "Próximo Número NFC-e" em Configurações > Fiscal para um número maior.';
+  }
+  if (m.includes('certificado') || m.includes('vencid') || m.includes('senha') || m.includes('pfx')) {
+    return 'Dica: Verifique se o arquivo do Certificado Digital A1 (.pfx) e a senha foram preenchidos corretamente nas Configurações da Empresa.';
+  }
+  if (m.includes('ncm') || m.includes('cfop') || m.includes('csosn') || m.includes('schema') || m.includes('tribut')) {
+    return 'Dica: Verifique o NCM, CFOP e dados tributários dos produtos desta venda no cadastro de Produtos.';
+  }
+  if (m.includes('timeout') || m.includes('network') || m.includes('conexão') || m.includes('comunica')) {
+    return 'Dica: Os servidores da SEFAZ ou da rede local estão instáveis. Você pode tentar emitir em Contingência Offline.';
+  }
+  return null;
+};
+
 export default function ImpressaoNfceModal({ visible, onClose, status, message, nfceData, onContingenciaPress }: Props) {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailInput, setEmailInput] = useState('');
@@ -168,17 +187,40 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
               <View style={styles.center}>
                 <Ionicons name="alert-circle" size={48} color="#F44336" />
                 <Text style={styles.errorTitle}>Falha na Emissão</Text>
-                <Text style={styles.message}>{message || 'Ocorreu um erro ao comunicar com a SEFAZ.'}</Text>
                 
-                {onContingenciaPress && (
-                  <TouchableOpacity style={[styles.actionButton, {backgroundColor:'#FF9800', marginTop:20}]} onPress={onContingenciaPress}>
-                    <Text style={styles.actionText}>Emitir em Contingência</Text>
-                  </TouchableOpacity>
-                )}
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorBoxHeader}>Motivo retornado:</Text>
+                  <Text style={styles.errorBoxText} selectable={true}>
+                    {message || 'Ocorreu um erro ao comunicar com a SEFAZ.'}
+                  </Text>
+                </View>
 
-                <TouchableOpacity style={[styles.actionButton, {backgroundColor:'#757575', marginTop: onContingenciaPress ? 10 : 20}]} onPress={onClose}>
-                  <Text style={styles.actionText}>Fechar</Text>
-                </TouchableOpacity>
+                {getErrorTip(message) && (
+                  <View style={styles.tipBox}>
+                    <Ionicons name="bulb-outline" size={18} color="#E65100" style={{ marginRight: 6 }} />
+                    <Text style={styles.tipText}>{getErrorTip(message)}</Text>
+                  </View>
+                )}
+                
+                <View style={[styles.actions, { marginTop: 14 }]}>
+                  {onContingenciaPress && (
+                    <TouchableOpacity 
+                      style={[styles.actionButton, { backgroundColor: '#FF9800' }]} 
+                      onPress={onContingenciaPress}
+                    >
+                      <Ionicons name="cloud-offline" size={20} color="#fff" />
+                      <Text style={styles.actionText}>Emitir em Contingência</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity 
+                    style={[styles.actionButton, { backgroundColor: '#757575' }]} 
+                    onPress={onClose}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color="#fff" />
+                    <Text style={styles.actionText}>Fechar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -265,5 +307,43 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16, marginTop: 16, backgroundColor: '#FAFAFA'
+  },
+  errorBox: {
+    marginTop: 10,
+    backgroundColor: '#FFEBEE',
+    borderColor: '#FFCDD2',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    width: '100%',
+    maxHeight: 140,
+  },
+  errorBoxHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#C62828',
+    marginBottom: 4,
+  },
+  errorBoxText: {
+    fontSize: 13,
+    color: '#37474F',
+    lineHeight: 18,
+  },
+  tipBox: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    borderColor: '#FFE082',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    width: '100%',
+  },
+  tipText: {
+    fontSize: 12,
+    color: '#E65100',
+    flex: 1,
+    lineHeight: 16,
   }
 });

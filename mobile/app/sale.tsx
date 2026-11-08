@@ -180,6 +180,8 @@ export default function SaleScreen() {
           setNfceStatus('error');
           const reason = res.motivo || res.message || res.error || 'Erro: Nota Rejeitada pela SEFAZ.';
           setNfceMessage(reason);
+          setContingenciaSaleId(parseInt(saleIdToEmit, 10));
+          setContingenciaItems(itemsOverlay);
 
           // Captura e correção automática de dados fiscais rejeitados pela SEFAZ durante a finalização
           const match = reason.match(/nItem:?\s*(\d+)/i);
@@ -278,6 +280,8 @@ export default function SaleScreen() {
       } else {
         setNfceStatus('error');
         setNfceMessage(msgErro);
+        setContingenciaSaleId(parseInt(saleIdToEmit, 10));
+        setContingenciaItems(itemsOverlay);
 
         // Captura e correção automática de dados fiscais rejeitados pela SEFAZ no bloco catch (durante fechamento)
         const match = msgErro.match(/nItem:?\s*(\d+)/i);
