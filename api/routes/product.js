@@ -1,7 +1,59 @@
 import express from "express";
 import { getActivePrisma } from "../lib/prisma.js";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadDir = path.join(__dirname, '..', 'uploads', 'products');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `prod-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // até 10MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas arquivos de imagem são permitidos!'), false);
+    }
+  }
+});
 
 const router = express.Router();
+
+// Upload de imagem do produto (para Desktop e Celular)
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo de imagem foi enviado.' });
+    }
+    const relativeUrl = `/uploads/products/${req.file.filename}`;
+    res.json({
+      success: true,
+      imageUrl: relativeUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('[UploadFoto] Erro ao fazer upload de imagem do produto:', error);
+    res.status(500).json({ error: error.message || 'Erro ao salvar imagem do produto' });
+  }
+});
 
 // Helper de compatibilidade: normaliza decimais e adiciona _id
 // Helper de compatibilidade: normaliza decimais e adiciona _id
@@ -828,7 +880,7 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "ID inválido" });
     }
 
-    const { nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, estoque, quantidade, estoqueMinimo, ativo, categoriaId, tipoId, unidadeMedidaId, groupId } = req.body;
+    const { nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, estoque, quantidade, estoqueMinimo, ativo, imagem, categoriaId, tipoId, unidadeMedidaId, groupId } = req.body;
 
     const altIbsCst = req.body.ibsCst;
     const altIbsClassTrib = req.body.ibsClassTrib;
@@ -848,6 +900,7 @@ router.put("/:id", async (req, res) => {
       grupo,
       unidade,
       ativo,
+      imagem: imagem !== undefined ? imagem : undefined,
       quantidade: Number(quantidade ?? estoque ?? 0),
       categoriaId: categoriaId !== undefined ? (Number.isInteger(Number(categoriaId)) ? Number(categoriaId) : undefined) : undefined,
       tipoId: tipoId !== undefined ? (Number.isInteger(Number(tipoId)) ? Number(tipoId) : undefined) : undefined,

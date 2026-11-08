@@ -11,9 +11,10 @@ import {
   Alert,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { productService, categoryService } from '../services/api';
+import { productService, categoryService, getProductImageUrl } from '../services/api';
 import ProductSelectorModal from './ProductSelectorModal';
 import SearchAndFilter from './SearchAndFilter';
 import { Product, CartItem } from '../types/index';
@@ -284,34 +285,46 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
   };
 
   // Novo layout em linha única para produtos
-  const renderProductRow = ({ item }: { item: Product }) => (
-    <TouchableOpacity
-      style={styles.productRow}
-      onPress={() => handleProductSelect(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.productLeftSection}>
-        <Text style={styles.productName} numberOfLines={1} ellipsizeMode="tail">
-          {(item as any)?.nome ?? (item as any)?.nomeProduto ?? (item as any)?.produto?.nome ?? 'Produto'}
-        </Text>
-        {item.descricao && (
-          <Text style={styles.productDescription}>{item.descricao}</Text>
-        )}
-      </View>
-      
-      <View style={styles.productRightSection}>
-        <Text style={styles.productPrice}>
-          R$ {item.precoVenda?.toFixed(2) || '0.00'}
-        </Text>
-        
-        {!isViewMode && (
-          <View style={styles.addButton}>
-            <Ionicons name="add" size={20} color="#fff" />
+  const renderProductRow = ({ item }: { item: Product }) => {
+    const imgUrl = getProductImageUrl((item as any)?.imagem);
+    return (
+      <TouchableOpacity
+        style={styles.productRow}
+        onPress={() => handleProductSelect(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.productLeftSection}>
+          {imgUrl ? (
+            <Image
+              source={{ uri: imgUrl }}
+              style={styles.saleProductThumbnail}
+              resizeMode="cover"
+            />
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.productName} numberOfLines={1} ellipsizeMode="tail">
+              {(item as any)?.nome ?? (item as any)?.nomeProduto ?? (item as any)?.produto?.nome ?? 'Produto'}
+            </Text>
+            {item.descricao && (
+              <Text style={styles.productDescription} numberOfLines={1}>{item.descricao}</Text>
+            )}
           </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+        </View>
+        
+        <View style={styles.productRightSection}>
+          <Text style={styles.productPrice}>
+            R$ {item.precoVenda?.toFixed(2) || '0.00'}
+          </Text>
+          
+          {!isViewMode && (
+            <View style={styles.addButton}>
+              <Ionicons name="add" size={20} color="#fff" />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderSaleItem = ({ item, customUpdateHandler }: { item: CartItem, customUpdateHandler?: any }) => (
     <View style={styles.saleItem}>
@@ -634,6 +647,15 @@ const styles = StyleSheet.create({
   productLeftSection: {
     flex: 1,
     marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  saleProductThumbnail: {
+    width: 38,
+    height: 38,
+    borderRadius: 6,
+    marginRight: 10,
+    backgroundColor: '#F1F5F9',
   },
   productRightSection: {
     flexDirection: 'row',

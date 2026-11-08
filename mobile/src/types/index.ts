@@ -68,6 +68,7 @@ export interface Product {
   unidadeMedidaId?: number;
   temVariacao?: boolean;
   temTamanhos?: boolean;
+  imagem?: string;
   tamanhos?: ProductSize[];
 }
 

@@ -16,9 +16,11 @@ import {
   Platform,
   Dimensions,
   SafeAreaView,
+  Image,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { SafeIcon } from '../../components/SafeIcon';
-import { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService } from '../../src/services/api';
+import { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService, getProductImageUrl } from '../../src/services/api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import SearchAndFilter from '../../src/components/SearchAndFilter';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
@@ -42,6 +44,7 @@ interface Product {
   ativo: boolean;
   quantidade: number;
   disponivel: boolean;
+  imagem?: string;
   ncm?: string;
   cest?: string;
   cfop?: string;
@@ -153,6 +156,7 @@ export default function AdminProdutosScreen() {
     ativo: true,
     quantidade: '0',
     disponivel: true,
+    imagem: '',
     ncm: '',
     cest: '',
     cfop: '',
@@ -166,6 +170,70 @@ export default function AdminProdutosScreen() {
     cbsAliquota: '',
     isAliquota: '',
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handlePickImage = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e: any) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          try {
+            setUploadingImage(true);
+            const data = new FormData();
+            data.append('image', file);
+            const res = await productService.uploadImage(data);
+            if (res.data?.imageUrl) {
+              setFormData((prev: any) => ({ ...prev, imagem: res.data.imageUrl }));
+            }
+          } catch (err: any) {
+            console.error('Erro no upload de foto:', err);
+            const msg = err?.response?.data?.error || err.message || 'Erro ao enviar foto';
+            Alert.alert('Erro', msg);
+          } finally {
+            setUploadingImage(false);
+          }
+        };
+        input.click();
+      } catch (err: any) {
+        console.error('Erro ao abrir seletor web:', err);
+      }
+    } else {
+      try {
+        const res = await DocumentPicker.getDocumentAsync({
+          type: 'image/*',
+          copyToCacheDirectory: true,
+          multiple: false,
+        });
+        if (res.canceled) return;
+        const file = res.assets ? res.assets[0] : (res as any);
+        if (!file) return;
+
+        setUploadingImage(true);
+        const data = new FormData();
+        data.append('image', {
+          uri: file.uri,
+          name: file.name || 'foto_produto.jpg',
+          type: file.mimeType || 'image/jpeg',
+        } as any);
+
+        const response = await productService.uploadImage(data);
+        if (response.data?.imageUrl) {
+          setFormData((prev: any) => ({ ...prev, imagem: response.data.imageUrl }));
+        }
+      } catch (err: any) {
+        console.error('Erro ao selecionar foto:', err);
+        const msg = err?.response?.data?.error || err.message || 'Erro ao carregar foto';
+        Alert.alert('Erro', msg);
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!hasPermission('produtos')) {
@@ -281,6 +349,7 @@ export default function AdminProdutosScreen() {
         ativo: formData.ativo,
         quantidade: parseValue(formData.quantidade),
         disponivel: formData.disponivel,
+        imagem: formData.imagem || null,
         ncm: formData.ncm,
         cest: formData.cest,
         cfop: formData.cfop,
@@ -330,6 +399,7 @@ export default function AdminProdutosScreen() {
       ativo: product.ativo !== undefined ? product.ativo : true,
       quantidade: (product.quantidade ?? 0).toString(),
       disponivel: product.disponivel !== undefined ? product.disponivel : true,
+      imagem: (product as any).imagem || '',
       ncm: product.ncm || '',
       cest: product.cest || '',
       cfop: product.cfop || '',
@@ -391,6 +461,7 @@ export default function AdminProdutosScreen() {
       ativo: true,
       quantidade: '0',
       disponivel: true,
+      imagem: '',
       ncm: '',
       cest: '',
       cfop: '',
@@ -446,6 +517,17 @@ export default function AdminProdutosScreen() {
       activeOpacity={0.7}
     >
       <View style={styles.cardHeader}>
+        {item.imagem ? (
+          <Image
+            source={{ uri: getProductImageUrl(item.imagem) || '' }}
+            style={styles.cardThumbnail}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.cardThumbnailPlaceholder}>
+            <SafeIcon name="cube-outline" size={20} color="#94A3B8" fallbackText="📦" />
+          </View>
+        )}
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>{item.nome}</Text>
           <Text style={styles.productCategory}>{item.categoria}</Text>
@@ -640,6 +722,58 @@ export default function AdminProdutosScreen() {
                               placeholderTextColor="#94A3B8"
                               multiline
                             />
+                         </View>
+                      </View>
+
+                      {/* Grupo: Foto do Produto */}
+                      <View style={styles.formSection}>
+                         <Text style={styles.sectionLabel}>Foto do Produto</Text>
+                         <View style={styles.photoContainer}>
+                            {formData.imagem ? (
+                               <View style={styles.photoPreviewWrapper}>
+                                  <Image
+                                     source={{ uri: getProductImageUrl(formData.imagem) || '' }}
+                                     style={styles.photoPreview}
+                                     resizeMode="cover"
+                                  />
+                                  <TouchableOpacity
+                                     style={styles.removePhotoBtn}
+                                     onPress={() => setFormData({ ...formData, imagem: '' })}
+                                     activeOpacity={0.7}
+                                  >
+                                     <SafeIcon name="trash-outline" size={14} color="#fff" fallbackText="✕" />
+                                     <Text style={styles.removePhotoText}>Remover Foto</Text>
+                                  </TouchableOpacity>
+                               </View>
+                            ) : (
+                               <View style={styles.photoPlaceholder}>
+                                  <SafeIcon name="image-outline" size={32} color="#94A3B8" fallbackText="📷" />
+                                  <Text style={styles.photoPlaceholderText}>Sem foto</Text>
+                               </View>
+                            )}
+
+                            <View style={styles.photoActionsBox}>
+                               <TouchableOpacity
+                                  style={[styles.pickPhotoBtn, uploadingImage && styles.pickPhotoBtnDisabled]}
+                                  onPress={handlePickImage}
+                                  disabled={uploadingImage}
+                                  activeOpacity={0.8}
+                                >
+                                  {uploadingImage ? (
+                                     <ActivityIndicator size="small" color="#fff" />
+                                  ) : (
+                                     <>
+                                        <SafeIcon name="camera-outline" size={18} color="#fff" fallbackText="📷" />
+                                        <Text style={styles.pickPhotoBtnText}>
+                                           {formData.imagem ? 'Alterar Foto' : 'Tirar Foto ou Escolher'}
+                                        </Text>
+                                     </>
+                                  )}
+                               </TouchableOpacity>
+                               <Text style={styles.photoHint}>
+                                  PC: Arquivo do computador • Celular: Câmera ou Galeria
+                               </Text>
+                            </View>
                          </View>
                       </View>
 
@@ -1327,5 +1461,101 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Thumbnail na listagem
+  cardThumbnail: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    marginRight: 10,
+    backgroundColor: '#F1F5F9',
+  },
+  cardThumbnailPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    marginRight: 10,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Foto no modal
+  photoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  photoPreviewWrapper: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  photoPreview: {
+    width: 76,
+    height: 76,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
+  },
+  removePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  removePhotoText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  photoPlaceholder: {
+    width: 76,
+    height: 76,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoPlaceholderText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  photoActionsBox: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  pickPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0284C7',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    gap: 8,
+  },
+  pickPhotoBtnDisabled: {
+    opacity: 0.6,
+  },
+  pickPhotoBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  photoHint: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 6,
+    lineHeight: 15,
   },
 });

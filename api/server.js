@@ -82,6 +82,9 @@ const __dirname = path.dirname(__filename);
 // Serve arquivos estáticos da pasta 'public' (onde fica o build do site)
 app.use(express.static(path.join(__dirname, "public")));
 
+// Serve uploads estáticos de produtos e mídias
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // --- FIM CONFIG SITE ---
 
 // Rota de saúde pública para teste de conexão

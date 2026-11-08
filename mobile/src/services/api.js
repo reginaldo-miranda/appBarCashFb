@@ -444,12 +444,26 @@ export const productService = {
   createBulk: (products) => api.post('/product/bulk-create', { products }),
   update: (id, data) => api.put(`/product/update/${id}`, data),
   delete: (id) => api.delete(`/product/delete/${id}`),
+  uploadImage: (formData) => api.post('/product/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   getUsedCategories: () => api.get('/product/categories/used'),
   getUsedTypes: () => api.get('/product/types/used'),
   getUsedGroups: () => api.get('/product/groups/used'),
   getUsedSectors: () => api.get('/product/setores/used'),
   listBySector: (sectorId) => api.get('/product/list', { params: { setorId: sectorId } }),
 };
+
+export function getProductImageUrl(url) {
+  if (!url) return null;
+  const s = String(url).trim();
+  if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:')) {
+    return s;
+  }
+  const base = (getCurrentBaseUrl() || '').replace(/\/api\/?$/, '');
+  const cleanPath = s.startsWith('/') ? s : `/${s}`;
+  return `${base}${cleanPath}`;
+}
 
 export const categoryService = {
   list: () => api.get('/categoria/list'),
