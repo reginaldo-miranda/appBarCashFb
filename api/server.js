@@ -130,6 +130,7 @@ app.get('/api/health', async (req, res) => {
   if (!lanIp) {
     try {
       const interfaces = os.networkInterfaces();
+      const candidates = [];
       for (const name of Object.keys(interfaces)) {
         const lowerName = name.toLowerCase();
         // Ignorar adaptadores virtuais de virtualização para não pegar IPs de loopback virtual (ex: VMware, VirtualBox, WSL)
@@ -147,15 +148,17 @@ app.get('/api/health', async (req, res) => {
         
         for (const iface of interfaces[name]) {
           if (iface.family === 'IPv4' && !iface.internal) {
-            const addr = iface.address;
-            if (addr.startsWith('192.168.') || addr.startsWith('10.') || addr.startsWith('172.')) {
-              lanIp = addr;
-              break;
-            }
+            candidates.push(iface.address);
           }
         }
-        if (lanIp) break;
       }
+
+      // Prioridade 1: Rede local comum Wi-Fi/Ethernet (192.168.x.x)
+      lanIp = candidates.find(ip => ip.startsWith('192.168.'));
+      // Prioridade 2: Rede corporativa / roteador classe A (10.x.x.x)
+      if (!lanIp) lanIp = candidates.find(ip => ip.startsWith('10.'));
+      // Prioridade 3: Qualquer outro IP válido que não seja 172. (Hyper-V/WSL) nem 169.254. (APIPA)
+      if (!lanIp) lanIp = candidates.find(ip => !ip.startsWith('172.') && !ip.startsWith('169.254.'));
     } catch (e) {
       console.error('Erro ao detectar interfaces de rede:', e);
     }

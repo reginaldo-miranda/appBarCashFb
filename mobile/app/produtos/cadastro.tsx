@@ -146,10 +146,10 @@ export default function CadastroProduto() {
   const [origem, setOrigem] = useState('0'); // 0 - Nacional
 
   // Reforma Tributária (IBS/CBS/IS)
-  const [ibsCst, setIbsCst] = useState('000');       // 3 dígitos
+  const [ibsCst, setIbsCst] = useState('410');       // 3 dígitos (410 para 410031)
   const [ibsClassTrib, setIbsClassTrib] = useState('410031'); // 6 dígitos
   const [ibsAliquota, setIbsAliquota] = useState('');  // Alíquota decimal (ex: 0.1000)
-  const [cbsCst, setCbsCst] = useState('000');       // 3 dígitos
+  const [cbsCst, setCbsCst] = useState('410');       // 3 dígitos (410 para 410031)
   const [cbsClassTrib, setCbsClassTrib] = useState('410031'); // 6 dígitos
   const [cbsAliquota, setCbsAliquota] = useState('');  // Alíquota decimal
   const [isAliquota, setIsAliquota] = useState('');   // Alíquota Imposto Seletivo (opcional)
@@ -452,10 +452,10 @@ export default function CadastroProduto() {
         setOrigem((produto as any).origem !== undefined ? String((produto as any).origem) : '0');
 
         // Carregar Reforma Tributária (IBS/CBS/IS)
-        setIbsCst((produto as any).ibsCst || '000');
+        setIbsCst((produto as any).ibsCst || ((produto as any).ibsClassTrib?.startsWith('410') ? '410' : '410'));
         setIbsClassTrib((produto as any).ibsClassTrib || '410031');
         setIbsAliquota((produto as any).ibsAliquota !== null && (produto as any).ibsAliquota !== undefined ? String((produto as any).ibsAliquota) : '');
-        setCbsCst((produto as any).cbsCst || '000');
+        setCbsCst((produto as any).cbsCst || ((produto as any).cbsClassTrib?.startsWith('410') ? '410' : '410'));
         setCbsClassTrib((produto as any).cbsClassTrib || '410031');
         setCbsAliquota((produto as any).cbsAliquota !== null && (produto as any).cbsAliquota !== undefined ? String((produto as any).cbsAliquota) : '');
         setIsAliquota((produto as any).isAliquota !== null && (produto as any).isAliquota !== undefined ? String((produto as any).isAliquota) : '');

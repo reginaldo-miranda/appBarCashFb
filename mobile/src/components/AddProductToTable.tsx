@@ -9,6 +9,8 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { productService, categoryService } from '../services/api';
@@ -20,7 +22,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 interface AddProductToTableProps {
   saleItems: CartItem[];
-  onAddProduct: (product: Product) => void;
+  onAddProduct: (product: Product, observacoes?: string) => void;
   onUpdateItem: (item: CartItem, newQuantity: number) => void;
   onRemoveItem: (item: CartItem) => void;
   isViewMode?: boolean;
@@ -46,6 +48,10 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [productSelectorVisible, setProductSelectorVisible] = useState(false);
+  const [obsModalVisible, setObsModalVisible] = useState(false);
+  const [selectedProductForObs, setSelectedProductForObs] = useState<Product | null>(null);
+  const [itemObservation, setItemObservation] = useState('');
+  const isMobile = screenWidth < 768 || Platform.OS !== 'web';
 
   useEffect(() => {
     loadProducts();
@@ -239,12 +245,24 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
       console.log('⚠️ Modo visualização ativo');
       return;
     }
-    
+
+    setSelectedProductForObs(product);
+    setItemObservation('');
+    setObsModalVisible(true);
+  };
+
+  const confirmAddWithObs = (obs?: string) => {
+    if (!selectedProductForObs) return;
+    const prod = selectedProductForObs;
+    setObsModalVisible(false);
+    setSelectedProductForObs(null);
+    setItemObservation('');
+
     try {
-      const pid = (product as any)?._id ?? (product as any)?.id ?? String(product?.nome || 'p');
+      const pid = (prod as any)?._id ?? (prod as any)?.id ?? String(prod?.nome || 'p');
       if (addingId && String(addingId) === String(pid)) return;
       setAddingId(pid);
-      onAddProduct(product);
+      onAddProduct(prod, (obs || '').trim() || undefined);
       setTimeout(() => setAddingId(null), 300);
       console.log('✅ Produto adicionado com sucesso');
     } catch (error) {
@@ -267,7 +285,11 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
 
   // Novo layout em linha única para produtos
   const renderProductRow = ({ item }: { item: Product }) => (
-    <View style={styles.productRow}>
+    <TouchableOpacity
+      style={styles.productRow}
+      onPress={() => handleProductSelect(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.productLeftSection}>
         <Text style={styles.productName} numberOfLines={1} ellipsizeMode="tail">
           {(item as any)?.nome ?? (item as any)?.nomeProduto ?? (item as any)?.produto?.nome ?? 'Produto'}
@@ -283,16 +305,12 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
         </Text>
         
         {!isViewMode && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => handleProductSelect(item)}
-            activeOpacity={0.7}
-          >
+          <View style={styles.addButton}>
             <Ionicons name="add" size={20} color="#fff" />
-          </TouchableOpacity>
+          </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderSaleItem = ({ item, customUpdateHandler }: { item: CartItem, customUpdateHandler?: any }) => (
@@ -349,6 +367,11 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
                     {o.nome}
                   </Text>
                 ))}
+              </View>
+            )}
+            {!!(item as any)?.observacoes && (
+              <View style={styles.obsBadge}>
+                <Text style={styles.obsBadgeText}>📝 {(item as any).observacoes}</Text>
               </View>
             )}
           </>
@@ -496,6 +519,68 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
         onClose={() => setProductSelectorVisible(false)}
         onProductSelect={handleProductSelectorSelect}
       />
+
+      {/* Modal de Observação do Item */}
+      <Modal
+        visible={obsModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setObsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.obsModalContainer}>
+            <View style={styles.obsModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.obsModalTitle}>
+                  {selectedProductForObs?.nome || 'Adicionar Produto'}
+                </Text>
+                <Text style={styles.obsModalSubtitle}>
+                  {selectedProductForObs?.precoVenda
+                    ? `R$ ${Number(selectedProductForObs.precoVenda).toFixed(2)}`
+                    : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setObsModalVisible(false)}
+                style={styles.obsCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.obsModalBody}>
+              <Text style={styles.obsInputLabel}>Observação do item (opcional):</Text>
+              <TextInput
+                style={[styles.obsTextInput, isMobile && styles.obsTextInputMobile]}
+                placeholder="Ex: Sem cebola, carne bem passada, sem gelo..."
+                placeholderTextColor="#94a3b8"
+                value={itemObservation}
+                onChangeText={setItemObservation}
+                multiline={!isMobile}
+                numberOfLines={isMobile ? 1 : 3}
+                autoFocus={true}
+              />
+            </View>
+
+            <View style={styles.obsModalFooter}>
+              <TouchableOpacity
+                style={styles.obsBtnSemObs}
+                onPress={() => confirmAddWithObs('')}
+              >
+                <Text style={styles.obsBtnSemObsText}>Adicionar Sem Obs</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.obsBtnConfirmar}
+                onPress={() => confirmAddWithObs(itemObservation)}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.obsBtnConfirmarText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -702,6 +787,121 @@ const styles = StyleSheet.create({
     color: '#2196F3',
     minWidth: 60,
     textAlign: 'right',
+  },
+  obsBadge: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  obsBadgeText: {
+    fontSize: 11,
+    color: '#92400E',
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  obsModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 480,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  obsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingBottom: 12,
+  },
+  obsModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  obsModalSubtitle: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  obsCloseButton: {
+    padding: 4,
+  },
+  obsModalBody: {
+    marginBottom: 20,
+  },
+  obsInputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  obsTextInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#1e293b',
+    backgroundColor: '#f8fafc',
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  obsTextInputMobile: {
+    minHeight: 44,
+    height: 44,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  obsModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  obsBtnSemObs: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  obsBtnSemObsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  obsBtnConfirmar: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  obsBtnConfirmarText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
 

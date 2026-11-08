@@ -15,12 +15,19 @@ echo  Diretorio: "%CD%"
 echo.
 
 :: -----------------------------------------------
-:: 1. Detectar IP da LAN
+:: 1. Detectar IP da LAN (priorizando Wi-Fi 192.168.x.x e ignorando interfaces virtuais)
 :: -----------------------------------------------
 set "LAN_IP="
-for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /i "IPv4" ^| findstr /v "127.0.0.1" ^| findstr /v "169.254"') do (
+for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /i "IPv4" ^| findstr "192.168."') do (
     if not defined LAN_IP (
         for /f "tokens=* delims= " %%B in ("%%A") do set "LAN_IP=%%B"
+    )
+)
+if not defined LAN_IP (
+    for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /i "IPv4" ^| findstr /v "127.0.0.1" ^| findstr /v "169.254" ^| findstr /v "172."') do (
+        if not defined LAN_IP (
+            for /f "tokens=* delims= " %%B in ("%%A") do set "LAN_IP=%%B"
+        )
     )
 )
 if not defined LAN_IP set "LAN_IP=localhost"

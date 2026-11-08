@@ -348,64 +348,80 @@ export default function TabletBarScreen(props = {}) {
       <Animated.View style={[styles.itemContainer, urgencyStyle, { opacity: fadeAnim }]}> 
         <View style={styles.itemInfo}>
           <View style={styles.itemTopRow}>
-            <Text style={styles.itemTitle}>
-              {Number(item?.displayQty || 1)}x {item.produto}
-            </Text>
-            <View style={styles.itemMeta}>
-              <Ionicons name="time" size={16} color="#333" />
-              <Text style={styles.waitText}>{waiting} min</Text>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.itemTitle}>
+                {Number(item?.displayQty || 1)}x {item.produto}
+              </Text>
+            </View>
+            <View style={styles.topRightActions}>
+              <View style={styles.itemMeta}>
+                <Ionicons name="time" size={16} color="#333" />
+                <Text style={styles.waitText}>{waiting} min</Text>
+              </View>
+              {item.status === 'pendente' ? (
+                <TouchableOpacity style={[styles.checkbox, { borderColor: '#9E9E9E' }]} onPress={() => alterarStatus(item, 'pronto')} activeOpacity={0.8}>
+                  <Ionicons name="square-outline" size={iconSize} color="#616161" />
+                  <Text style={[styles.checkboxText, { color: '#616161' }]}>Marcar como pronto</Text>
+                </TouchableOpacity>
+              ) : item.status === 'pronto' ? (
+                <TouchableOpacity
+                  style={[styles.checkbox, { borderColor: '#9E9E9E', opacity: submittingId === item.id ? 0.6 : 1 }]}
+                  onPress={() => {
+                    try {
+                      console.log('Entregar clique (bar)', { id: item.realId || item.id, saleId: item.saleId, status: item.status });
+                      if (!(item?.realId || item?.id) || !item?.saleId) {
+                        Alert.alert('Erro', 'Item inválido para entrega');
+                        return;
+                      }
+                      alterarStatus(item, 'entregue');
+                    } catch (e) {
+                      Alert.alert('Erro', 'Falha ao iniciar entrega');
+                    }
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.8}
+                  disabled={submittingId === item.id}
+                >
+                  <Ionicons name="square-outline" size={iconSize} color="#616161" />
+                  <Text style={[styles.checkboxText, { color: '#616161' }]}>Marcar como entregue</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.checkbox, { borderColor: '#9E9E9E' }]}> 
+                  <Ionicons name="checkmark-circle" size={iconSize} color="#9E9E9E" />
+                  <Text style={[styles.checkboxText, { color: '#9E9E9E' }]}>Entregue</Text>
+                </View>
+              )}
             </View>
           </View>
-          <View style={{ marginBottom: 6 }}>
-            <Text style={[
-              styles.statusPill,
-              item.status === 'pendente'
-                ? styles.statusPending
-                : item.status === 'pronto'
-                ? styles.statusReady
-                : styles.statusDelivered
-            ]}>
-              {item.status === 'pendente' ? 'Em preparação' : item.status === 'pronto' ? 'Pronto' : 'Entregue'}
-            </Text>
+          <View style={styles.itemBodyRow}>
+            <View style={styles.itemDetailsCol}>
+              <View style={{ marginBottom: 6 }}>
+                <Text style={[
+                  styles.statusPill,
+                  item.status === 'pendente'
+                    ? styles.statusPending
+                    : item.status === 'pronto'
+                    ? styles.statusReady
+                    : styles.statusDelivered
+                ]}>
+                  {item.status === 'pendente' ? 'Em preparação' : item.status === 'pronto' ? 'Pronto' : 'Entregue'}
+                </Text>
+              </View>
+              <Text style={styles.itemDetail}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>
+              <Text style={styles.itemDetail}>Responsável: {item.responsavel || 'Não informado'}</Text>
+              <Text style={styles.itemDetail}>Funcionário: {item.funcionario}</Text>
+              <Text style={styles.itemDetail}>Horário: {timeStr}</Text>
+            </View>
+            {item.observacoes ? (
+              <View style={styles.obsCol}>
+                <View style={styles.obsBox}>
+                  <Ionicons name="document-text" size={18} color="#B45309" />
+                  <Text style={styles.obsText}>Obs: {item.observacoes}</Text>
+                </View>
+              </View>
+            ) : null}
           </View>
-          <Text style={styles.itemDetail}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>
-          <Text style={styles.itemDetail}>Responsável: {item.responsavel || 'Não informado'}</Text>
-          <Text style={styles.itemDetail}>Funcionário: {item.funcionario}</Text>
-          <Text style={styles.itemDetail}>Horário: {timeStr}</Text>
         </View>
-        {item.status === 'pendente' ? (
-          <TouchableOpacity style={[styles.checkbox, { borderColor: '#9E9E9E' }]} onPress={() => alterarStatus(item, 'pronto')} activeOpacity={0.8}>
-            <Ionicons name="square-outline" size={iconSize} color="#616161" />
-            <Text style={[styles.checkboxText, { color: '#616161' }]}>Marcar como pronto</Text>
-          </TouchableOpacity>
-        ) : item.status === 'pronto' ? (
-          <TouchableOpacity
-            style={[styles.checkbox, { borderColor: '#9E9E9E', opacity: submittingId === item.id ? 0.6 : 1 }]}
-            onPress={() => {
-              try {
-                console.log('Entregar clique (bar)', { id: item.realId || item.id, saleId: item.saleId, status: item.status });
-                if (!(item?.realId || item?.id) || !item?.saleId) {
-                  Alert.alert('Erro', 'Item inválido para entrega');
-                  return;
-                }
-                alterarStatus(item, 'entregue');
-              } catch (e) {
-                Alert.alert('Erro', 'Falha ao iniciar entrega');
-              }
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            activeOpacity={0.8}
-            disabled={submittingId === item.id}
-          >
-            <Ionicons name="square-outline" size={iconSize} color="#616161" />
-            <Text style={[styles.checkboxText, { color: '#616161' }]}>Marcar como entregue</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[styles.checkbox, { borderColor: '#9E9E9E' }]}> 
-            <Ionicons name="checkmark-circle" size={iconSize} color="#9E9E9E" />
-            <Text style={[styles.checkboxText, { color: '#9E9E9E' }]}>Entregue</Text>
-          </View>
-        )}
       </Animated.View>
     );
   };
@@ -792,12 +808,49 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 1,
-    marginRight: 15,
+    marginRight: 0,
+  },
+  topRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  itemBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  itemDetailsCol: {
+    minWidth: 160,
+  },
+  obsCol: {
+    flex: 1,
+    paddingLeft: 16,
+    justifyContent: 'center',
   },
   itemTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  obsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginVertical: 4,
+    gap: 6,
+  },
+  obsText: {
+    color: '#92400E',
+    fontSize: 13,
+    fontWeight: 'bold',
+    flexShrink: 1,
   },
   itemTitle: {
     fontSize: 18,

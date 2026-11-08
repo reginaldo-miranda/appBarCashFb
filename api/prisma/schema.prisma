@@ -414,6 +414,7 @@ model SaleItem {
   preparedAt         DateTime?
   preparedById       Int?
   origem             String?     @default("default") @db.VarChar(20)
+  observacoes        String?
   variacaoOpcoes     Json?
   variacaoRegraPreco RegraPreco?
   variacaoTipo       String?     @db.VarChar(50)
@@ -659,6 +660,7 @@ enum DeliveryStatus {
 
 enum RegimeTributario {
   simples_nacional
+  simples_nacional_mei
   lucro_presumido
   lucro_real
 }

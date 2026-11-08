@@ -3,26 +3,45 @@ const os = require('os');
 const { execSync, exec } = require('child_process');
 const path = require('path');
 
-// Detectar IP da LAN
+// Detectar IP da LAN (filtrando adaptadores virtuais como vEthernet, Hyper-V, WSL, Docker, VMware, VirtualBox)
 function getLanIp() {
   const ifaces = os.networkInterfaces();
+  const candidates = [];
+
   for (const name of Object.keys(ifaces)) {
+    const lowerName = name.toLowerCase();
+    if (
+      lowerName.includes('vmware') ||
+      lowerName.includes('virtualbox') ||
+      lowerName.includes('vbox') ||
+      lowerName.includes('wsl') ||
+      lowerName.includes('docker') ||
+      lowerName.includes('vethernet') ||
+      lowerName.includes('host-only') ||
+      lowerName.includes('virtual')
+    ) {
+      continue;
+    }
+
     for (const iface of ifaces[name] || []) {
       if (!iface.internal && iface.family === 'IPv4') {
-        const ip = iface.address;
-        if (
-          ip.startsWith('192.168.') ||
-          ip.startsWith('10.') ||
-          (ip.startsWith('172.') && (() => {
-            const n = parseInt(ip.split('.')[1], 10);
-            return n >= 16 && n <= 31;
-          })())
-        ) {
-          return ip;
-        }
+        candidates.push(iface.address);
       }
     }
   }
+
+  // 1º Prioridade: 192.168.x.x (Rede Wi-Fi / Ethernet comum de roteadores)
+  const ip192 = candidates.find(ip => ip.startsWith('192.168.'));
+  if (ip192) return ip192;
+
+  // 2º Prioridade: 10.x.x.x (Redes corporativas)
+  const ip10 = candidates.find(ip => ip.startsWith('10.'));
+  if (ip10) return ip10;
+
+  // 3º Fallback: qualquer IP não virtual
+  const fallback = candidates.find(ip => !ip.startsWith('172.') && !ip.startsWith('169.254.'));
+  if (fallback) return fallback;
+
   return '';
 }
 
@@ -30,7 +49,7 @@ function getLanIp() {
 const lanIp = getLanIp();
 if (lanIp) {
   process.env.REACT_NATIVE_PACKAGER_HOSTNAME = lanIp;
-  if (!process.env.EXPO_PUBLIC_API_URL) {
+  if (!process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_URL.includes('172.')) {
     process.env.EXPO_PUBLIC_API_URL = `http://${lanIp}:4000/api`;
   }
 }
@@ -91,7 +110,13 @@ end tell
     console.log('⏳ Aguardando API ficar pronta...');
     let ready = false;
     for (let i = 0; i < 12; i++) {
-      execSync('sleep 1');
+      try {
+        if (process.platform === 'win32') {
+          execSync('powershell -Command "Start-Sleep -Seconds 1"', { stdio: 'pipe' });
+        } else {
+          execSync('sleep 1', { stdio: 'pipe' });
+        }
+      } catch {}
       if (isApiRunning()) {
         ready = true;
         break;

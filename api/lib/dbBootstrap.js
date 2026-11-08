@@ -206,7 +206,7 @@ export async function runDbBootstrap(prisma) {
       \`telefoneSecundario\`   VARCHAR(191) DEFAULT NULL,
       \`email\`                VARCHAR(191) DEFAULT NULL,
       \`whatsapp\`             VARCHAR(191) DEFAULT NULL,
-      \`regimeTributario\`     ENUM('simples_nacional','lucro_presumido','lucro_real') NOT NULL DEFAULT 'simples_nacional',
+      \`regimeTributario\`     ENUM('simples_nacional','simples_nacional_mei','lucro_presumido','lucro_real') NOT NULL DEFAULT 'simples_nacional',
       \`cnae\`                 VARCHAR(191) DEFAULT NULL,
       \`dataAbertura\`         VARCHAR(191) DEFAULT NULL,
       \`contribuinteIcms\`     TINYINT(1) NOT NULL DEFAULT 1,

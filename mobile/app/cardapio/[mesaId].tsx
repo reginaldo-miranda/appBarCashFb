@@ -303,7 +303,18 @@ export default function CardapioCliente() {
       {/* HEADER PREMIUM */}
       <View style={styles.header}>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>appBarCash 🍻</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {router.canGoBack() && (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backHeaderBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FF8C00" />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.headerTitle}>appBarCash 🍻</Text>
+          </View>
           <View style={styles.mesaCol}>
             <View style={styles.mesaBadge}>
               <Ionicons name="restaurant" size={14} color="#FFF" style={{ marginRight: 4 }} />
@@ -607,6 +618,14 @@ export default function CardapioCliente() {
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}>
                 <Ionicons name="cart-outline" size={64} color="#444" />
                 <Text style={styles.emptyText}>Sua sacola está vazia.</Text>
+                <TouchableOpacity
+                  style={[styles.continuarEscolhendoBtn, { paddingHorizontal: 24, marginTop: 16 }]}
+                  onPress={() => setMostrarCarrinho(false)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="arrow-back-outline" size={18} color="#FF8C00" style={{ marginRight: 6 }} />
+                  <Text style={styles.continuarEscolhendoBtnText}>Voltar ao Cardápio</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -680,6 +699,15 @@ export default function CardapioCliente() {
                         <Text style={styles.enviarPedidoBtnText}>Enviar Pedido para a Cozinha</Text>
                       </>
                     )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.continuarEscolhendoBtn}
+                    onPress={() => setMostrarCarrinho(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="arrow-back-outline" size={18} color="#FF8C00" style={{ marginRight: 6 }} />
+                    <Text style={styles.continuarEscolhendoBtnText}>Continuar Escolhendo</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -1215,6 +1243,26 @@ const styles = StyleSheet.create({
   enviarPedidoBtnText: {
     color: "#FFF",
     fontSize: 16,
+    fontWeight: "bold"
+  },
+  backHeaderBtn: {
+    marginRight: 8,
+    padding: 4
+  },
+  continuarEscolhendoBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FF8C00",
+    backgroundColor: "transparent"
+  },
+  continuarEscolhendoBtnText: {
+    color: "#FF8C00",
+    fontSize: 15,
     fontWeight: "bold"
   },
   sucessoContainer: {

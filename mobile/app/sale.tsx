@@ -334,6 +334,7 @@ export default function SaleScreen() {
   const [sizeModalVisible, setSizeModalVisible] = useState(false);
   const [sizeProduct, setSizeProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null);
+  const [currentItemObs, setCurrentItemObs] = useState('');
 
   const [splitModalVisible, setSplitModalVisible] = useState(false);
 
@@ -929,13 +930,18 @@ export default function SaleScreen() {
     }
   }, [viewMode, vendaId, mesaId, tipo, loadSale, loadComandaSale, loadMesaSale, createNewSale]);
 
-  const addToCart = async (product: Product) => {
+  const addToCart = async (product: Product, observacoes?: string) => {
     if (!sale) {
       Alert.alert('Erro', 'Nenhuma venda ativa encontrada');
       return;
     }
 
     try {
+      const obsTrimmed = (observacoes || '').trim();
+      if (obsTrimmed) {
+        setCurrentItemObs(obsTrimmed);
+      }
+
       // Check for size selection first
       if ((product as any)?.temTamanhos) {
         setSizeProduct(product);
@@ -951,13 +957,16 @@ export default function SaleScreen() {
         return;
       }
       // Adiciona o item no backend
-      const itemData = {
+      const itemData: any = {
         produtoId: parseInt(String((product as any)?._id ?? (product as any)?.id ?? 0), 10),
         quantidade: 1
       };
+      if (obsTrimmed) {
+        itemData.observacoes = obsTrimmed;
+      }
       const clientMode = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
       if (String(clientMode).toLowerCase() === 'tablet') {
-        (itemData as any).origem = 'tablet';
+        itemData.origem = 'tablet';
       }
       
       console.log('Adicionando item ao carrinho:', itemData);
@@ -1071,6 +1080,9 @@ export default function SaleScreen() {
         quantidade: 1,
         tamanho: size.nome // Pass size name to API
       };
+      if (currentItemObs && currentItemObs.trim()) {
+        itemData.observacoes = currentItemObs.trim();
+      }
       
       const clientMode = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
       if (String(clientMode).toLowerCase() === 'tablet') {
@@ -1087,6 +1099,7 @@ export default function SaleScreen() {
     } finally {
       setSizeProduct(null);
       setSelectedSize(null);
+      setCurrentItemObs('');
     }
   };
 
@@ -1099,6 +1112,9 @@ export default function SaleScreen() {
         variacao: payload,
         tamanho: selectedSize?.nome // Include size if selected
       };
+      if (currentItemObs && currentItemObs.trim()) {
+        itemData.observacoes = currentItemObs.trim();
+      }
       const clientMode = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
       if (String(clientMode).toLowerCase() === 'tablet') itemData.origem = 'tablet';
       const response = await saleService.addItem(sale._id, itemData);
@@ -1110,6 +1126,7 @@ export default function SaleScreen() {
     } finally {
       setVariationVisible(false);
       setVariationProduct(null);
+      setCurrentItemObs('');
     }
   };
 
@@ -1121,6 +1138,9 @@ export default function SaleScreen() {
         quantidade: 1,
         tamanho: selectedSize?.nome // Include size if selected
       };
+      if (currentItemObs && currentItemObs.trim()) {
+        itemData.observacoes = currentItemObs.trim();
+      }
       const clientMode = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
       if (String(clientMode).toLowerCase() === 'tablet') itemData.origem = 'tablet';
       const response = await saleService.addItem(sale._id, itemData);
@@ -1132,6 +1152,7 @@ export default function SaleScreen() {
     } finally {
       setVariationVisible(false);
       setVariationProduct(null);
+      setCurrentItemObs('');
     }
   };
 

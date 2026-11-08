@@ -8,14 +8,37 @@ if (!(Test-Path (Join-Path $mobileDir "node_modules"))) {
   npm install
 }
 
-# Detectar IP da LAN automaticamente (evitar localhost/127.0.0.1)
+# Detectar IP da LAN automaticamente (filtrando interfaces virtuais como Hyper-V/WSL e priorizando Wi-Fi 192.168.x.x)
 $lanIp = $null
 try {
-  $lanIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.IPAddress -notmatch '^169\.254\.' } | Select-Object -ExpandProperty IPAddress -First 1)
+  $configs = Get-NetIPConfiguration | Where-Object { 
+    $_.IPv4DefaultGateway -ne $null -and 
+    $_.InterfaceAlias -notmatch 'vEthernet|WSL|VirtualBox|VMware|Docker|Loopback' 
+  }
+  $lanIp = ($configs | ForEach-Object { $_.IPv4Address.IPAddress } | Where-Object { $_ -match '^192\.168\.' } | Select-Object -First 1)
+  if (-not $lanIp) {
+    $lanIp = ($configs | ForEach-Object { $_.IPv4Address.IPAddress } | Where-Object { $_ -notmatch '^169\.254\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^172\.' } | Select-Object -First 1)
+  }
 } catch {}
+
 if (-not $lanIp -or $lanIp.Trim() -eq '') {
   try {
-    $lanIp = ([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { $_.AddressFamily -eq 'InterNetwork' -and $_.IPAddressToString -ne '127.0.0.1' } | Select-Object -ExpandProperty IPAddressToString -First 1)
+    $lanIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
+      $_.IPAddress -ne '127.0.0.1' -and 
+      $_.IPAddress -notmatch '^169\.254\.' -and 
+      $_.InterfaceAlias -notmatch 'vEthernet|WSL|VirtualBox|VMware|Docker|Loopback' -and
+      $_.IPAddress -match '^192\.168\.'
+    } | Select-Object -ExpandProperty IPAddress -First 1)
+  } catch {}
+}
+
+if (-not $lanIp -or $lanIp.Trim() -eq '') {
+  try {
+    $lanIp = ([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { 
+      $_.AddressFamily -eq 'InterNetwork' -and 
+      $_.IPAddressToString -ne '127.0.0.1' -and 
+      $_.IPAddressToString -match '^192\.168\.' 
+    } | Select-Object -ExpandProperty IPAddressToString -First 1)
   } catch {}
 }
 

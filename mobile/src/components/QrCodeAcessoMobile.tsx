@@ -50,6 +50,15 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
 
     // Fluxo assíncrono para obter IP dinâmico
     (async () => {
+      const isVirtualIp = (ip: string) => {
+        if (!ip) return true;
+        if (LOCAL_HOSTS.includes(ip)) return true;
+        if (ip.startsWith('169.254.')) return true;
+        // Ignorar faixa virtual interna do Windows/Hyper-V/WSL (172.x.x.x)
+        if (ip.startsWith('172.')) return true;
+        return false;
+      };
+
       const tryExtractLanIp = (): string | null => {
         try {
           const apiUrl = (typeof process !== 'undefined')
@@ -57,7 +66,7 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
             : '';
           if (apiUrl) {
             const parsed = new URL(apiUrl);
-            if (!LOCAL_HOSTS.includes(parsed.hostname)) {
+            if (!isVirtualIp(parsed.hostname)) {
               return parsed.hostname;
             }
           }
@@ -66,28 +75,18 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
           const packagerHost = (typeof process !== 'undefined')
             ? (process.env?.REACT_NATIVE_PACKAGER_HOSTNAME || '')
             : '';
-          if (packagerHost && !LOCAL_HOSTS.includes(packagerHost)) {
+          if (packagerHost && !isVirtualIp(packagerHost)) {
             return packagerHost;
           }
         } catch {}
         return null;
       };
 
-      // 1. Em DESENVOLVIMENTO, priorizar a extração das variáveis do Metro (dinâmicas)
-      const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
-      if (isDev) {
-        const lanIp = tryExtractLanIp();
-        if (lanIp) {
-          setUrl(`http://${lanIp}:${webPort}`);
-          return;
-        }
-      }
-
-      // 2. Em PRODUÇÃO (cliente), tentar buscar IP via API de saúde (/health) em tempo real
+      // 1. Tentar buscar IP via API de saúde (/health) em tempo real (fonte real do servidor local)
       try {
         const res = await fetch(`http://localhost:4000/api/health`, { signal: AbortSignal.timeout(3000) });
         const data = await res.json();
-        if (data?.lanIp && !LOCAL_HOSTS.includes(data.lanIp)) {
+        if (data?.lanIp && !isVirtualIp(data.lanIp)) {
           setUrl(`http://${data.lanIp}:${webPort}`);
           return;
         }
@@ -95,13 +94,11 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
         console.log('Erro ao consultar /health no acesso mobile:', e);
       }
 
-      // 3. Fallback para produção se o /health falhar
-      if (!isDev) {
-        const lanIp = tryExtractLanIp();
-        if (lanIp) {
-          setUrl(`http://${lanIp}:${webPort}`);
-          return;
-        }
+      // 2. Extrair das variáveis de ambiente/Metro (garantindo que não seja IP virtual)
+      const lanIp = tryExtractLanIp();
+      if (lanIp) {
+        setUrl(`http://${lanIp}:${webPort}`);
+        return;
       }
 
       // 4. Fallback: usar WebRTC para detectar IP local

@@ -88,16 +88,33 @@ export default function TabLayout() {
         headerShown: true,
         headerStyle: {
           backgroundColor: '#2196F3',
+          height: Platform.OS === 'web' ? 46 : undefined,
         },
         headerTintColor: '#fff',
         headerTitleStyle: {
           fontWeight: 'bold',
+          fontSize: Platform.OS === 'web' ? 16 : 18,
         },
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
+          borderTopColor: '#e2e8f0',
+          height: 60,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 4,
+          paddingTop: 4,
+          ...(Platform.OS === 'web' ? {
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+          } : {}),
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+          marginBottom: 2,
         },
       }}>
       <Tabs.Screen
@@ -216,7 +233,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="contingencia"
         options={{
-          href: '/(tabs)/contingencia',
+          href: (isMobile || Platform.OS !== 'web') ? '/(tabs)/contingencia' : null,
           title: 'Contingência',
           headerTitle: 'NFC-e em Contingência',
           tabBarIcon: ({ color }) => (
@@ -247,6 +264,20 @@ export default function TabLayout() {
           title: 'Ajuda',
           headerTitle: 'Manual do Sistema',
           tabBarIcon: ({ color }) => <SafeIcon name="help-circle" size={24} color={color} fallbackText="?" />,
+        }}
+      />
+
+      {/* Telas internas - Ocultas da barra de abas */}
+      <Tabs.Screen
+        name="admin-export-xml"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="admin-smtp-config"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

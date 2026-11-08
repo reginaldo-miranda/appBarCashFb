@@ -353,13 +353,16 @@ router.post('/pedido', async (req, res) => {
           }
         }
 
-        // Buscar se já há um item pendente idêntico sem variação na comanda para somar quantidade
+        const obsItem = (reqItem.observacao || reqItem.observacoes || '').toString().trim() || null;
+
+        // Buscar se já há um item pendente idêntico sem variação na comanda com a MESMA observação para somar quantidade
         const itemExistente = !variacao ? await tx.saleItem.findFirst({
           where: {
             saleId: vendaId,
             productId: prodId,
             status: 'pendente',
             variacaoTipo: null,
+            observacoes: obsItem
           }
         }) : null;
 
@@ -388,6 +391,7 @@ router.post('/pedido', async (req, res) => {
               subtotal: String((qty * precoUnit).toFixed(2)),
               status: 'pendente',
               origem: 'cardapio',
+              observacoes: obsItem,
               variacaoTipo: variacaoTipo || undefined,
               variacaoRegraPreco: variacaoRegra || undefined,
               variacaoOpcoes: variacaoOpcoes || undefined,
@@ -460,7 +464,7 @@ router.post('/pedido', async (req, res) => {
               saleRef,
               productNome: itemInserido.nomeProduto,
               quantidade: itemInserido.quantidade,
-              observacao: '[CARDÁPIO DIGITAL] ' + (itemInserido.observacao || '')
+              observacao: itemInserido.observacoes ? ('[CARDÁPIO DIGITAL] ' + itemInserido.observacoes) : '[CARDÁPIO DIGITAL]'
             });
 
             enqueuePrintJob({

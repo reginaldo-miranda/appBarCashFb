@@ -189,7 +189,21 @@ class NfceService {
     if (cleanIe) {
         emit.ele('IE').txt(cleanIe).up();
     }
-    emit.ele('CRT').txt('1').up(); // 1 = Simples Nacional (Mandatory)
+    // CRT (Código de Regime Tributário - SEFAZ NT 2024.001):
+    // 1 = Simples Nacional
+    // 2 = Simples Nacional - excesso de sublimite de receita bruta
+    // 3 = Regime Normal (Lucro Presumido ou Lucro Real)
+    // 4 = Simples Nacional - Microempreendedor Individual (MEI)
+    let crtValue = '1';
+    const regime = String(company.regimeTributario || '').toLowerCase();
+    if (regime === 'simples_nacional_mei' || regime === 'mei') {
+        crtValue = '4';
+    } else if (regime === 'lucro_presumido' || regime === 'lucro_real') {
+        crtValue = '3';
+    } else {
+        crtValue = '1';
+    }
+    emit.ele('CRT').txt(crtValue).up();
 
     // 2.5 Destinatário (Opcional - mas se cliente existir na venda e tiver CPF/CNPJ, deve ir)
     if (sale.cliente && (sale.cliente.cpf || sale.cliente.cnpj)) {
@@ -361,11 +375,11 @@ class NfceService {
         //   <IS> (grupo separado, opcional, só se alíquota > 0)
         // ════════════════════════════════════════════════════════
         // Fallback seguro caso produto não tenha cadastro
-        const prodIbsCst = String(prod.ibsCst || item.ibsCst || '000').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
+        const prodIbsCst = String(prod.ibsCst || item.ibsCst || '410').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
         const prodIbsClTr = String(prod.ibsClassTrib || item.ibsClassTrib || '410031').replace(/\D/g, '').padStart(6, '0').substring(0, 6);
         const prodIbsAliq = Number(prod.ibsAliquota || item.ibsAliquota || 0);
 
-        const prodCbsCst = String(prod.cbsCst || item.cbsCst || '000').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
+        const prodCbsCst = String(prod.cbsCst || item.cbsCst || '410').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
         const prodCbsClTr = String(prod.cbsClassTrib || item.cbsClassTrib || '410031').replace(/\D/g, '').padStart(6, '0').substring(0, 6);
         const prodCbsAliq = Number(prod.cbsAliquota || item.cbsAliquota || 0);
 
@@ -398,30 +412,52 @@ class NfceService {
         totalIS += vISItem;
 
         // ════════════════════ MONTA O GRUPO <IBSCBS> ════════════════════
-        // (Sempre geramos — mesmo alíquotas zero — pois a regra UB12-10 entrará em vigor)
-        const ibscbs = imposto.ele('IBSCBS');
-        ibscbs.ele('CST').txt(prodIbsCst).up();
-        ibscbs.ele('cClassTrib').txt(prodIbsClTr).up();
+        // NT 2025.002 / LC 214/2025 (Art. 348):
+        // Optantes pelo Simples Nacional (CRT 1) e MEI (CRT 4) NÃO devem destacar IBS/CBS
+        // na fase de transição (2026), exceto se houver alíquotas expressamente configuradas (> 0).
+        // Empresas no Regime Normal (CRT 3) geram o grupo.
+        const isSimplesOrMei = (crtValue === '1' || crtValue === '4');
+        const shouldIncludeIbsCbs = (!isSimplesOrMei) || (prodIbsAliq > 0 || prodCbsAliq > 0);
 
-        const gIBSCBS = ibscbs.ele('gIBSCBS');
-        gIBSCBS.ele('vBC').txt(vBCItem.toFixed(2)).up();
+        if (shouldIncludeIbsCbs) {
+            // Regra UB12-10 (Rejeição 1024):
+            // Os 3 primeiros caracteres de cClassTrib DEVEM ser exatamente iguais ao CST!
+            let effectiveCst = prodIbsCst;
+            let effectiveClTr = prodIbsClTr;
 
-        const gIBSUF = gIBSCBS.ele('gIBSUF');
-        gIBSUF.ele('pIBSUF').txt(pIBSUFDf.toFixed(4)).up();
-        gIBSUF.ele('vIBSUF').txt(vIBSUFItem.toFixed(2)).up();
-        gIBSUF.up();
+            if (effectiveClTr.length >= 3 && !effectiveClTr.startsWith(effectiveCst)) {
+                // Se cClassTrib começa com CST válido (ex: 410 para 410031), sincroniza o CST
+                if (['000', '010', '200', '410', '500', '999'].includes(effectiveClTr.substring(0, 3))) {
+                    effectiveCst = effectiveClTr.substring(0, 3);
+                } else {
+                    effectiveClTr = effectiveCst + (effectiveClTr.length >= 6 ? effectiveClTr.substring(3) : '001');
+                }
+            }
 
-        const gIBSMun = gIBSCBS.ele('gIBSMun');
-        gIBSMun.ele('pIBSMun').txt(pIBSMunDf.toFixed(4)).up();
-        gIBSMun.ele('vIBSMun').txt(vIBSMunItem.toFixed(2)).up();
-        gIBSMun.up();
+            const ibscbs = imposto.ele('IBSCBS');
+            ibscbs.ele('CST').txt(effectiveCst).up();
+            ibscbs.ele('cClassTrib').txt(effectiveClTr).up();
 
-        gIBSCBS.ele('vIBS').txt(vIBSItem.toFixed(2)).up();
+            const gIBSCBS = ibscbs.ele('gIBSCBS');
+            gIBSCBS.ele('vBC').txt(vBCItem.toFixed(2)).up();
 
-        const gCBS = gIBSCBS.ele('gCBS');
-        gCBS.ele('pCBS').txt(pCBSDf.toFixed(4)).up();
-        gCBS.ele('vCBS').txt(vCBSItem.toFixed(2)).up();
-        gCBS.up();
+            const gIBSUF = gIBSCBS.ele('gIBSUF');
+            gIBSUF.ele('pIBSUF').txt(pIBSUFDf.toFixed(4)).up();
+            gIBSUF.ele('vIBSUF').txt(vIBSUFItem.toFixed(2)).up();
+            gIBSUF.up();
+
+            const gIBSMun = gIBSCBS.ele('gIBSMun');
+            gIBSMun.ele('pIBSMun').txt(pIBSMunDf.toFixed(4)).up();
+            gIBSMun.ele('vIBSMun').txt(vIBSMunItem.toFixed(2)).up();
+            gIBSMun.up();
+
+            gIBSCBS.ele('vIBS').txt(vIBSItem.toFixed(2)).up();
+
+            const gCBS = gIBSCBS.ele('gCBS');
+            gCBS.ele('pCBS').txt(pCBSDf.toFixed(4)).up();
+            gCBS.ele('vCBS').txt(vCBSItem.toFixed(2)).up();
+            gCBS.up();
+        }
 
         // ── IS (Imposto Seletivo) — GRUPO SEPARADO, opcional (só se > 0) ──
         if (prodIsAliq > 0 || vISItem > 0) {
@@ -470,35 +506,40 @@ class NfceService {
 
     // ════════════════════════════════════════════════════════
     // Grupo IBSCBSTot — TOTAL SEPARADO da Reforma Tributária
-    // (DEPOIS do ICMSTot, conforme exemplo da Receita Federal)
+    // (Apenas emitido se houver grupo IBSCBS emitido)
     // ════════════════════════════════════════════════════════
-    const ibscbsTot = total.ele('IBSCBSTot');
-    ibscbsTot.ele('vBCIBSCBS').txt(totalBCIBSCBS.toFixed(2)).up();
-    const gIBSTot = ibscbsTot.ele('gIBS');
-    const gIBSUFTot = gIBSTot.ele('gIBSUF');
-    gIBSUFTot.ele('vDif').txt('0.00').up();
-    gIBSUFTot.ele('vDevTrib').txt('0.00').up();
-    gIBSUFTot.ele('vIBSUF').txt(totalIBSUF.toFixed(2)).up();
-    gIBSUFTot.up();
-    const gIBSMunTot = gIBSTot.ele('gIBSMun');
-    gIBSMunTot.ele('vDif').txt('0.00').up();
-    gIBSMunTot.ele('vDevTrib').txt('0.00').up();
-    gIBSMunTot.ele('vIBSMun').txt(totalIBSMun.toFixed(2)).up();
-    gIBSMunTot.up();
-    gIBSTot.ele('vIBS').txt(totalIBS.toFixed(2)).up();
-    gIBSTot.ele('vCredPres').txt('0.00').up();
-    gIBSTot.ele('vCredPresCondSus').txt('0.00').up();
-    gIBSTot.up();
-    const gCBSTot = ibscbsTot.ele('gCBS');
-    gCBSTot.ele('vDif').txt('0.00').up();
-    gCBSTot.ele('vDevTrib').txt('0.00').up();
-    gCBSTot.ele('vCBS').txt(totalCBS.toFixed(2)).up();
-    gCBSTot.ele('vCredPres').txt('0.00').up();
-    gCBSTot.ele('vCredPresCondSus').txt('0.00').up();
-    gCBSTot.up();
+    const isSimplesOrMei = (crtValue === '1' || crtValue === '4');
+    const shouldIncludeIbsCbsTot = (!isSimplesOrMei) || (totalIBS > 0 || totalCBS > 0);
 
-    // Campo totalizador final (NT 2025.002) — mesmo valor que vNF
-    total.ele('vNFTot').txt(vNF).up();
+    if (shouldIncludeIbsCbsTot) {
+        const ibscbsTot = total.ele('IBSCBSTot');
+        ibscbsTot.ele('vBCIBSCBS').txt(totalBCIBSCBS.toFixed(2)).up();
+        const gIBSTot = ibscbsTot.ele('gIBS');
+        const gIBSUFTot = gIBSTot.ele('gIBSUF');
+        gIBSUFTot.ele('vDif').txt('0.00').up();
+        gIBSUFTot.ele('vDevTrib').txt('0.00').up();
+        gIBSUFTot.ele('vIBSUF').txt(totalIBSUF.toFixed(2)).up();
+        gIBSUFTot.up();
+        const gIBSMunTot = gIBSTot.ele('gIBSMun');
+        gIBSMunTot.ele('vDif').txt('0.00').up();
+        gIBSMunTot.ele('vDevTrib').txt('0.00').up();
+        gIBSMunTot.ele('vIBSMun').txt(totalIBSMun.toFixed(2)).up();
+        gIBSMunTot.up();
+        gIBSTot.ele('vIBS').txt(totalIBS.toFixed(2)).up();
+        gIBSTot.ele('vCredPres').txt('0.00').up();
+        gIBSTot.ele('vCredPresCondSus').txt('0.00').up();
+        gIBSTot.up();
+        const gCBSTot = ibscbsTot.ele('gCBS');
+        gCBSTot.ele('vDif').txt('0.00').up();
+        gCBSTot.ele('vDevTrib').txt('0.00').up();
+        gCBSTot.ele('vCBS').txt(totalCBS.toFixed(2)).up();
+        gCBSTot.ele('vCredPres').txt('0.00').up();
+        gCBSTot.ele('vCredPresCondSus').txt('0.00').up();
+        gCBSTot.up();
+
+        // Campo totalizador final (NT 2025.002) — mesmo valor que vNF
+        total.ele('vNFTot').txt(vNF).up();
+    }
 
     // 5. Transporte
     // Modalidade 9 (Sem frete) obrigatória para evitar rejeição em NFC-e com valor no campo frete

@@ -10,6 +10,7 @@ import {
   BackHandler,
   Platform,
   Dimensions,
+  useWindowDimensions,
   StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -32,6 +33,14 @@ const HeaderBackground = ({ children, style }: any) => {
 };
 
 export default function HomeScreen() {
+  const { width } = useWindowDimensions();
+  const isDesktop = width > 900;
+  const isTablet = width > 600 && width <= 900;
+
+  const cardWidthStyle = Platform.OS === 'web'
+    ? (isDesktop ? { width: 'calc(33.333% - 7px)' as any } : isTablet ? { width: 'calc(50% - 6px)' as any } : { width: '100%' as any })
+    : (isDesktop ? { width: '31.5%' as any } : isTablet ? { width: '48%' as any } : { width: '100%' as any });
+
   const authContext = useAuth() as any;
   const { user, logout, isAuthenticated } = authContext;
   const [stats, setStats] = useState({
@@ -218,31 +227,6 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
-      <HeaderBackground style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.userInfo}>
-            <Text style={styles.welcomeLabel}>Bem-vindo(a),</Text>
-            <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.userRole}>{user?.role?.nome || (typeof user?.role === 'string' ? user.role : 'Funcionário')}</Text>
-            </View>
-          </View>
-          <View style={styles.headerActions}>
-             {Platform.OS === 'web' && (
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => router.push('/configuracoes')}
-              >
-                <SafeIcon name="settings" size={20} color="#fff" fallbackText="⚙" />
-              </TouchableOpacity>
-             )}
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <SafeIcon name="log-out" size={20} color="#fff" fallbackText="Exit" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </HeaderBackground>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -250,6 +234,31 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2196F3']} />
         }
       >
+        <HeaderBackground style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={styles.userInfo}>
+              <Text style={styles.welcomeLabel}>Bem-vindo(a),</Text>
+              <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+              <View style={styles.roleBadge}>
+                <Text style={styles.userRole}>{user?.role?.nome || (typeof user?.role === 'string' ? user.role : 'Funcionário')}</Text>
+              </View>
+            </View>
+            <View style={styles.headerActions}>
+               {Platform.OS === 'web' && (
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => router.push('/configuracoes')}
+                >
+                  <SafeIcon name="settings" size={18} color="#fff" fallbackText="⚙" />
+                </TouchableOpacity>
+               )}
+              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <SafeIcon name="log-out" size={18} color="#fff" fallbackText="Exit" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </HeaderBackground>
+
         <ScreenIdentifier screenName="Home" />
         
         {/* Menu Dropdown - Apenas Web */}
@@ -262,7 +271,7 @@ export default function HomeScreen() {
           <View style={styles.statsGrid}>
             <View style={[styles.statCard]}>
               <View style={[styles.statIconBox, { backgroundColor: '#E8F5E8' }]}>
-                <SafeIcon name="trending-up" size={24} color="#4CAF50" fallbackText="↑" />
+                <SafeIcon name="trending-up" size={18} color="#4CAF50" fallbackText="↑" />
               </View>
               <View>
                 <Text style={styles.statNumber}>{stats.totalSales}</Text>
@@ -271,7 +280,7 @@ export default function HomeScreen() {
             </View>
             <View style={[styles.statCard]}>
               <View style={[styles.statIconBox, { backgroundColor: '#E3F2FD' }]}>
-                <SafeIcon name="cash" size={24} color="#2196F3" fallbackText="$" />
+                <SafeIcon name="cash" size={18} color="#2196F3" fallbackText="$" />
               </View>
               <View>
                 <Text style={styles.statNumber}>R$ {stats.totalRevenue.toFixed(2)}</Text>
@@ -280,7 +289,7 @@ export default function HomeScreen() {
             </View>
             <View style={[styles.statCard]}>
               <View style={[styles.statIconBox, { backgroundColor: '#FFF3E0' }]}>
-                <SafeIcon name="restaurant" size={24} color="#FF9800" fallbackText="🍽" />
+                <SafeIcon name="restaurant" size={18} color="#FF9800" fallbackText="🍽" />
               </View>
               <View>
                 <Text style={styles.statNumber}>{stats.openTables}</Text>
@@ -289,7 +298,7 @@ export default function HomeScreen() {
             </View>
             <View style={[styles.statCard]}>
                <View style={[styles.statIconBox, { backgroundColor: '#F3E5F5' }]}>
-                <SafeIcon name="receipt" size={24} color="#9C27B0" fallbackText="📝" />
+                <SafeIcon name="receipt" size={18} color="#9C27B0" fallbackText="📝" />
               </View>
               <View>
                 <Text style={styles.statNumber}>{stats.openComandas}</Text>
@@ -313,24 +322,24 @@ export default function HomeScreen() {
             }).map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.menuCard}
+                style={[styles.menuCard, cardWidthStyle]}
                 onPress={item.onPress}
                 activeOpacity={0.7}
               >
                 <View style={[styles.menuIconContainer, { backgroundColor: item.color }]}>
-                  <SafeIcon name={item.icon as any} size={28} color="#fff" fallbackText="•" />
+                  <SafeIcon name={item.icon as any} size={22} color="#fff" fallbackText="•" />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuItemTitle}>{item.title}</Text>
                   <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
                 </View>
-                <SafeIcon name="chevron-forward" size={18} color="#CBD5E1" fallbackText=">" />
+                <SafeIcon name="chevron-forward" size={16} color="#CBD5E1" fallbackText=">" />
               </TouchableOpacity>
             ))}
           </View>
         </View>
         
-        <View style={{ height: 40 }} />
+        <View style={{ height: 16 }} />
       </ScrollView>
       {Platform.OS === 'web' && <QrCodeAcessoMobile hideButton={true} />}
     </View>
@@ -343,15 +352,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    elevation: 4,
+    paddingTop: Platform.OS === 'ios' ? 40 : 12,
+    paddingBottom: 14,
+    borderBottomLeftRadius: Platform.OS === 'web' ? 0 : 20,
+    borderBottomRightRadius: Platform.OS === 'web' ? 0 : 20,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   headerContent: {
     flexDirection: 'row',
@@ -363,138 +372,142 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   welcomeLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    marginBottom: 2,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    marginBottom: 1,
   },
   userName: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   roleBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignSelf: 'flex-start',
-    paddingVertical: 2,
+    paddingVertical: 1,
     paddingHorizontal: 8,
-    borderRadius: 12,
-    marginTop: 4,
+    borderRadius: 10,
+    marginTop: 2,
   },
   userRole: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,50,50,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   scrollView: {
     flex: 1,
-    marginTop: -20, // Sobrepor levemente o header
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 100,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 80,
   },
   sectionContainer: {
-    marginTop: 24,
+    marginTop: 10,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     color: '#334155',
-    marginBottom: 16,
+    marginBottom: 8,
     marginLeft: 4,
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 3,
   },
   statIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statNumber: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1E293B',
     textAlign: 'center',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
     textAlign: 'center',
   },
   menuGrid: {
-    gap: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   menuCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 4,
   },
   menuIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 10,
   },
   menuTextContainer: {
     flex: 1,
   },
   menuItemTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#1E293B',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   menuItemSubtitle: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#64748B',
   },
 });

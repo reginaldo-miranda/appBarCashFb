@@ -89,6 +89,7 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [quantidade, setQuantidade] = useState(1);
+  const [observacoes, setObservacoes] = useState('');
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [variationModalVisible, setVariationModalVisible] = useState(false);
   const [variationProduct, setVariationProduct] = useState<ProdutoExtendido | null>(null);
@@ -242,7 +243,8 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
     
     const itemData = {
       produtoId: produto._id,
-      quantidade: quantidade || 1
+      quantidade: quantidade || 1,
+      observacoes: observacoes.trim() || undefined
     } as any;
     try {
       const cm = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
@@ -251,6 +253,7 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
     
     try {
       await comandaService.addItem(comanda._id, itemData);
+      setObservacoes('');
       Alert.alert('Sucesso', `${produto.nome} adicionado à comanda!`);
       try {
         const cm = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
@@ -307,13 +310,19 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
     setVariationModalVisible(false);
     setVariationProduct(null);
     setLoadingItems(prev => new Set(prev).add(produto._id));
-    const itemData: any = { produtoId: produto._id, quantidade: quantidade || 1, variacao: payload };
+    const itemData: any = {
+      produtoId: produto._id,
+      quantidade: quantidade || 1,
+      variacao: payload,
+      observacoes: observacoes.trim() || undefined
+    };
     try {
       try {
         const cm = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
         if (String(cm).toLowerCase() === 'tablet') itemData.origem = 'tablet';
       } catch {}
       await comandaService.addItem(comanda._id, itemData);
+      setObservacoes('');
       Alert.alert('Sucesso', `${produto.nome} (variação) adicionado à comanda!`);
       onUpdateComanda();
     } catch (error) {
@@ -338,7 +347,11 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
       setVariationProduct(null);
       setLoadingItems(prev => new Set(prev).add(produto._id));
       
-      const itemData: any = { produtoId: produto._id, quantidade: quantidade || 1 };
+      const itemData: any = {
+        produtoId: produto._id,
+        quantidade: quantidade || 1,
+        observacoes: observacoes.trim() || undefined
+      };
       
       try {
         try {
@@ -346,6 +359,7 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
           if (String(cm).toLowerCase() === 'tablet') itemData.origem = 'tablet';
         } catch {}
         await comandaService.addItem(comanda._id, itemData);
+        setObservacoes('');
         Alert.alert('Sucesso', `${produto.nome} adicionado inteiro!`);
         onUpdateComanda();
       } catch (error) {
@@ -564,6 +578,11 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
       <View key={`${item._id || item.produto._id}-${index}`} style={styles.itemSelecionadoCard}>
         <View style={styles.itemInfo}>
           <Text style={styles.itemNome}>{item.nomeProduto}</Text>
+          {item.observacoes ? (
+            <Text style={{ fontSize: 12, color: '#B45309', fontWeight: '600', marginTop: 2 }}>
+              📝 Obs: {item.observacoes}
+            </Text>
+          ) : null}
           <Text style={styles.itemPreco}>R$ {item.precoUnitario?.toFixed(2)}</Text>
         </View>
 
@@ -700,15 +719,27 @@ export default function ProdutosComandaModal({ visible, onClose, comanda, onUpda
                     searchPlaceholder="Buscar produtos..."
                   />
 
-                  {/* Controle de Quantidade */}
-                  <View style={styles.quantidadeControl}>
-                    <Text style={styles.quantidadeLabel}>Qtd:</Text>
-                    <TextInput
-                      style={styles.quantidadeInput}
-                      value={quantidade.toString()}
-                      onChangeText={(text) => setQuantidade(parseInt(text) || 1)}
-                      keyboardType="numeric"
-                    />
+                  {/* Controle de Quantidade e Observações */}
+                  <View style={styles.inputsRow}>
+                    <View style={styles.quantidadeControl}>
+                      <Text style={styles.quantidadeLabel}>Qtd:</Text>
+                      <TextInput
+                        style={styles.quantidadeInput}
+                        value={quantidade.toString()}
+                        onChangeText={(text) => setQuantidade(parseInt(text) || 1)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={styles.obsControl}>
+                      <Text style={styles.quantidadeLabel}>Obs:</Text>
+                      <TextInput
+                        style={styles.obsInput}
+                        value={observacoes}
+                        onChangeText={setObservacoes}
+                        placeholder="Ex: sem cebola, gelo e limão..."
+                        placeholderTextColor="#999"
+                      />
+                    </View>
                   </View>
                 </>
               )}
@@ -989,16 +1020,40 @@ const styles = StyleSheet.create({
     marginRight: 10,
     backgroundColor: '#f9f9f9',
   },
+  inputsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
   quantidadeControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#f8f9fa',
-    marginHorizontal: 16,
-    marginBottom: 16,
     borderRadius: 8,
+  },
+  obsControl: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  obsInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 14,
+    backgroundColor: '#fff',
+    color: '#333',
   },
   quantidadeLabel: {
     fontSize: 16,

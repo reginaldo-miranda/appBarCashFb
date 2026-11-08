@@ -45,7 +45,15 @@ interface Product {
   ncm?: string;
   cest?: string;
   cfop?: string;
+  csosn?: string;
   origem?: number;
+  ibsCst?: string;
+  ibsClassTrib?: string;
+  ibsAliquota?: number;
+  cbsCst?: string;
+  cbsClassTrib?: string;
+  cbsAliquota?: number;
+  isAliquota?: number;
 }
 
 interface Categoria {
@@ -148,7 +156,15 @@ export default function AdminProdutosScreen() {
     ncm: '',
     cest: '',
     cfop: '',
+    csosn: '102',
     origem: '0',
+    ibsCst: '410',
+    ibsClassTrib: '410031',
+    ibsAliquota: '',
+    cbsCst: '410',
+    cbsClassTrib: '410031',
+    cbsAliquota: '',
+    isAliquota: '',
   });
 
   useEffect(() => {
@@ -268,7 +284,15 @@ export default function AdminProdutosScreen() {
         ncm: formData.ncm,
         cest: formData.cest,
         cfop: formData.cfop,
+        csosn: formData.csosn ? formData.csosn.replace(/\D/g, '') : '102',
         origem: parseInt(formData.origem) || 0,
+        ibsCst: formData.ibsCst ? formData.ibsCst.replace(/\D/g, '') : (formData.ibsClassTrib?.startsWith('410') ? '410' : '000'),
+        ibsClassTrib: formData.ibsClassTrib ? formData.ibsClassTrib.replace(/\D/g, '') : '410031',
+        ibsAliquota: formData.ibsAliquota !== '' ? parseFloat(formData.ibsAliquota.replace(',', '.')) : null,
+        cbsCst: formData.cbsCst ? formData.cbsCst.replace(/\D/g, '') : (formData.cbsClassTrib?.startsWith('410') ? '410' : '000'),
+        cbsClassTrib: formData.cbsClassTrib ? formData.cbsClassTrib.replace(/\D/g, '') : '410031',
+        cbsAliquota: formData.cbsAliquota !== '' ? parseFloat(formData.cbsAliquota.replace(',', '.')) : null,
+        isAliquota: formData.isAliquota !== '' ? parseFloat(formData.isAliquota.replace(',', '.')) : null,
       };
 
       if (selectedSetores !== null) {
@@ -309,7 +333,15 @@ export default function AdminProdutosScreen() {
       ncm: product.ncm || '',
       cest: product.cest || '',
       cfop: product.cfop || '',
+      csosn: (product as any).csosn || '102',
       origem: (product.origem ?? 0).toString(),
+      ibsCst: (product as any).ibsCst || ((product as any).ibsClassTrib?.startsWith('410') ? '410' : '410'),
+      ibsClassTrib: (product as any).ibsClassTrib || '410031',
+      ibsAliquota: (product as any).ibsAliquota !== null && (product as any).ibsAliquota !== undefined ? String((product as any).ibsAliquota) : '',
+      cbsCst: (product as any).cbsCst || ((product as any).cbsClassTrib?.startsWith('410') ? '410' : '410'),
+      cbsClassTrib: (product as any).cbsClassTrib || '410031',
+      cbsAliquota: (product as any).cbsAliquota !== null && (product as any).cbsAliquota !== undefined ? String((product as any).cbsAliquota) : '',
+      isAliquota: (product as any).isAliquota !== null && (product as any).isAliquota !== undefined ? String((product as any).isAliquota) : '',
     });
     setEditingProduct(product);
     setSelectedSetores(null);
@@ -362,7 +394,15 @@ export default function AdminProdutosScreen() {
       ncm: '',
       cest: '',
       cfop: '',
+      csosn: '102',
       origem: '0',
+      ibsCst: '410',
+      ibsClassTrib: '410031',
+      ibsAliquota: '',
+      cbsCst: '410',
+      cbsClassTrib: '410031',
+      cbsAliquota: '',
+      isAliquota: '',
     });
     setEditingProduct(null);
     setSelectedSetores([]);
@@ -805,6 +845,19 @@ export default function AdminProdutosScreen() {
                                />
                             </View>
                             <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                               <Text style={styles.label}>CSOSN (Simples)</Text>
+                               <TextInput
+                                 style={styles.input}
+                                 value={formData.csosn}
+                                 onChangeText={(t) => setFormData({...formData, csosn: t})}
+                                 keyboardType="numeric"
+                                 placeholder="Ex: 102"
+                               />
+                            </View>
+                         </View>
+
+                         <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
                                <Text style={styles.label}>Origem (0-8)</Text>
                                <TextInput
                                  style={styles.input}
@@ -814,6 +867,94 @@ export default function AdminProdutosScreen() {
                                  maxLength={1}
                                  placeholder="Ex: 0"
                                />
+                            </View>
+                         </View>
+
+                         {/* ── LINHA IBS (Reforma Tributária) ── */}
+                         <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }}>
+                            <Text style={[styles.label, { color: '#6A1B9A', fontWeight: 'bold', marginBottom: 8 }]}>IBS (Reforma Tributária)</Text>
+                            <View style={styles.row}>
+                               <View style={[styles.inputGroup, { flex: 1, marginRight: 6 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#6A1B9A' }]}>CST IBS</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.ibsCst}
+                                    onChangeText={(t) => setFormData({...formData, ibsCst: t})}
+                                    keyboardType="numeric"
+                                    maxLength={3}
+                                    placeholder="000"
+                                  />
+                               </View>
+                               <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#6A1B9A' }]}>Cl.Trib.IBS</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.ibsClassTrib}
+                                    onChangeText={(t) => setFormData({...formData, ibsClassTrib: t})}
+                                    keyboardType="numeric"
+                                    maxLength={6}
+                                    placeholder="410031"
+                                  />
+                               </View>
+                               <View style={[styles.inputGroup, { flex: 1, marginLeft: 6 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#6A1B9A' }]}>Alíq. IBS %</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.ibsAliquota}
+                                    onChangeText={(t) => setFormData({...formData, ibsAliquota: t})}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0.0000"
+                                  />
+                               </View>
+                            </View>
+                         </View>
+
+                         {/* ── LINHA CBS + Imposto Seletivo ── */}
+                         <View style={{ marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }}>
+                            <Text style={[styles.label, { color: '#E65100', fontWeight: 'bold', marginBottom: 8 }]}>CBS e Imposto Seletivo</Text>
+                            <View style={styles.row}>
+                               <View style={[styles.inputGroup, { flex: 1, marginRight: 4 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#E65100' }]}>CST CBS</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.cbsCst}
+                                    onChangeText={(t) => setFormData({...formData, cbsCst: t})}
+                                    keyboardType="numeric"
+                                    maxLength={3}
+                                    placeholder="000"
+                                  />
+                               </View>
+                               <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#E65100' }]}>Cl.Trib.CBS</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.cbsClassTrib}
+                                    onChangeText={(t) => setFormData({...formData, cbsClassTrib: t})}
+                                    keyboardType="numeric"
+                                    maxLength={6}
+                                    placeholder="410031"
+                                  />
+                               </View>
+                               <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#E65100' }]}>Alíq. CBS %</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.cbsAliquota}
+                                    onChangeText={(t) => setFormData({...formData, cbsAliquota: t})}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0.0000"
+                                  />
+                               </View>
+                               <View style={[styles.inputGroup, { flex: 1, marginLeft: 4 }]}>
+                                  <Text style={[styles.label, { fontSize: 11, color: '#B71C1C' }]}>IS %</Text>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={formData.isAliquota}
+                                    onChangeText={(t) => setFormData({...formData, isAliquota: t})}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0.00"
+                                  />
+                               </View>
                             </View>
                          </View>
                       </View>

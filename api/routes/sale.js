@@ -529,7 +529,8 @@ router.get('/:id', async (req, res) => {
   try {
     const prisma = getActivePrisma();
     const id = Number(req.params.id);
-    const { produtoId, quantidade } = req.body;
+    const { produtoId, quantidade, observacoes, observacao } = req.body;
+    const obsItem = (observacoes || observacao || '').toString().trim() || null;
     const variacao = req.body?.variacao || null;
     const origemRaw = (req.body?.origem || req.headers['x-client-mode'] || '').toString().toLowerCase();
     let origem = origemRaw === 'tablet' ? 'tablet' : 'default';
@@ -592,7 +593,7 @@ router.get('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Produto inativo' });
     }
 
-    // Busca item pendente idêntico (mesmo produto e SEM variação)
+    // Busca item pendente idêntico (mesmo produto, sem variação e com a mesma observação)
     const itemExistente = Array.isArray(venda.itens)
       ? venda.itens.find((i) => {
           const sameProduct = Number(i.productId) === prodId;
@@ -600,8 +601,9 @@ router.get('/:id', async (req, res) => {
           // Garante que o item existente não tenha variação (nem tipo, nem opções)
           // Isso evita mesclar um produto simples com um que já tem variação
           const hasNoVariation = !i.variacaoTipo && (!i.variacaoOpcoes || (Array.isArray(i.variacaoOpcoes) && i.variacaoOpcoes.length === 0));
+          const sameObs = (i.observacoes || null) === obsItem;
           
-          return sameProduct && isPendente && hasNoVariation;
+          return sameProduct && isPendente && hasNoVariation && sameObs;
       })
       : null;
       
@@ -708,6 +710,7 @@ router.get('/:id', async (req, res) => {
           status: 'pendente',
           createdAt: new Date(),
           origem,
+          observacoes: obsItem,
           variacaoTipo: variacaoTipo || undefined,
           variacaoRegraPreco: variacaoRegra || undefined,
           variacaoOpcoes: variacaoOpcoes || undefined
@@ -737,7 +740,7 @@ router.get('/:id', async (req, res) => {
         if (nome === 'comandas' || nome === 'mesas' || nome === 'cozinha') cozinha = true;
         if (nome === 'balcão' || nome === 'balcao' || nome === 'bar') bar = true;
         if (modo === 'impressora' && s.printerId) {
-          const content = buildPrintContent({ setorNome: s.nome, saleRef, productNome: it?.product?.nome || produto?.nome || '', quantidade: qty, observacao: it?.observacao || '' });
+          const content = buildPrintContent({ setorNome: s.nome, saleRef, productNome: it?.product?.nome || produto?.nome || '', quantidade: qty, observacao: it?.observacoes || it?.observacao || '' });
           enqueuePrintJob({ saleId: id, productId: prodId, setorId: Number(s.id), printerId: Number(s.printerId), content }).catch(() => {});
         }
         if (modo === 'whatsapp' && s.whatsappDestino) {

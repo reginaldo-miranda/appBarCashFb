@@ -54,6 +54,7 @@ router.get('/:id/queue', async (req, res) => {
         si.nomeProduto,
         si.quantidade,
         si.status,
+        si.observacoes,
         si.createdAt,
         si.preparedAt,
         si.variacaoOpcoes,
@@ -128,6 +129,7 @@ router.get('/:id/queue', async (req, res) => {
         preparedAt: item.preparedAt,
         preparedBy: item.preparedByNome,
         preparedById: item.preparedById,
+        observacoes: item.observacoes || null,
         variacaoOpcoes: item.variacaoOpcoes ? (typeof item.variacaoOpcoes === 'string' ? JSON.parse(item.variacaoOpcoes) : item.variacaoOpcoes) : []
       };
     });

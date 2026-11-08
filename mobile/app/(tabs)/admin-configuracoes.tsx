@@ -1293,9 +1293,14 @@ export default function AdminConfiguracoesScreen() {
             <Text style={styles.sectionHeader}>4. Dados Fiscais (NFC-e)</Text>
             <Text style={styles.inputLabel}>Regime Tributário</Text>
              <View style={styles.radioGroup}>
-                {['simples_nacional', 'lucro_presumido', 'lucro_real'].map(opt => (
+                {[
+                  { value: 'simples_nacional', label: 'SIMPLES NACIONAL' },
+                  { value: 'simples_nacional_mei', label: 'MEI' },
+                  { value: 'lucro_presumido', label: 'LUCRO PRESUMIDO' },
+                  { value: 'lucro_real', label: 'LUCRO REAL' },
+                ].map(({ value: opt, label }) => (
                     <TouchableOpacity key={opt} style={[styles.radioBtn, companyData.regimeTributario === opt && styles.radioBtnSelected]} onPress={() => setCompanyData({...companyData, regimeTributario: opt})}>
-                        <Text style={[styles.radioText, companyData.regimeTributario === opt && styles.radioTextSelected]}>{opt.replace('_', ' ').toUpperCase()}</Text>
+                        <Text style={[styles.radioText, companyData.regimeTributario === opt && styles.radioTextSelected]}>{label}</Text>
                     </TouchableOpacity>
                 ))}
             </View>

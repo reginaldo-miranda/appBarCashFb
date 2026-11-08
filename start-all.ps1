@@ -2,9 +2,35 @@ Write-Host "Iniciando Sistema Completo do Bar..."
 $root = $PSScriptRoot
 function Get-LanIp {
   $ip = $null
-  try { $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.IPAddress -notmatch '^169\.254\.' } | Select-Object -ExpandProperty IPAddress -First 1) } catch {}
+  try {
+    $configs = Get-NetIPConfiguration | Where-Object { 
+      $_.IPv4DefaultGateway -ne $null -and 
+      $_.InterfaceAlias -notmatch 'vEthernet|WSL|VirtualBox|VMware|Docker|Loopback' 
+    }
+    $ip = ($configs | ForEach-Object { $_.IPv4Address.IPAddress } | Where-Object { $_ -match '^192\.168\.' } | Select-Object -First 1)
+    if (-not $ip) {
+      $ip = ($configs | ForEach-Object { $_.IPv4Address.IPAddress } | Where-Object { $_ -notmatch '^169\.254\.' -and $_ -ne '127.0.0.1' -and $_ -notmatch '^172\.' } | Select-Object -First 1)
+    }
+  } catch {}
+
   if (-not $ip -or $ip.Trim() -eq '') {
-    try { $ip = ([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { $_.AddressFamily -eq 'InterNetwork' -and $_.IPAddressToString -ne '127.0.0.1' } | Select-Object -ExpandProperty IPAddressToString -First 1) } catch {}
+    try { 
+      $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
+        $_.IPAddress -ne '127.0.0.1' -and 
+        $_.IPAddress -notmatch '^169\.254\.' -and 
+        $_.InterfaceAlias -notmatch 'vEthernet|WSL|VirtualBox|VMware|Docker|Loopback' -and
+        $_.IPAddress -match '^192\.168\.'
+      } | Select-Object -ExpandProperty IPAddress -First 1) 
+    } catch {}
+  }
+  if (-not $ip -or $ip.Trim() -eq '') {
+    try { 
+      $ip = ([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { 
+        $_.AddressFamily -eq 'InterNetwork' -and 
+        $_.IPAddressToString -ne '127.0.0.1' -and 
+        $_.IPAddressToString -match '^192\.168\.' 
+      } | Select-Object -ExpandProperty IPAddressToString -First 1) 
+    } catch {}
   }
   return [string]$ip
 }

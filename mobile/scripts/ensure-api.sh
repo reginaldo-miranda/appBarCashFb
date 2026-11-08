@@ -8,17 +8,21 @@
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 API_DIR="$ROOT_DIR/api"
 
-# Detectar IP da LAN automaticamente no macOS
-DETECTED_IP=$(ipconfig getifaddr en0 2>/dev/null)
-if [ -z "$DETECTED_IP" ]; then
-  DETECTED_IP=$(ipconfig getifaddr en1 2>/dev/null)
+# Se REACT_NATIVE_PACKAGER_HOSTNAME for virtual (172.x.x.x), descartar para re-detectar IP físico real
+if [[ "$REACT_NATIVE_PACKAGER_HOSTNAME" =~ ^172\. ]]; then
+  unset REACT_NATIVE_PACKAGER_HOSTNAME
 fi
+
+# Detectar IP da LAN automaticamente via Node.js (cross-platform, filtrando interfaces virtuais Hyper-V/WSL/Docker)
+DETECTED_IP=$(node -e "const os = require('os'); const ifaces = os.networkInterfaces(); let ip = ''; for (const k in ifaces) { if (/vmware|virtualbox|vbox|wsl|docker|vethernet/i.test(k)) continue; for (const i of ifaces[k]) { if (i.family === 'IPv4' && !i.internal) { if (i.address.startsWith('192.168.')) { ip = i.address; break; } if (!ip && !i.address.startsWith('172.') && !i.address.startsWith('169.254.')) { ip = i.address; } } } if (ip && ip.startsWith('192.168.')) break; } console.log(ip || '192.168.0.49');" 2>/dev/null)
+
 if [ -z "$DETECTED_IP" ]; then
-  DETECTED_IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | head -1 | awk '{print $2}')
+  DETECTED_IP="192.168.0.49"
 fi
+
 LAN_IP=${REACT_NATIVE_PACKAGER_HOSTNAME:-$DETECTED_IP}
-if [ -z "$LAN_IP" ]; then
-  LAN_IP="192.168.0.176"
+if [ -z "$LAN_IP" ] || [[ "$LAN_IP" =~ ^172\. ]]; then
+  LAN_IP="$DETECTED_IP"
 fi
 
 # Exportar variáveis essenciais
