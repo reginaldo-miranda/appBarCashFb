@@ -36,7 +36,8 @@ export const NfceService = {
             const response = await api.post('/nfce/emitir', { saleId, itemsOverlay });
             return response.data;
         } catch (error: any) {
-            throw error.response?.data?.error || 'Erro ao emitir NFC-e';
+            const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Erro ao emitir NFC-e';
+            throw errMsg;
         }
     },
 
