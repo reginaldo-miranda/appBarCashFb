@@ -28,6 +28,7 @@ import SearchAndFilter from '../../src/components/SearchAndFilter';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { events } from '../../src/utils/eventBus';
 import { testApiConnection, getCurrentBaseUrl } from '../../src/services/api';
+import BulkProductModal from '../../src/components/BulkProductModal';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -187,6 +188,53 @@ export default function AdminProdutosScreen() {
   });
 
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  const handleBulkSuccess = () => {
+    setShowBulkModal(false);
+    setModalVisible(false);
+    loadInitialData();
+    Alert.alert('Sucesso', 'Produtos replicados com sucesso!');
+  };
+
+  const getBaseProductForBulk = () => {
+    const parseValue = (val: any) => {
+      if (!val) return 0;
+      return parseFloat(val.toString().replace(',', '.')) || 0;
+    };
+    return {
+      nome: formData.nome,
+      descricao: formData.descricao,
+      preco: formData.precoVenda,
+      precoVenda: parseValue(formData.precoVenda),
+      precoCusto: parseValue(formData.precoCusto),
+      categoria: formData.categoria,
+      tipo: formData.tipo,
+      grupo: formData.grupo,
+      unidade: formData.unidade || 'un',
+      ativo: formData.ativo,
+      quantidade: (parseInt(formData.estoqueDeposito) || 0) + (parseInt(formData.estoqueGeladeira) || 0),
+      estoqueDeposito: parseInt(formData.estoqueDeposito) || 0,
+      estoqueGeladeira: parseInt(formData.estoqueGeladeira) || 0,
+      localVendaNome: formData.localVendaNome || 'Geladeira 1',
+      localVendaId: formData.localVendaId || undefined,
+      disponivel: formData.disponivel,
+      imagem: formData.imagem || null,
+      ncm: formData.ncm,
+      cest: formData.cest,
+      cfop: formData.cfop,
+      csosn: formData.csosn ? formData.csosn.replace(/\D/g, '') : '102',
+      origem: parseInt(formData.origem) || 0,
+      ibsCst: formData.ibsCst ? formData.ibsCst.replace(/\D/g, '') : (formData.ibsClassTrib?.startsWith('410') ? '410' : '000'),
+      ibsClassTrib: formData.ibsClassTrib ? formData.ibsClassTrib.replace(/\D/g, '') : '410031',
+      ibsAliquota: formData.ibsAliquota !== '' ? parseFloat(formData.ibsAliquota.replace(',', '.')) : null,
+      cbsCst: formData.cbsCst ? formData.cbsCst.replace(/\D/g, '') : (formData.cbsClassTrib?.startsWith('410') ? '410' : '000'),
+      cbsClassTrib: formData.cbsClassTrib ? formData.cbsClassTrib.replace(/\D/g, '') : '410031',
+      cbsAliquota: formData.cbsAliquota !== '' ? parseFloat(formData.cbsAliquota.replace(',', '.')) : null,
+      isAliquota: formData.isAliquota !== '' ? parseFloat(formData.isAliquota.replace(',', '.')) : null,
+      setoresImpressaoIds: selectedSetores !== null ? selectedSetores.map((id) => Number(id)) : undefined,
+    };
+  };
 
   const handlePickImage = async () => {
     if (Platform.OS === 'web') {
@@ -960,13 +1008,32 @@ export default function AdminProdutosScreen() {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalContainer}>
-             <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-                </Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                   <SafeIcon name="close" size={24} color="#64748B" fallbackText="X" />
-                </TouchableOpacity>
+             <View style={styles.modalHeaderWrapper}>
+               <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (!formData.nome?.trim() || !formData.precoVenda?.toString().trim()) {
+                          Alert.alert('Atenção', 'Preencha pelo menos Nome e Preço de Venda antes de replicar.');
+                          return;
+                        }
+                        setShowBulkModal(true);
+                      }}
+                      style={styles.replicarBtn}
+                      activeOpacity={0.7}
+                    >
+                      <SafeIcon name="copy-outline" size={16} color="#2563EB" fallbackText="📑" />
+                      <Text style={styles.replicarBtnText}>Replicar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                       <SafeIcon name="close" size={24} color="#64748B" fallbackText="X" />
+                    </TouchableOpacity>
+                  </View>
+               </View>
              </View>
 
              <KeyboardAvoidingView
@@ -1195,48 +1262,47 @@ export default function AdminProdutosScreen() {
                          <Text style={styles.sectionLabel}>Estoque e Disponibilidade</Text>
                          
                          {/* Local de Venda / Ponto de Saída */}
-                         <View style={{ marginBottom: 12 }}>
-                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                         <View style={{ marginBottom: 14 }}>
+                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                              <Text style={[styles.label, { marginBottom: 0 }]}>📍 Local de Venda (Onde o produto fica):</Text>
                              <TouchableOpacity 
                                onPress={() => setShowModalNovoLocal(true)}
-                               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}
                              >
-                               <Ionicons name="add-circle-outline" size={14} color="#0284C7" />
-                               <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0284C7', marginLeft: 4 }}>+ Novo Local</Text>
+                               <Ionicons name="add-circle-outline" size={15} color="#0284C7" />
+                               <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#0284C7', marginLeft: 4 }}>+ Novo Local</Text>
                              </TouchableOpacity>
                            </View>
-                           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+
+                           {/* Seletor de locais com quebra de linha (flexWrap) para exibir todos os locais sem cortar */}
+                           <View style={styles.locaisSelectorContainer}>
                              {locaisEstoque.map(loc => {
                                const isSelected = formData.localVendaNome === loc.nome;
                                return (
                                  <TouchableOpacity
                                    key={loc.id}
                                    onPress={() => setFormData({ ...formData, localVendaNome: loc.nome, localVendaId: loc.id })}
-                                   style={{
-                                     paddingHorizontal: 12,
-                                     paddingVertical: 7,
-                                     borderRadius: 8,
-                                     backgroundColor: isSelected ? '#0284C7' : '#F1F5F9',
-                                     borderWidth: 1,
-                                     borderColor: isSelected ? '#0284C7' : '#CBD5E1',
-                                     flexDirection: 'row',
-                                     alignItems: 'center',
-                                     gap: 5
-                                   }}
+                                   style={[
+                                     styles.localSelectorChip,
+                                     isSelected && styles.localSelectorChipActive
+                                   ]}
+                                   activeOpacity={0.7}
                                  >
                                    <Ionicons 
                                      name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
                                      size={14} 
                                      color={isSelected ? '#fff' : '#475569'} 
                                    />
-                                   <Text style={{ fontSize: 13, fontWeight: isSelected ? 'bold' : 'normal', color: isSelected ? '#fff' : '#334155' }}>
+                                   <Text style={[
+                                     styles.localSelectorChipText,
+                                     isSelected && styles.localSelectorChipTextActive
+                                   ]}>
                                      {loc.nome}
                                    </Text>
                                  </TouchableOpacity>
                                );
                              })}
-                           </ScrollView>
+                           </View>
                          </View>
 
                          <View style={styles.row}>
@@ -1462,6 +1528,14 @@ export default function AdminProdutosScreen() {
              </View>
           </View>
         </Modal>
+
+        {/* Modal de Replicação em Massa */}
+        <BulkProductModal
+          visible={showBulkModal}
+          onClose={() => setShowBulkModal(false)}
+          baseProduct={getBaseProductForBulk()}
+          onSuccess={handleBulkSuccess}
+        />
 
         {/* Modal de Cadastro Rápido de Novo Local */}
         <Modal
@@ -1945,20 +2019,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  modalHeaderWrapper: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    maxWidth: 840,
+    width: '100%',
+    alignSelf: 'center',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1E293B',
+  },
+  replicarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 6,
+  },
+  replicarBtnText: {
+    color: '#2563EB',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   closeButton: {
     padding: 8,
@@ -1974,15 +2070,49 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     width: '100%',
-    maxWidth: 1200, // Aumentado para melhor uso em Desktop
+    maxWidth: 840, // Otimizado de 1200 para 840 para não ficar excessivamente largo
     alignSelf: 'center', // Centraliza o card
     shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 3,
+  },
+  locaisSelectorContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  localSelectorChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  localSelectorChipActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
+  },
+  localSelectorChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#334155',
+  },
+  localSelectorChipTextActive: {
+    fontWeight: 'bold',
+    color: '#fff',
   },
   formSection: {
     marginBottom: 24,
