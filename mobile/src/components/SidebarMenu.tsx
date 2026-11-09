@@ -120,6 +120,7 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
       icon: 'flash-outline',
       color: '#4CAF50',
       items: [
+        { label: 'Início (Home)', route: '/(tabs)', icon: 'home', color: '#2563EB' },
         { label: 'Nova Venda - Balcão', route: '/sale?type=balcao', icon: 'storefront', color: '#4CAF50' },
         { label: 'Gerenciar Mesas', route: '/(tabs)/mesas', icon: 'restaurant', color: '#2196F3' },
         { label: 'Comandas', route: '/(tabs)/comandas', icon: 'receipt', color: '#FF9800' },
@@ -160,6 +161,7 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
         { label: 'Setores de Impressão', route: '/setores/listagem', icon: 'print', color: '#455A64' },
         { label: 'Clientes', route: '/(tabs)/admin-clientes', icon: 'people', color: '#0288D1' },
         { label: 'Funcionários', route: '/(tabs)/admin-funcionarios', icon: 'person-add', color: '#5E35B1' },
+        { label: 'Perfis de Acesso', route: '/(tabs)/admin-perfis', icon: 'shield-checkmark', color: '#3949AB' },
       ],
     },
     {
@@ -177,6 +179,7 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
           color: '#0284C7',
           action: () => events.emit('qrcode:open'),
         },
+        { label: 'Ajuda (Manual)', route: '/(tabs)/ajuda', icon: 'help-circle', color: '#0284C7' },
       ],
     },
   ];
@@ -218,7 +221,11 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
       >
         {/* Cabeçalho do Menu */}
         <View style={styles.drawerHeader}>
-          <View style={styles.drawerHeaderInfo}>
+          <TouchableOpacity
+            style={styles.drawerHeaderInfo}
+            onPress={() => navigateTo('/(tabs)')}
+            activeOpacity={0.7}
+          >
             <View style={styles.logoBadge}>
               <Ionicons name="wine" size={20} color="#fff" />
             </View>
@@ -226,7 +233,7 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
               <Text style={styles.drawerHeaderTitle}>AppBarCash</Text>
               <Text style={styles.drawerHeaderSubtitle}>{user?.name || 'Administrador'}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity onPress={closeMenu} style={styles.closeBtn} activeOpacity={0.7}>
             <Ionicons name="close" size={22} color="#64748B" />
           </TouchableOpacity>
@@ -401,3 +408,4 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
 });
+

@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '../../components/haptic-tab';
 import ProductsTabButton from '../../src/components/ProductsTabButton';
@@ -10,6 +10,8 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { SafeIcon } from '../../components/SafeIcon';
 import { Platform, useWindowDimensions } from 'react-native';
 import api from '../../src/services/api';
+import SidebarMenu from '../../src/components/SidebarMenu';
+import { events } from '../../src/utils/eventBus';
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
@@ -81,42 +83,33 @@ export default function TabLayout() {
   // }, [loading, isAuthenticated]);
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#666',
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: '#2196F3',
-          height: Platform.OS === 'web' ? 46 : undefined,
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: Platform.OS === 'web' ? 16 : 18,
-        },
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#e2e8f0',
-          height: 60,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 4,
-          paddingTop: 4,
-          ...(Platform.OS === 'web' ? {
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-          } : {}),
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-          marginBottom: 2,
-        },
-      }}>
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: '#2196F3',
+          tabBarInactiveTintColor: '#666',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#2196F3',
+            height: Platform.OS === 'web' ? 46 : undefined,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: Platform.OS === 'web' ? 16 : 18,
+          },
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => events.emit('sidebar:toggle')}
+              style={{ marginLeft: 12, padding: 6 }}
+              activeOpacity={0.7}
+            >
+              <SafeIcon name="menu" size={24} color="#fff" fallbackText="☰" />
+            </TouchableOpacity>
+          ),
+          tabBarButton: HapticTab,
+          tabBarStyle: { display: 'none' },
+        }}>
       <Tabs.Screen
         name="index"
         options={{
@@ -281,6 +274,8 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    <SidebarMenu />
+  </View>
   );
 }
 

@@ -20,7 +20,6 @@ import { saleService, mesaService, systemService } from '../../src/services/api'
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { events } from '../../src/utils/eventBus'
 import { SafeIcon } from '../../components/SafeIcon';
-import SidebarMenu from '../../src/components/SidebarMenu';
 import QrCodeAcessoMobile from '../../src/components/QrCodeAcessoMobile';
 
 // Header Gradient Fallback
@@ -211,8 +210,6 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
-      {/* Menu Lateral Retrátil com Auto-Hide (Hover no Desktop / Toque no Mobile) */}
-      <SidebarMenu />
 
       <ScrollView
         style={styles.scrollView}
@@ -223,20 +220,11 @@ export default function HomeScreen() {
       >
         <HeaderBackground style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={styles.hamburgerButton}
-                onPress={() => events.emit('sidebar:toggle')}
-                activeOpacity={0.7}
-              >
-                <SafeIcon name="menu" size={24} color="#fff" fallbackText="☰" />
-              </TouchableOpacity>
-              <View style={styles.userInfo}>
-                <Text style={styles.welcomeLabel}>Bem-vindo(a),</Text>
-                <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
-                <View style={styles.roleBadge}>
-                  <Text style={styles.userRole}>{user?.role?.nome || (typeof user?.role === 'string' ? user.role : 'Funcionário')}</Text>
-                </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.welcomeLabel}>Bem-vindo(a),</Text>
+              <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+              <View style={styles.roleBadge}>
+                <Text style={styles.userRole}>{user?.role?.nome || (typeof user?.role === 'string' ? user.role : 'Funcionário')}</Text>
               </View>
             </View>
             <View style={styles.headerActions}>
