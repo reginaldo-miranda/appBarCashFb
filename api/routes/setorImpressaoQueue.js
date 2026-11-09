@@ -115,6 +115,8 @@ router.get('/:id/queue', async (req, res) => {
       const respMesa = item.mesaResponsavelNome || null;
       const respComanda = item.comandaNome || null;
       const responsavel = respMesa || respComanda || item.clienteNome || null;
+      // Normalizar status operacional: se estiver 'pago', para a cozinha/bar é 'pendente' (em preparação)
+      const operationalStatus = (item.status === 'pago') ? 'pendente' : item.status;
       return {
         id: item.id,
         saleId: item.saleId,
@@ -125,7 +127,9 @@ router.get('/:id/queue', async (req, res) => {
         funcionario: item.funcionarioNome || 'Não informado',
         funcionarioId: item.funcionarioId || null,
         horario: item.createdAt,
-        status: item.status,
+        status: operationalStatus,
+        financeiroStatus: item.status,
+        isPago: item.status === 'pago',
         preparedAt: item.preparedAt,
         preparedBy: item.preparedByNome,
         preparedById: item.preparedById,
@@ -186,13 +190,10 @@ router.patch('/sale/:saleId/item/:itemId/status', async (req, res) => {
     }
 
     const saleStatus = existingItem.sale?.status;
-    const tipoVenda = String(existingItem.sale?.tipoVenda || '').toLowerCase();
-    const isFinalizadaPermitida = saleStatus === 'finalizada' && ['balcao', 'delivery'].includes(tipoVenda);
-
-    if (saleStatus && saleStatus !== 'aberta' && !isFinalizadaPermitida) {
+    if (saleStatus === 'cancelada') {
       return res.status(400).json({
         success: false,
-        message: 'Venda não está aberta para atualização de status'
+        message: 'Não é possível alterar itens de uma venda cancelada'
       });
     }
 
@@ -201,7 +202,7 @@ router.patch('/sale/:saleId/item/:itemId/status', async (req, res) => {
     if (status === 'entregue') {
       const fallbackPrepared = Number(preparedById) || existingItem.preparedById || existingItem.sale?.funcionarioId || null;
       const setPrepared = fallbackPrepared ? `, preparedById = IFNULL(preparedById, ${fallbackPrepared})` : '';
-      const affected = await prisma.$executeRawUnsafe(`UPDATE \`SaleItem\` SET status = 'entregue'${setPrepared} WHERE id = ${parseInt(itemId)} AND saleId = ${parseInt(saleId)} LIMIT 1`);
+      const affected = await prisma.$executeRawUnsafe(`UPDATE \`SaleItem\` SET status = 'entregue', preparedAt = IFNULL(preparedAt, NOW())${setPrepared} WHERE id = ${parseInt(itemId)} AND saleId = ${parseInt(saleId)} LIMIT 1`);
       if (!affected) {
         return res.status(404).json({ success: false, message: 'Item não encontrado para entregar' });
       }

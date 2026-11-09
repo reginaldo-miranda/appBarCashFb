@@ -358,14 +358,14 @@ export default function TabletBarScreen(props = {}) {
                 <Ionicons name="time" size={16} color="#333" />
                 <Text style={styles.waitText}>{waiting} min</Text>
               </View>
-              {item.status === 'pendente' ? (
-                <TouchableOpacity style={[styles.checkbox, { borderColor: '#9E9E9E' }]} onPress={() => alterarStatus(item, 'pronto')} activeOpacity={0.8}>
-                  <Ionicons name="square-outline" size={iconSize} color="#616161" />
-                  <Text style={[styles.checkboxText, { color: '#616161' }]}>Marcar como pronto</Text>
+              {(item.status === 'pendente' || item.status === 'pago') ? (
+                <TouchableOpacity style={[styles.checkbox, { borderColor: '#4CAF50', backgroundColor: '#E8F5E9' }]} onPress={() => alterarStatus(item, 'pronto')} activeOpacity={0.8}>
+                  <Ionicons name="checkmark-circle-outline" size={iconSize} color="#2E7D32" />
+                  <Text style={[styles.checkboxText, { color: '#2E7D32', fontWeight: 'bold' }]}>Marcar como pronto</Text>
                 </TouchableOpacity>
               ) : item.status === 'pronto' ? (
                 <TouchableOpacity
-                  style={[styles.checkbox, { borderColor: '#9E9E9E', opacity: submittingId === item.id ? 0.6 : 1 }]}
+                  style={[styles.checkbox, { borderColor: '#2196F3', backgroundColor: '#E3F2FD', opacity: submittingId === item.id ? 0.6 : 1 }]}
                   onPress={() => {
                     try {
                       console.log('Entregar clique (bar)', { id: item.realId || item.id, saleId: item.saleId, status: item.status });
@@ -382,13 +382,13 @@ export default function TabletBarScreen(props = {}) {
                   activeOpacity={0.8}
                   disabled={submittingId === item.id}
                 >
-                  <Ionicons name="square-outline" size={iconSize} color="#616161" />
-                  <Text style={[styles.checkboxText, { color: '#616161' }]}>Marcar como entregue</Text>
+                  <Ionicons name="checkmark" size={iconSize} color="#1565C0" />
+                  <Text style={[styles.checkboxText, { color: '#1565C0', fontWeight: 'bold' }]}>Marcar como entregue</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={[styles.checkbox, { borderColor: '#9E9E9E' }]}> 
-                  <Ionicons name="checkmark-circle" size={iconSize} color="#9E9E9E" />
-                  <Text style={[styles.checkboxText, { color: '#9E9E9E' }]}>Entregue</Text>
+                <View style={[styles.checkbox, { borderColor: '#9E9E9E', backgroundColor: '#F5F5F5' }]}> 
+                  <Ionicons name="checkmark-done" size={iconSize} color="#757575" />
+                  <Text style={[styles.checkboxText, { color: '#757575' }]}>Entregue</Text>
                 </View>
               )}
             </View>
@@ -398,13 +398,17 @@ export default function TabletBarScreen(props = {}) {
               <View style={{ marginBottom: 6 }}>
                 <Text style={[
                   styles.statusPill,
-                  item.status === 'pendente'
+                  (item.status === 'pendente' || item.status === 'pago')
                     ? styles.statusPending
                     : item.status === 'pronto'
                     ? styles.statusReady
                     : styles.statusDelivered
                 ]}>
-                  {item.status === 'pendente' ? 'Em preparação' : item.status === 'pronto' ? 'Pronto' : 'Entregue'}
+                  {(item.status === 'pendente' || item.status === 'pago')
+                    ? (item.isPago || item.status === 'pago' ? 'Em preparação • Pago' : 'Em preparação')
+                    : item.status === 'pronto'
+                    ? 'Pronto'
+                    : 'Entregue'}
                 </Text>
               </View>
               <Text style={styles.itemDetail}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>

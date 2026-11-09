@@ -20,7 +20,7 @@ import { saleService, mesaService, systemService } from '../../src/services/api'
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { events } from '../../src/utils/eventBus'
 import { SafeIcon } from '../../components/SafeIcon';
-import WebDropdownMenu from '../../src/components/WebDropdownMenu';
+import SidebarMenu from '../../src/components/SidebarMenu';
 import QrCodeAcessoMobile from '../../src/components/QrCodeAcessoMobile';
 
 // Header Gradient Fallback
@@ -199,22 +199,6 @@ export default function HomeScreen() {
       onPress: () => router.push('/tablet'),
     },
     {
-      title: 'Histórico',
-      subtitle: 'Vendas finalizadas',
-      icon: 'time',
-      color: '#9C27B0',
-      gradient: ['#AB47BC', '#8E24AA'],
-      onPress: () => router.push('/(tabs)/historico'),
-    },
-    {
-      title: 'Relatórios',
-      subtitle: 'Estatísticas',
-      icon: 'bar-chart',
-      color: '#607D8B',
-      gradient: ['#78909C', '#546E7A'],
-      onPress: () => router.push('/(tabs)/admin-relatorios'),
-    },
-    {
       title: 'Delivery',
       subtitle: 'Entregas',
       icon: 'bicycle',
@@ -222,19 +206,14 @@ export default function HomeScreen() {
       gradient: ['#26A69A', '#00897B'],
       onPress: () => router.push('/delivery-dashboard'),
     },
-    {
-      title: 'Estoque & Reposição',
-      subtitle: width > 768 ? 'Entrada de NF-e e transferências' : 'Depósito ➔ Geladeira',
-      icon: 'cube',
-      color: '#00838F',
-      gradient: ['#00ACC1', '#00838F'],
-      onPress: () => router.push('/estoque/movimentacao' as any),
-    },
   ];
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
+      {/* Menu Lateral Retrátil com Auto-Hide (Hover no Desktop / Toque no Mobile) */}
+      <SidebarMenu />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -244,11 +223,20 @@ export default function HomeScreen() {
       >
         <HeaderBackground style={styles.header}>
           <View style={styles.headerContent}>
-            <View style={styles.userInfo}>
-              <Text style={styles.welcomeLabel}>Bem-vindo(a),</Text>
-              <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
-              <View style={styles.roleBadge}>
-                <Text style={styles.userRole}>{user?.role?.nome || (typeof user?.role === 'string' ? user.role : 'Funcionário')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                style={styles.hamburgerButton}
+                onPress={() => events.emit('sidebar:toggle')}
+                activeOpacity={0.7}
+              >
+                <SafeIcon name="menu" size={24} color="#fff" fallbackText="☰" />
+              </TouchableOpacity>
+              <View style={styles.userInfo}>
+                <Text style={styles.welcomeLabel}>Bem-vindo(a),</Text>
+                <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+                <View style={styles.roleBadge}>
+                  <Text style={styles.userRole}>{user?.role?.nome || (typeof user?.role === 'string' ? user.role : 'Funcionário')}</Text>
+                </View>
               </View>
             </View>
             <View style={styles.headerActions}>
@@ -268,9 +256,6 @@ export default function HomeScreen() {
         </HeaderBackground>
 
         <ScreenIdentifier screenName="Home" />
-        
-        {/* Menu Dropdown - Apenas Web */}
-        {Platform.OS === 'web' && <WebDropdownMenu />}
 
         {/* Status Rápido - Apenas Web ou Tablet Grande */}
         {(Platform.OS === 'web' || Dimensions.get('window').width > 600) && (
@@ -321,15 +306,7 @@ export default function HomeScreen() {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Acesso Rápido</Text>
           <View style={styles.menuGrid}>
-            {menuItems.filter(item => {
-              // Filtrar Histórico no mobile
-              if (Platform.OS !== 'web' && item.title === 'Histórico') return false;
-              // Filtrar Relatórios no mobile (apenas Desktop)
-              if (Platform.OS !== 'web' && item.title === 'Relatórios') return false;
-              // Entrada de notas via XML e Estoque: estritamente apenas Desktop
-              if ((Platform.OS !== 'web' || width <= 768) && item.title === 'Estoque & XML') return false;
-              return true;
-            }).map((item, index) => (
+            {menuItems.map((item, index) => (
               <TouchableOpacity
                 key={index}
                 style={[styles.menuCard, cardWidthStyle]}
@@ -377,6 +354,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
+  },
+  hamburgerButton: {
+    marginRight: 12,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userInfo: {
     justifyContent: 'center',
