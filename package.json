@@ -3,12 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "start": "bash ./start-all.sh",
-    "start:api": "bash ./start-api.sh",
-    "start:mobile": "bash ./start-mobile.sh",
-    "start:api:win": "powershell -ExecutionPolicy Bypass -File .\\start-api.ps1",
-    "start:mobile:win": "powershell -ExecutionPolicy Bypass -File .\\start-mobile.ps1",
-    "start:all:win": "powershell -ExecutionPolicy Bypass -File .\\start-all.ps1"
+    "start": "bash ./iniciar-sistema.sh",
+    "start:win": ".\\Iniciar-Sistema.bat"
   },
   "dependencies": {
     "expo": "~54.0.33",

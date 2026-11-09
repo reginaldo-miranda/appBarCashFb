@@ -5,7 +5,7 @@
   "scripts": {
     "prestart": "bash ./scripts/ensure-api.sh",
     "start": "node ./node_modules/expo/bin/cli start --host lan --port 8082 -c",
-    "start:lan": "bash ../start-mobile.sh",
+    "start:lan": "node ./node_modules/expo/bin/cli start --host lan --port 8082 -c",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "node ./node_modules/expo/bin/cli start --android --host lan",
     "ios": "node ./node_modules/expo/bin/cli start --ios --host lan",
