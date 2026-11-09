@@ -1248,3 +1248,7 @@
 [2026-08-30T22:45:25.838Z] [EmitirNfce] Delivery Fee: null
 [2026-08-30T22:45:25.838Z] [EmitirNfce] Total Venda: 12
 [2026-08-30T22:45:25.839Z] [EmitirNfce] Subtotal: 12
+[2026-11-09T13:18:26.064Z] [Finalize] ID: 45 (Int: 45). FreshItens: 1, FreshCV: 0
+[2026-11-09T13:18:26.066Z] [Finalize] Recalculated Subtotal: 36
+[2026-11-09T13:18:26.096Z] [DEBUG] Finalize - FreshCV Count: 0
+[2026-11-09T13:18:26.096Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0

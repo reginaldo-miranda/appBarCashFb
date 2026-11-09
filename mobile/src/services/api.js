@@ -678,6 +678,17 @@ export const systemService = {
   shutdown: () => api.post('/shutdown'),
 };
 
+// Serviço de Estoque e Locais (Depósito / Geladeira)
+export const stockService = {
+  move: (data) => api.post('/stock/move', data),
+  transfer: (data) => api.post('/stock/transfer', data),
+  getSuppliers: () => api.get('/stock/suppliers'),
+  createSupplier: (data) => api.post('/stock/supplier', data),
+  getHistory: (params) => api.get('/stock/history', { params }),
+  importXml: (formData) => api.post('/stock/import-xml', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  confirmXml: (data) => api.post('/stock/confirm-xml', data),
+};
+
 // Função simples para configurar IP manual (para testes)
 export function setManualBaseUrl(ip, port = 3000) {
   const url = `http://${ip}:${port}/api`;

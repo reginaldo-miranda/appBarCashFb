@@ -1372,6 +1372,44 @@ router.put('/:id/finalize', async (req, res) => {
         // Não falha a venda se der erro aqui
     }
 
+    // Baixa de estoque automática na Geladeira
+    try {
+      if (Array.isArray(freshItens)) {
+        for (const it of freshItens) {
+          if (it.productId && Number(it.quantidade) > 0) {
+            const p = await prisma.product.findUnique({ where: { id: it.productId } });
+            if (p) {
+              const qtdVendida = Number(it.quantidade);
+              const novoGeladeira = Number(p.estoqueGeladeira || 0) - qtdVendida;
+              const novoTotal = Number(p.estoqueDeposito || 0) + novoGeladeira;
+              await prisma.product.update({
+                where: { id: p.id },
+                data: {
+                  estoqueGeladeira: novoGeladeira,
+                  quantidade: novoTotal
+                }
+              });
+              await prisma.stockMovement.create({
+                data: {
+                  productId: p.id,
+                  tipo: 'SAIDA',
+                  origem: 'VENDA',
+                  quantidade: qtdVendida,
+                  motivo: 'VENDA',
+                  observacao: `Venda #${vendaFinalizada.id} (${vendaFinalizada.tipoVenda || 'balcao'})`,
+                  localOrigem: 'GELADEIRA',
+                  usuarioId: req.user?.id || null
+                }
+              });
+            }
+          }
+        }
+      }
+    } catch (errStock) {
+      console.error('[SALE-FINALIZE] Erro ao baixar estoque da geladeira:', errStock);
+      // Não bloqueia a venda se houver falha de log de estoque
+    }
+
     res.json(mapSaleResponse(vendaFinalizada));
     try { recordSaleUpdate(vendaFinalizada.id); } catch {}
   } catch (error) {

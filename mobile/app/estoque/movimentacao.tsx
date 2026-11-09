@@ -28,6 +28,8 @@ interface Product {
   quantidade: number;
   precoCusto: number;
   unidade: string;
+  estoqueDeposito?: number;
+  estoqueGeladeira?: number;
 }
 
 interface Supplier {
@@ -78,17 +80,27 @@ interface XmlItem {
 
 export default function MovimentacaoEstoque() {
   const params = useLocalSearchParams();
-  const [activeTab, setActiveTab] = useState<'manual' | 'xml'>(params.tab === 'manual' ? 'manual' : 'xml');
+  const [activeTab, setActiveTab] = useState<'transfer' | 'manual' | 'xml'>(
+    params.tab === 'manual' ? 'manual' : params.tab === 'xml' ? 'xml' : 'transfer'
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [tipos, setTipos] = useState<Tipo[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // States Transferência entre Locais (Depósito <-> Geladeira)
+  const [transferProduct, setTransferProduct] = useState<Product | null>(null);
+  const [transferDirection, setTransferDirection] = useState<'DEP_TO_GEL' | 'GEL_TO_DEP'>('DEP_TO_GEL');
+  const [transferQty, setTransferQty] = useState('');
+  const [transferObs, setTransferObs] = useState('');
+
   // States Manual
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productSearch, setProductSearch] = useState('');
   const [showProductSearchModal, setShowProductSearchModal] = useState(false);
+  const [productSearchTarget, setProductSearchTarget] = useState<'manual' | 'transfer'>('transfer');
+  const [manualLocal, setManualLocal] = useState<'DEPOSITO' | 'GELADEIRA'>('DEPOSITO');
   const [movementType, setMovementType] = useState<'ENTRADA' | 'SAIDA' | 'AJUSTE'>('ENTRADA');
   const [qty, setQty] = useState('');
   const [costPrice, setCostPrice] = useState('');
@@ -161,6 +173,18 @@ export default function MovimentacaoEstoque() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (params.productId && products.length > 0) {
+      const prod = products.find(p => String(p.id) === String(params.productId));
+      if (prod) {
+        setTransferProduct(prod);
+        if (params.tab === 'transfer' || !params.tab) {
+          setActiveTab('transfer');
+        }
+      }
+    }
+  }, [products, params.productId, params.tab]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -170,13 +194,79 @@ export default function MovimentacaoEstoque() {
         categoryService.getAll(),
         typeService.getAll(),
       ]);
-      setProducts(prodRes.data || []);
+      const prods = prodRes.data || [];
+      setProducts(prods);
       setSuppliers(supRes.data || []);
       setCategorias(catRes || []);
       setTipos(tipRes || []);
+
+      // Atualiza produto selecionado se já houver um selecionado
+      if (transferProduct) {
+        const updatedTransfer = prods.find((p: Product) => p.id === transferProduct.id);
+        if (updatedTransfer) setTransferProduct(updatedTransfer);
+      }
+      if (selectedProduct) {
+        const updatedSelected = prods.find((p: Product) => p.id === selectedProduct.id);
+        if (updatedSelected) setSelectedProduct(updatedSelected);
+      }
     } catch (e) {
       console.error(e);
       Alert.alert('Erro', 'Não foi possível carregar os dados cadastrais.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Transferência entre Depósito e Geladeira
+  const handleTransferStock = async () => {
+    if (!transferProduct) {
+      Alert.alert('Atenção', 'Selecione um produto para transferir.');
+      return;
+    }
+    if (!transferQty || isNaN(Number(transferQty)) || Number(transferQty) <= 0) {
+      Alert.alert('Atenção', 'Digite uma quantidade válida maior que zero.');
+      return;
+    }
+
+    const qtyNum = Number(transferQty);
+    const origem = transferDirection === 'DEP_TO_GEL' ? 'DEPOSITO' : 'GELADEIRA';
+    const destino = transferDirection === 'DEP_TO_GEL' ? 'GELADEIRA' : 'DEPOSITO';
+
+    setLoading(true);
+    try {
+      const res = await api.post('/stock/transfer', {
+        productId: transferProduct.id,
+        quantidade: qtyNum,
+        origem,
+        destino,
+        observacao: transferObs || undefined,
+      });
+
+      const depAtual = res.data?.estoqueDeposito ?? (origem === 'DEPOSITO' ? (transferProduct.estoqueDeposito || 0) - qtyNum : (transferProduct.estoqueDeposito || 0) + qtyNum);
+      const gelAtual = res.data?.estoqueGeladeira ?? (destino === 'GELADEIRA' ? (transferProduct.estoqueGeladeira || 0) + qtyNum : (transferProduct.estoqueGeladeira || 0) - qtyNum);
+
+      Alert.alert(
+        'Sucesso',
+        `Transferência concluída com sucesso!\n\n${transferProduct.nome}\n` +
+        `📦 Depósito: ${depAtual} ${transferProduct.unidade}\n` +
+        `❄️ Geladeira: ${gelAtual} ${transferProduct.unidade}`
+      );
+
+      setTransferProduct((prev) =>
+        prev
+          ? {
+              ...prev,
+              quantidade: depAtual + gelAtual,
+              estoqueDeposito: depAtual,
+              estoqueGeladeira: gelAtual,
+            }
+          : null
+      );
+      setTransferQty('');
+      setTransferObs('');
+      loadData();
+    } catch (e: any) {
+      Alert.alert('Erro', e.response?.data?.error || 'Erro ao realizar transferência.');
     } finally {
       setLoading(false);
     }
@@ -203,6 +293,7 @@ export default function MovimentacaoEstoque() {
         motivo: reason,
         observacao: obs,
         supplierId: selectedSupplierId ? Number(selectedSupplierId) : null,
+        local: manualLocal,
       };
 
       const res = await api.post('/stock/move', payload);
@@ -491,11 +582,23 @@ export default function MovimentacaoEstoque() {
       {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'transfer' && styles.tabActive]}
+          onPress={() => setActiveTab('transfer')}
+        >
+          <Ionicons name="swap-horizontal" size={20} color={activeTab === 'transfer' ? '#2196F3' : '#666'} />
+          <Text style={[styles.tabText, activeTab === 'transfer' && styles.tabTextActive]}>
+            {isLargeScreen ? 'Transferência (Depósito ➔ Geladeira)' : 'Transferir'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'manual' && styles.tabActive]}
           onPress={() => setActiveTab('manual')}
         >
           <Ionicons name="hand-right-outline" size={20} color={activeTab === 'manual' ? '#2196F3' : '#666'} />
-          <Text style={[styles.tabText, activeTab === 'manual' && styles.tabTextActive]}>Lançamento Manual</Text>
+          <Text style={[styles.tabText, activeTab === 'manual' && styles.tabTextActive]}>
+            {isLargeScreen ? 'Lançamento Manual' : 'Manual'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -503,7 +606,9 @@ export default function MovimentacaoEstoque() {
           onPress={() => setActiveTab('xml')}
         >
           <Ionicons name="document-text-outline" size={20} color={activeTab === 'xml' ? '#2196F3' : '#666'} />
-          <Text style={[styles.tabText, activeTab === 'xml' && styles.tabTextActive]}>Entrada por XML</Text>
+          <Text style={[styles.tabText, activeTab === 'xml' && styles.tabTextActive]}>
+            {isLargeScreen ? 'Entrada por XML' : 'Entrada XML'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -515,7 +620,211 @@ export default function MovimentacaoEstoque() {
       )}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {activeTab === 'manual' ? (
+        {activeTab === 'transfer' ? (
+          /* ============================================================
+             ABA: TRANSFERÊNCIA ENTRE LOCAIS (DEPÓSITO <-> GELADEIRA)
+             ============================================================ */
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Transferência entre Locais de Estoque</Text>
+            <Text style={styles.subtitle}>
+              Transfira produtos do Depósito para abastecer a Geladeira/Ponto de Venda ou faça devoluções ao Depósito.
+            </Text>
+
+            {/* Selecionar Produto */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Produto para Transferência *</Text>
+              <TouchableOpacity 
+                style={styles.productPicker}
+                onPress={() => {
+                  setProductSearchTarget('transfer');
+                  setShowProductSearchModal(true);
+                }}
+              >
+                <Text style={transferProduct ? styles.pickerTextSelected : styles.pickerText}>
+                  {transferProduct ? transferProduct.nome : 'Toque para selecionar um produto'}
+                </Text>
+                <Ionicons name="search" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Saldo Atual do Produto Selecionado */}
+            {transferProduct && (
+              <View style={styles.transferBalancesCard}>
+                <Text style={styles.balancesTitle}>Saldos Atuais de {transferProduct.nome}:</Text>
+                <View style={styles.balancesRow}>
+                  <View style={[styles.balanceBox, { borderColor: '#1565C0', backgroundColor: '#E3F2FD' }]}>
+                    <Text style={[styles.balanceBoxLabel, { color: '#0D47A1' }]}>📦 Depósito</Text>
+                    <Text style={[styles.balanceBoxValue, { color: '#1565C0' }]}>
+                      {transferProduct.estoqueDeposito ?? 0}
+                    </Text>
+                    <Text style={styles.balanceBoxUnit}>{transferProduct.unidade || 'un'}</Text>
+                  </View>
+
+                  <View style={styles.balanceArrow}>
+                    <Ionicons 
+                      name={transferDirection === 'DEP_TO_GEL' ? 'arrow-forward' : 'arrow-back'} 
+                      size={24} 
+                      color="#2196F3" 
+                    />
+                  </View>
+
+                  <View style={[styles.balanceBox, { borderColor: '#2E7D32', backgroundColor: '#E8F5E9' }]}>
+                    <Text style={[styles.balanceBoxLabel, { color: '#1B5E20' }]}>❄️ Geladeira / Venda</Text>
+                    <Text style={[styles.balanceBoxValue, { color: '#2E7D32' }]}>
+                      {transferProduct.estoqueGeladeira ?? 0}
+                    </Text>
+                    <Text style={styles.balanceBoxUnit}>{transferProduct.unidade || 'un'}</Text>
+                  </View>
+                </View>
+                <Text style={styles.balanceTotalText}>
+                  Total geral em estoque: <Text style={{ fontWeight: 'bold' }}>{transferProduct.quantidade ?? 0} {transferProduct.unidade || 'un'}</Text>
+                </Text>
+              </View>
+            )}
+
+            {/* Direção da Transferência */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Sentido da Transferência *</Text>
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={[
+                    styles.radioOption,
+                    transferDirection === 'DEP_TO_GEL' && styles.radioActive,
+                    transferDirection === 'DEP_TO_GEL' && { borderColor: '#2196F3' }
+                  ]}
+                  onPress={() => setTransferDirection('DEP_TO_GEL')}
+                >
+                  <Ionicons 
+                    name="arrow-down-circle-outline" 
+                    size={20} 
+                    color={transferDirection === 'DEP_TO_GEL' ? '#2196F3' : '#666'} 
+                  />
+                  <View>
+                    <Text style={[styles.radioText, transferDirection === 'DEP_TO_GEL' && { fontWeight: 'bold', color: '#1565C0' }]}>
+                      Depósito ➔ Geladeira
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#666' }}>Abastecer ponto de venda</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.radioOption,
+                    transferDirection === 'GEL_TO_DEP' && styles.radioActive,
+                    transferDirection === 'GEL_TO_DEP' && { borderColor: '#FF9800' }
+                  ]}
+                  onPress={() => setTransferDirection('GEL_TO_DEP')}
+                >
+                  <Ionicons 
+                    name="arrow-up-circle-outline" 
+                    size={20} 
+                    color={transferDirection === 'GEL_TO_DEP' ? '#FF9800' : '#666'} 
+                  />
+                  <View>
+                    <Text style={[styles.radioText, transferDirection === 'GEL_TO_DEP' && { fontWeight: 'bold', color: '#E65100' }]}>
+                      Geladeira ➔ Depósito
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#666' }}>Devolução ao depósito</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Quantidade */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Quantidade a Transferir *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: 12"
+                value={transferQty}
+                onChangeText={setTransferQty}
+                keyboardType="numeric"
+              />
+
+              {/* Botões rápidos de atalho */}
+              <View style={styles.quickQtyContainer}>
+                <Text style={styles.quickQtyLabel}>Atalhos rápidos:</Text>
+                {[1, 6, 12, 24].map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    style={styles.quickQtyBtn}
+                    onPress={() => {
+                      const cur = parseInt(transferQty) || 0;
+                      setTransferQty(String(cur + n));
+                    }}
+                  >
+                    <Text style={styles.quickQtyBtnText}>+{n}</Text>
+                  </TouchableOpacity>
+                ))}
+                {transferProduct && transferDirection === 'DEP_TO_GEL' && (transferProduct.estoqueDeposito ?? 0) > 0 && (
+                  <TouchableOpacity
+                    style={[styles.quickQtyBtn, { backgroundColor: '#E3F2FD', borderColor: '#2196F3' }]}
+                    onPress={() => setTransferQty(String(transferProduct.estoqueDeposito))}
+                  >
+                    <Text style={[styles.quickQtyBtnText, { color: '#1565C0' }]}>
+                      Tudo ({transferProduct.estoqueDeposito})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {transferQty !== '' && (
+                  <TouchableOpacity
+                    style={[styles.quickQtyBtn, { backgroundColor: '#FFEBEE', borderColor: '#F44336' }]}
+                    onPress={() => setTransferQty('')}
+                  >
+                    <Text style={[styles.quickQtyBtnText, { color: '#C62828' }]}>Limpar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Aviso se a quantidade for maior que a origem */}
+            {transferProduct && Number(transferQty) > 0 && (
+              (() => {
+                const maxAvailable = transferDirection === 'DEP_TO_GEL' 
+                  ? (transferProduct.estoqueDeposito ?? 0) 
+                  : (transferProduct.estoqueGeladeira ?? 0);
+                const locNome = transferDirection === 'DEP_TO_GEL' ? 'Depósito' : 'Geladeira';
+                if (Number(transferQty) > maxAvailable) {
+                  return (
+                    <View style={styles.transferWarningBox}>
+                      <Ionicons name="warning-outline" size={18} color="#E65100" />
+                      <Text style={styles.transferWarningText}>
+                        Aviso: O saldo atual no {locNome} ({maxAvailable} un) é menor que a quantidade a transferir ({transferQty} un). O saldo do {locNome} ficará negativo.
+                      </Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()
+            )}
+
+            {/* Observações */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Observações / Motivo (Opcional)</Text>
+              <TextInput
+                style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
+                placeholder="Ex: Abastecimento da geladeira principal para o turno"
+                value={transferObs}
+                onChangeText={setTransferObs}
+                multiline
+                numberOfLines={2}
+              />
+            </View>
+
+            {/* Botão Transferir */}
+            <TouchableOpacity 
+              style={[
+                styles.transferButton,
+                (!transferProduct || !transferQty || Number(transferQty) <= 0) && styles.disabledButton
+              ]}
+              onPress={handleTransferStock}
+              disabled={!transferProduct || !transferQty || Number(transferQty) <= 0}
+            >
+              <Ionicons name="swap-horizontal" size={22} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.transferButtonText}>Confirmar Transferência</Text>
+            </TouchableOpacity>
+          </View>
+        ) : activeTab === 'manual' ? (
           /* ============================================================
              ABA: MANUAL
              ============================================================ */
@@ -527,10 +836,15 @@ export default function MovimentacaoEstoque() {
               <Text style={styles.label}>Produto *</Text>
               <TouchableOpacity 
                 style={styles.productPicker}
-                onPress={() => setShowProductSearchModal(true)}
+                onPress={() => {
+                  setProductSearchTarget('manual');
+                  setShowProductSearchModal(true);
+                }}
               >
                 <Text style={selectedProduct ? styles.pickerTextSelected : styles.pickerText}>
-                  {selectedProduct ? `${selectedProduct.nome} (Estoque atual: ${selectedProduct.quantidade} ${selectedProduct.unidade})` : 'Toque para selecionar um produto'}
+                  {selectedProduct 
+                    ? `${selectedProduct.nome} (Total: ${selectedProduct.quantidade} | Dep: ${selectedProduct.estoqueDeposito ?? 0} | Gel: ${selectedProduct.estoqueGeladeira ?? 0} ${selectedProduct.unidade || 'un'})` 
+                    : 'Toque para selecionar um produto'}
                 </Text>
                 <Ionicons name="search" size={20} color="#666" />
               </TouchableOpacity>
@@ -553,6 +867,8 @@ export default function MovimentacaoEstoque() {
                     onPress={() => {
                       setMovementType(type);
                       setReason(reasonsInput[type][0].key);
+                      if (type === 'ENTRADA') setManualLocal('DEPOSITO');
+                      if (type === 'SAIDA') setManualLocal('GELADEIRA');
                     }}
                   >
                     <Ionicons 
@@ -565,6 +881,48 @@ export default function MovimentacaoEstoque() {
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+            </View>
+
+            {/* Local da Movimentação */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Local do Estoque *</Text>
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={[
+                    styles.radioOption,
+                    manualLocal === 'DEPOSITO' && styles.radioActive,
+                    manualLocal === 'DEPOSITO' && { borderColor: '#1565C0' }
+                  ]}
+                  onPress={() => setManualLocal('DEPOSITO')}
+                >
+                  <Ionicons 
+                    name="cube-outline" 
+                    size={18} 
+                    color={manualLocal === 'DEPOSITO' ? '#1565C0' : '#666'} 
+                  />
+                  <Text style={[styles.radioText, manualLocal === 'DEPOSITO' && { fontWeight: 'bold', color: '#1565C0' }]}>
+                    📦 Depósito
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.radioOption,
+                    manualLocal === 'GELADEIRA' && styles.radioActive,
+                    manualLocal === 'GELADEIRA' && { borderColor: '#2E7D32' }
+                  ]}
+                  onPress={() => setManualLocal('GELADEIRA')}
+                >
+                  <Ionicons 
+                    name="snow-outline" 
+                    size={18} 
+                    color={manualLocal === 'GELADEIRA' ? '#2E7D32' : '#666'} 
+                  />
+                  <Text style={[styles.radioText, manualLocal === 'GELADEIRA' && { fontWeight: 'bold', color: '#2E7D32' }]}>
+                    ❄️ Geladeira / Venda
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -684,6 +1042,13 @@ export default function MovimentacaoEstoque() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Dar Entrada por Nota Fiscal Eletrônica (XML)</Text>
             <Text style={styles.subtitle}>Selecione o arquivo XML da NF-e para processar os itens e importá-los.</Text>
+
+            <View style={{ backgroundColor: '#E3F2FD', padding: 12, borderRadius: 8, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="information-circle" size={20} color="#1565C0" />
+              <Text style={{ fontSize: 13, color: '#0D47A1', flex: 1 }}>
+                Os itens da Nota Fiscal entrarão no estoque do <Text style={{ fontWeight: 'bold' }}>Depósito</Text>. Posteriormente, faça a transferência para a Geladeira na aba <Text style={{ fontWeight: 'bold' }}>Transferência</Text>.
+              </Text>
+            </View>
 
             {/* File Input */}
             <View style={styles.xmlUploadArea}>
@@ -844,15 +1209,19 @@ export default function MovimentacaoEstoque() {
                 <TouchableOpacity
                   style={styles.productSearchItem}
                   onPress={() => {
-                    setSelectedProduct(item);
+                    if (productSearchTarget === 'transfer') {
+                      setTransferProduct(item);
+                    } else {
+                      setSelectedProduct(item);
+                    }
                     setShowProductSearchModal(false);
                     setProductSearch('');
                   }}
                 >
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.productSearchName}>{item.nome}</Text>
                     <Text style={styles.productSearchStock}>
-                      Saldo: {item.quantidade} {item.unidade} | Custo: R$ {Number(item.precoCusto || 0).toFixed(2)}
+                      Total: {item.quantidade} {item.unidade || 'un'} (📦 Dep: {item.estoqueDeposito ?? 0} | ❄️ Gel: {item.estoqueGeladeira ?? 0})
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#999" />
@@ -1798,5 +2167,124 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+
+  // Estilos de Transferência
+  transferBalancesCard: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+  },
+  balancesTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 10,
+  },
+  balancesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  balanceBox: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  balanceBoxLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  balanceBoxValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  balanceBoxUnit: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  balanceArrow: {
+    paddingHorizontal: 4,
+  },
+  balanceTotalText: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  quickQtyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  quickQtyLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginRight: 4,
+  },
+  quickQtyBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F1F5F9',
+  },
+  quickQtyBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  transferWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF3E0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 14,
+    gap: 8,
+  },
+  transferWarningText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#E65100',
+    lineHeight: 16,
+  },
+  transferButton: {
+    backgroundColor: '#00838F',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 8,
+    marginTop: 16,
+    shadowColor: '#00838F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  transferButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  disabledButton: {
+    backgroundColor: '#B0BEC5',
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });

@@ -44,6 +44,8 @@ interface Product {
   unidade: string;
   ativo: boolean;
   quantidade: number;
+  estoqueDeposito?: number;
+  estoqueGeladeira?: number;
   disponivel: boolean;
   imagem?: string;
   ncm?: string;
@@ -156,6 +158,8 @@ export default function AdminProdutosScreen() {
     unidade: 'un',
     ativo: true,
     quantidade: '0',
+    estoqueDeposito: '0',
+    estoqueGeladeira: '0',
     disponivel: true,
     imagem: '',
     ncm: '',
@@ -348,7 +352,9 @@ export default function AdminProdutosScreen() {
         grupo: formData.grupo,
         unidade: formData.unidade,
         ativo: formData.ativo,
-        quantidade: parseValue(formData.quantidade),
+        quantidade: (parseInt(formData.estoqueDeposito) || 0) + (parseInt(formData.estoqueGeladeira) || 0),
+        estoqueDeposito: parseInt(formData.estoqueDeposito) || 0,
+        estoqueGeladeira: parseInt(formData.estoqueGeladeira) || 0,
         disponivel: formData.disponivel,
         imagem: formData.imagem || null,
         ncm: formData.ncm,
@@ -399,6 +405,8 @@ export default function AdminProdutosScreen() {
       unidade: product.unidade || 'un',
       ativo: product.ativo !== undefined ? product.ativo : true,
       quantidade: (product.quantidade ?? 0).toString(),
+      estoqueDeposito: (product.estoqueDeposito ?? 0).toString(),
+      estoqueGeladeira: (product.estoqueGeladeira ?? (product.quantidade ?? 0)).toString(),
       disponivel: product.disponivel !== undefined ? product.disponivel : true,
       imagem: (product as any).imagem || '',
       ncm: product.ncm || '',
@@ -461,6 +469,8 @@ export default function AdminProdutosScreen() {
       unidade: 'un',
       ativo: true,
       quantidade: '0',
+      estoqueDeposito: '0',
+      estoqueGeladeira: '0',
       disponivel: true,
       imagem: '',
       ncm: '',
@@ -553,14 +563,38 @@ export default function AdminProdutosScreen() {
           <Text style={[styles.priceValue, styles.sellPrice]}>R$ {item.precoVenda.toFixed(2)}</Text>
         </View>
       </View>
+
+      {/* Saldo de Estoque por Local */}
+      <View style={styles.stockBreakdownContainer}>
+        <Text style={styles.stockMainText}>
+          Estoque Total: <Text style={{ fontWeight: 'bold' }}>{item.quantidade ?? 0}</Text> {item.unidade || 'un'}
+        </Text>
+        <Text style={styles.stockSubText}>
+          📦 Dep: <Text style={{ fontWeight: 'bold', color: '#1565C0' }}>{item.estoqueDeposito ?? 0}</Text> | ❄️ Gel: <Text style={{ fontWeight: 'bold', color: (item.estoqueGeladeira ?? 0) <= 0 ? '#E65100' : '#2E7D32' }}>{item.estoqueGeladeira ?? 0}</Text>
+        </Text>
+      </View>
       
       <View style={styles.statusContainer}>
-        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
           <View style={[styles.statusBadge, { backgroundColor: item.ativo ? '#E8F5E8' : '#FFEBEE' }]}>
             <Text style={[styles.statusText, { color: item.ativo ? '#4CAF50' : '#f44336' }]}>
               {item.ativo ? 'Ativo' : 'Inativo'}
             </Text>
           </View>
+          {(item.estoqueGeladeira ?? 0) <= 0 && (item.estoqueDeposito ?? 0) > 0 && (
+            <View style={[styles.statusBadge, { backgroundColor: '#FFF3E0', borderColor: '#FF9800', borderWidth: 1 }]}>
+              <Text style={[styles.statusText, { color: '#E65100', fontWeight: 'bold' }]}>
+                ⚠️ Repor Geladeira ({item.estoqueDeposito} no dep.)
+              </Text>
+            </View>
+          )}
+          {(item.quantidade ?? 0) <= 0 && (
+            <View style={[styles.statusBadge, { backgroundColor: '#FFEBEE', borderColor: '#F44336', borderWidth: 1 }]}>
+              <Text style={[styles.statusText, { color: '#C62828', fontWeight: 'bold' }]}>
+                🚫 Esgotado
+              </Text>
+            </View>
+          )}
           {((item as any)?.setoresImpressaoIds || []).length === 0 && (
             <View style={[styles.statusBadge, { backgroundColor: '#FFF3E0' }]}>
               <Text style={[styles.statusText, { color: '#E65100', fontWeight: 'bold' }]}>
@@ -569,6 +603,20 @@ export default function AdminProdutosScreen() {
             </View>
           )}
         </View>
+
+        <TouchableOpacity 
+          style={styles.quickTransferButton}
+          onPress={(e: any) => {
+            e.stopPropagation?.();
+            router.push({
+              pathname: '/estoque/movimentacao',
+              params: { tab: 'transfer', productId: item._id }
+            } as any);
+          }}
+        >
+          <SafeIcon name="swap-horizontal" size={14} color="#00838F" fallbackText="⇄" />
+          <Text style={styles.quickTransferText}>Transferir</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -586,15 +634,15 @@ export default function AdminProdutosScreen() {
           ) : null}
         </View>
 
-        {Platform.OS === 'web' && isLargeScreen && (
-          <TouchableOpacity 
-            style={styles.estoqueXmlHeaderButton}
-            onPress={() => router.push('/estoque/movimentacao' as any)}
-          >
-            <SafeIcon name="document-text-outline" size={18} color="#fff" fallbackText="📄" />
-            <Text style={styles.estoqueXmlHeaderButtonText}>Entrada por XML / Estoque</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={isLargeScreen ? styles.estoqueXmlHeaderButton : styles.estoqueMobileHeaderButton}
+          onPress={() => router.push('/estoque/movimentacao' as any)}
+        >
+          <SafeIcon name="cube-outline" size={16} color="#fff" fallbackText="📦" />
+          <Text style={isLargeScreen ? styles.estoqueXmlHeaderButtonText : styles.estoqueMobileButtonText}>
+            {isLargeScreen ? 'Estoque & Transferência' : 'Estoque'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchSection}>
@@ -667,8 +715,8 @@ export default function AdminProdutosScreen() {
           renderItem={renderProductCard}
           keyExtractor={(item) => item._id}
           ListHeaderComponent={renderHeader}
-          numColumns={viewMode === 'grid' ? (isLargeScreen ? 3 : 2) : 1}
-          key={viewMode + (isLargeScreen ? '_large' : '_small')}
+          numColumns={viewMode === 'grid' ? (isLargeScreen ? 3 : (width > 600 ? 2 : 1)) : 1}
+          key={viewMode + (isLargeScreen ? '_large' : (width > 600 ? '_med' : '_small'))}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -922,16 +970,40 @@ export default function AdminProdutosScreen() {
                       {/* Grupo: Estoque e Controles */}
                       <View style={styles.formSection}>
                          <Text style={styles.sectionLabel}>Estoque e Disponibilidade</Text>
-                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Quantidade em Estoque</Text>
-                            <TextInput
-                               style={styles.input}
-                               value={formData.quantidade}
-                               onChangeText={(t) => setFormData({...formData, quantidade: t})}
-                               keyboardType="numeric"
-                               placeholder="0"
-                            />
+                         <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                               <Text style={styles.label}>No Depósito</Text>
+                               <TextInput
+                                  style={styles.input}
+                                  value={formData.estoqueDeposito}
+                                  onChangeText={(t) => {
+                                    const dep = parseInt(t) || 0;
+                                    const gel = parseInt(formData.estoqueGeladeira) || 0;
+                                    setFormData({...formData, estoqueDeposito: t, quantidade: (dep + gel).toString()});
+                                  }}
+                                  keyboardType="numeric"
+                                  placeholder="0"
+                               />
+                            </View>
+
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                               <Text style={styles.label}>Na Geladeira / Balcão</Text>
+                               <TextInput
+                                  style={styles.input}
+                                  value={formData.estoqueGeladeira}
+                                  onChangeText={(t) => {
+                                    const gel = parseInt(t) || 0;
+                                    const dep = parseInt(formData.estoqueDeposito) || 0;
+                                    setFormData({...formData, estoqueGeladeira: t, quantidade: (dep + gel).toString()});
+                                  }}
+                                  keyboardType="numeric"
+                                  placeholder="0"
+                               />
+                            </View>
                          </View>
+                         <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 12, marginTop: -4 }}>
+                            Total Geral: {(parseInt(formData.estoqueDeposito) || 0) + (parseInt(formData.estoqueGeladeira) || 0)} {formData.unidade || 'un'}
+                         </Text>
 
                          <View style={styles.switchRow}>
                             <Text style={styles.switchLabel}>Produto Ativo</Text>
@@ -1171,6 +1243,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 13,
   },
+  estoqueMobileHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#00838F',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  estoqueMobileButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
   dbBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1320,9 +1406,44 @@ const styles = StyleSheet.create({
     color: '#2196F3',
     fontSize: 16,
   },
+  stockBreakdownContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  stockMainText: {
+    fontSize: 13,
+    color: '#334155',
+    marginBottom: 2,
+  },
+  stockSubText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
   statusContainer: {
     flexDirection: 'row',
     gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quickTransferButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F7FA',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#B2EBF2',
+  },
+  quickTransferText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#00838F',
   },
   statusBadge: {
     paddingHorizontal: 8,

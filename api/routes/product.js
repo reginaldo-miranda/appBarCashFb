@@ -71,6 +71,8 @@ const mapProduct = (p) => {
     grupo: p.grupo || null,
     unidade: p.unidade || 'un',
     quantidade: Number(p.quantidade || 0),
+    estoqueDeposito: Number(p.estoqueDeposito || 0),
+    estoqueGeladeira: Number(p.estoqueGeladeira || 0),
     ativo: !!p.ativo,
     disponivel: p.disponivel === undefined ? true : !!p.disponivel,
     temVariacao: !!p.temVariacao,
@@ -145,7 +147,9 @@ router.post("/create", async (req, res) => {
 
         const pv = precoVenda ?? preco ?? 0;
         const pc = precoCusto ?? 0;
-        const qtd = quantidade ?? estoque ?? 0;
+        const depInput = Number(productData.estoqueDeposito || 0);
+        const gelInput = Number(productData.estoqueGeladeira || 0);
+        const qtd = quantidade ?? estoque ?? (depInput + gelInput) ?? 0;
         const un = unidade ?? "un";
 
         const catId = Number(categoriaId);
@@ -178,6 +182,8 @@ router.post("/create", async (req, res) => {
                 ativo: ativo !== undefined ? !!ativo : true,
                 dadosFiscais,
                 quantidade: Number(qtd) || 0,
+                estoqueDeposito: depInput,
+                estoqueGeladeira: gelInput > 0 ? gelInput : (depInput > 0 ? 0 : Number(qtd) || 0),
                 imagem,
                 tempoPreparoMinutos: tempoPreparoMinutos ?? 0,
                 disponivel: disponivel ?? true,
@@ -767,6 +773,8 @@ router.put("/update/:id", async (req, res) => {
       ativo,
       dadosFiscais,
       quantidade: (quantidade !== undefined || estoque !== undefined) ? Number(quantidade ?? estoque ?? 0) : undefined,
+      estoqueDeposito: req.body.estoqueDeposito !== undefined ? Number(req.body.estoqueDeposito) : undefined,
+      estoqueGeladeira: req.body.estoqueGeladeira !== undefined ? Number(req.body.estoqueGeladeira) : undefined,
       imagem,
       tempoPreparoMinutos,
       disponivel,
@@ -902,6 +910,8 @@ router.put("/:id", async (req, res) => {
       ativo,
       imagem: imagem !== undefined ? imagem : undefined,
       quantidade: Number(quantidade ?? estoque ?? 0),
+      estoqueDeposito: req.body.estoqueDeposito !== undefined ? Number(req.body.estoqueDeposito) : undefined,
+      estoqueGeladeira: req.body.estoqueGeladeira !== undefined ? Number(req.body.estoqueGeladeira) : undefined,
       categoriaId: categoriaId !== undefined ? (Number.isInteger(Number(categoriaId)) ? Number(categoriaId) : undefined) : undefined,
       tipoId: tipoId !== undefined ? (Number.isInteger(Number(tipoId)) ? Number(tipoId) : undefined) : undefined,
       groupId: groupId !== undefined ? (Number.isInteger(Number(groupId)) ? Number(groupId) : undefined) : undefined,

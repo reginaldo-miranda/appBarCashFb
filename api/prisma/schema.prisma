@@ -49,6 +49,8 @@ model Product {
   ativo               Boolean          @default(true)
   dadosFiscais        String?
   quantidade          Int              @default(0)
+  estoqueDeposito     Int              @default(0)
+  estoqueGeladeira    Int              @default(0)
   imagem              String?
   tempoPreparoMinutos Int              @default(0)
   disponivel          Boolean          @default(true)
@@ -732,6 +734,8 @@ model StockMovement {
   precoCusto   Decimal?        @db.Decimal(10, 2)
   motivo       String?         // Ex: "VENCIDO", "DANIFICADO", "CONSUMO_INTERNO", "AJUSTE", "COMPRA"
   observacao   String?
+  localOrigem  String?         // Ex: "DEPOSITO", "GELADEIRA"
+  localDestino String?         // Ex: "GELADEIRA", "DEPOSITO"
   chaveNfe     String?
   supplierId   Int?
   supplier     Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
@@ -746,6 +750,7 @@ enum TipoMovimento {
   ENTRADA
   SAIDA
   AJUSTE
+  TRANSFERENCIA
 }
 
 enum OrigemMovimento {

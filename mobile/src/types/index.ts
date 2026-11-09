@@ -69,6 +69,10 @@ export interface Product {
   temVariacao?: boolean;
   temTamanhos?: boolean;
   imagem?: string;
+  quantidade?: number;
+  estoqueDeposito?: number;
+  estoqueGeladeira?: number;
+  precoCusto?: number;
   tamanhos?: ProductSize[];
 }
 

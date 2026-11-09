@@ -128,7 +128,7 @@ router.get('/history', async (req, res) => {
 // 4. Lançar movimentação manual (Entrada/Saída/Ajuste)
 router.post('/move', async (req, res) => {
   try {
-    const { productId, tipo, quantidade, precoCusto, motivo, observacao, supplierId } = req.body;
+    const { productId, tipo, quantidade, precoCusto, motivo, observacao, supplierId, local } = req.body;
 
     if (!productId || !tipo || quantidade === undefined) {
       return res.status(400).json({ error: 'Produto, tipo e quantidade são obrigatórios' });
@@ -145,6 +145,9 @@ router.post('/move', async (req, res) => {
       return res.status(400).json({ error: 'Tipo de movimentação inválido' });
     }
 
+    // Definir local da movimentação (padrão: DEPOSITO para entrada, GELADEIRA para saída)
+    const targetLocal = local ? String(local).toUpperCase() : (tipo === 'ENTRADA' ? 'DEPOSITO' : 'GELADEIRA');
+
     // Verificar se o produto existe
     const product = await prisma.product.findUnique({ where: { id: pId } });
     if (!product) {
@@ -152,24 +155,36 @@ router.post('/move', async (req, res) => {
     }
 
     let finalQtyChange = qty;
-    if (tipo === 'SAIDA') {
+    let novoDeposito = Number(product.estoqueDeposito || 0);
+    let novoGeladeira = Number(product.estoqueGeladeira || 0);
+
+    if (tipo === 'ENTRADA') {
+      if (targetLocal === 'GELADEIRA') novoGeladeira += qty;
+      else novoDeposito += qty;
+    } else if (tipo === 'SAIDA') {
       finalQtyChange = -qty;
+      if (targetLocal === 'DEPOSITO') novoDeposito -= qty;
+      else novoGeladeira -= qty;
+    } else if (tipo === 'AJUSTE') {
+      if (targetLocal === 'DEPOSITO') {
+        finalQtyChange = qty - novoDeposito;
+        novoDeposito = qty;
+      } else {
+        finalQtyChange = qty - novoGeladeira;
+        novoGeladeira = qty;
+      }
     }
 
-    let novoEstoque = product.quantidade + finalQtyChange;
-    if (tipo === 'AJUSTE') {
-      novoEstoque = qty;
-      finalQtyChange = qty - product.quantidade;
-    }
-
-    if (novoEstoque < 0) {
-      return res.status(400).json({ error: 'Estoque insuficiente para esta saída' });
-    }
+    const novoEstoque = novoDeposito + novoGeladeira;
 
     // Executar alteração em transação
     const result = await prisma.$transaction(async (tx) => {
       // 1. Atualizar produto
-      const updateData = { quantidade: novoEstoque };
+      const updateData = {
+        quantidade: novoEstoque,
+        estoqueDeposito: novoDeposito,
+        estoqueGeladeira: novoGeladeira
+      };
       if (precoCusto !== undefined && precoCusto !== null) {
         updateData.precoCusto = Number(precoCusto);
       }
@@ -189,9 +204,11 @@ router.post('/move', async (req, res) => {
           quantidade: finalQtyChange,
           precoCusto: precoCusto !== undefined && precoCusto !== null ? Number(precoCusto) : product.precoCusto,
           motivo: motivo || null,
-          observacao: observacao || null,
+          observacao: observacao || `Movimentação no local: ${targetLocal}`,
           supplierId: sId || null,
           usuarioId: req.user?.id || null,
+          localOrigem: tipo === 'SAIDA' ? targetLocal : null,
+          localDestino: tipo === 'ENTRADA' ? targetLocal : null,
         },
       });
 
@@ -201,12 +218,97 @@ router.post('/move', async (req, res) => {
     res.json({
       message: 'Movimentação registrada com sucesso',
       quantidadeAtual: result.updatedProduct.quantidade,
+      estoqueDeposito: result.updatedProduct.estoqueDeposito,
+      estoqueGeladeira: result.updatedProduct.estoqueGeladeira,
       movement: result.movement,
     });
 
   } catch (error) {
     console.error('Erro ao realizar movimentação de estoque:', error);
     res.status(500).json({ error: 'Erro ao realizar movimentação de estoque' });
+  }
+});
+
+// 4.1 Transferência de Estoque entre Locais (Depósito <-> Geladeira)
+router.post('/transfer', async (req, res) => {
+  try {
+    const { productId, quantidade, origem = 'DEPOSITO', destino = 'GELADEIRA', observacao } = req.body;
+
+    if (!productId || quantidade === undefined || Number(quantidade) <= 0) {
+      return res.status(400).json({ error: 'Produto e quantidade válida são obrigatórios.' });
+    }
+
+    const pId = parseInt(String(productId));
+    const qty = parseInt(String(quantidade));
+
+    if (isNaN(pId) || isNaN(qty) || qty <= 0) {
+      return res.status(400).json({ error: 'Parâmetros de transferência inválidos.' });
+    }
+
+    const locOrigem = String(origem).toUpperCase();
+    const locDestino = String(destino).toUpperCase();
+
+    if (locOrigem === locDestino) {
+      return res.status(400).json({ error: 'Origem e destino não podem ser o mesmo local.' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({ where: { id: pId } });
+      if (!product) {
+        throw new Error('Produto não encontrado');
+      }
+
+      let novoDeposito = Number(product.estoqueDeposito || 0);
+      let novoGeladeira = Number(product.estoqueGeladeira || 0);
+
+      if (locOrigem === 'DEPOSITO' && locDestino === 'GELADEIRA') {
+        novoDeposito -= qty;
+        novoGeladeira += qty;
+      } else if (locOrigem === 'GELADEIRA' && locDestino === 'DEPOSITO') {
+        novoGeladeira -= qty;
+        novoDeposito += qty;
+      } else {
+        throw new Error('Locais de transferência inválidos.');
+      }
+
+      const updatedProduct = await tx.product.update({
+        where: { id: pId },
+        data: {
+          estoqueDeposito: novoDeposito,
+          estoqueGeladeira: novoGeladeira,
+          quantidade: novoDeposito + novoGeladeira
+        }
+      });
+
+      const movement = await tx.stockMovement.create({
+        data: {
+          productId: pId,
+          tipo: 'TRANSFERENCIA',
+          origem: 'MANUAL',
+          quantidade: qty,
+          precoCusto: product.precoCusto,
+          motivo: 'ABASTECIMENTO_GELADEIRA',
+          observacao: observacao || `Transferência de ${qty} un de ${locOrigem} para ${locDestino}`,
+          localOrigem: locOrigem,
+          localDestino: locDestino,
+          usuarioId: req.user?.id || null
+        }
+      });
+
+      return { updatedProduct, movement };
+    });
+
+    res.json({
+      success: true,
+      message: `Transferência de ${qty} unidades concluída com sucesso!`,
+      quantidadeAtual: result.updatedProduct.quantidade,
+      estoqueDeposito: result.updatedProduct.estoqueDeposito,
+      estoqueGeladeira: result.updatedProduct.estoqueGeladeira,
+      movement: result.movement
+    });
+  } catch (error) {
+    console.error('Erro ao transferir estoque:', error);
+    res.status(500).json({ error: error.message || 'Erro ao transferir estoque' });
   }
 });
 
@@ -425,9 +527,13 @@ router.post('/confirm-xml', async (req, res) => {
         // Novo custo unitário ponderado pelo fator de conversão
         const custoUnitarioConvertido = Number(item.vUnCom) / fator;
 
-        // Atualizar produto (Estoque, Custo e opcionalmente Preço de Venda ajustado)
+        const novoDeposito = Number(product.estoqueDeposito || 0) + qtEntrada;
+        const novoTotal = novoDeposito + Number(product.estoqueGeladeira || 0);
+
+        // Atualizar produto (Estoque no Depósito, Total, Custo e opcionalmente Preço de Venda ajustado)
         const updateProductData = {
-          quantidade: product.quantidade + qtEntrada,
+          quantidade: novoTotal,
+          estoqueDeposito: novoDeposito,
           precoCusto: custoUnitarioConvertido
         };
         if (item.precoVenda !== undefined && item.precoVenda !== null && Number(item.precoVenda) > 0) {
@@ -448,10 +554,11 @@ router.post('/confirm-xml', async (req, res) => {
             quantidade: qtEntrada,
             precoCusto: custoUnitarioConvertido,
             motivo: 'COMPRA',
-            observacao: `Entrada via XML Nota: ${chave} (Fator: 1:${fator})`,
+            observacao: `Entrada via XML Nota: ${chave} (Fator: 1:${fator}) - Depósito`,
             chaveNfe: chave,
             supplierId: dbSupplier.id,
             usuarioId: req.user?.id || null,
+            localDestino: 'DEPOSITO'
           }
         });
 

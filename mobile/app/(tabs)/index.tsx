@@ -222,14 +222,14 @@ export default function HomeScreen() {
       gradient: ['#26A69A', '#00897B'],
       onPress: () => router.push('/delivery-dashboard'),
     },
-    ...(Platform.OS === 'web' && width > 768 ? [{
-      title: 'Estoque & XML',
-      subtitle: 'Entrada de NF-e e compras',
+    {
+      title: 'Estoque & Reposição',
+      subtitle: width > 768 ? 'Entrada de NF-e e transferências' : 'Depósito ➔ Geladeira',
       icon: 'cube',
       color: '#00838F',
       gradient: ['#00ACC1', '#00838F'],
       onPress: () => router.push('/estoque/movimentacao' as any),
-    }] : []),
+    },
   ];
 
   return (
