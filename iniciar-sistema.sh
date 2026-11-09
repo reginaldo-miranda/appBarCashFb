@@ -100,3 +100,4 @@ echo ""
 trap "echo ''; echo '🛑 Encerrando serviços...'; kill -9 $API_PID 2>/dev/null; kill_port 4000; kill_port 8082; exit 0" INT TERM EXIT
 
 cd "$ROOT_DIR/mobile" && npx expo start --web --port 8082 -c
+

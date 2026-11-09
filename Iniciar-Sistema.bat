@@ -1,6 +1,16 @@
 @echo off
 chcp 65001 >nul 2>&1
-TITLE appBarCash - Sistema Completo
+
+:: Se passou argumento --terminal ou -t, abre os terminais para depuração
+if "%1"=="--terminal" goto MODO_TERMINAL
+if "%1"=="-t" goto MODO_TERMINAL
+
+:: Modo Padrão: Iniciar em segundo plano sem terminais e abrir o navegador automaticamente
+wscript //nologo "%~dp0Iniciar-Sistema.vbs"
+exit /b 0
+
+:MODO_TERMINAL
+TITLE appBarCash - Sistema Completo (Modo Terminal)
 color 0A
 
 echo.
