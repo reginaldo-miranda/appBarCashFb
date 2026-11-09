@@ -19,7 +19,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { getCurrentBaseUrl } from "../../../src/services/api";
+import { getCurrentBaseUrl, getProductImageUrl } from "../../../src/services/api";
 
 const { width } = Dimensions.get("window");
 
@@ -437,8 +437,12 @@ export default function CardapioCliente() {
             </View>
             
             <View style={styles.cardImageContainer}>
-              {item.imagem ? (
-                <Image source={{ uri: item.imagem }} style={styles.cardImage} />
+              {getProductImageUrl(item.imagem) ? (
+                <Image
+                  source={{ uri: getProductImageUrl(item.imagem)! }}
+                  style={styles.cardImage}
+                  resizeMode="cover"
+                />
               ) : (
                 <View style={styles.cardPlaceholderImage}>
                   <Ionicons name="fast-food-outline" size={32} color="#FF8C00" />
@@ -492,8 +496,12 @@ export default function CardapioCliente() {
 
                 <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                   {/* Imagem do Produto no Modal */}
-                  {modalProduto.imagem ? (
-                    <Image source={{ uri: modalProduto.imagem }} style={styles.modalImage} />
+                  {getProductImageUrl(modalProduto.imagem) ? (
+                    <Image
+                      source={{ uri: getProductImageUrl(modalProduto.imagem)! }}
+                      style={styles.modalImage}
+                      resizeMode="cover"
+                    />
                   ) : (
                     <View style={styles.modalPlaceholderImage}>
                       <Ionicons name="fast-food-outline" size={64} color="#FF8C00" />
