@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { router } from 'expo-router';
 import {
   View,
   Text,
@@ -575,13 +576,25 @@ export default function AdminProdutosScreen() {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.topBar}>
-        <Text style={styles.pageTitle}>Gerenciar Produtos</Text>
-        {dbTarget ? (
-           <View style={styles.dbBadge}>
-             <SafeIcon name="server-outline" size={12} color="#64748B" fallbackText="DB" />
-             <Text style={styles.dbText}>{dbTarget.toUpperCase()}</Text>
-           </View>
-        ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={styles.pageTitle}>Gerenciar Produtos</Text>
+          {dbTarget ? (
+             <View style={styles.dbBadge}>
+               <SafeIcon name="server-outline" size={12} color="#64748B" fallbackText="DB" />
+               <Text style={styles.dbText}>{dbTarget.toUpperCase()}</Text>
+             </View>
+          ) : null}
+        </View>
+
+        {Platform.OS === 'web' && isLargeScreen && (
+          <TouchableOpacity 
+            style={styles.estoqueXmlHeaderButton}
+            onPress={() => router.push('/estoque/movimentacao' as any)}
+          >
+            <SafeIcon name="document-text-outline" size={18} color="#fff" fallbackText="📄" />
+            <Text style={styles.estoqueXmlHeaderButtonText}>Entrada por XML / Estoque</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.searchSection}>
@@ -1139,6 +1152,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1E293B',
+  },
+  estoqueXmlHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#00838F',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    shadowColor: '#00838F',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  estoqueXmlHeaderButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   dbBadge: {
     flexDirection: 'row',

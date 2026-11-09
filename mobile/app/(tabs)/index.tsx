@@ -222,6 +222,14 @@ export default function HomeScreen() {
       gradient: ['#26A69A', '#00897B'],
       onPress: () => router.push('/delivery-dashboard'),
     },
+    ...(Platform.OS === 'web' && width > 768 ? [{
+      title: 'Estoque & XML',
+      subtitle: 'Entrada de NF-e e compras',
+      icon: 'cube',
+      color: '#00838F',
+      gradient: ['#00ACC1', '#00838F'],
+      onPress: () => router.push('/estoque/movimentacao' as any),
+    }] : []),
   ];
 
   return (
@@ -318,6 +326,8 @@ export default function HomeScreen() {
               if (Platform.OS !== 'web' && item.title === 'Histórico') return false;
               // Filtrar Relatórios no mobile (apenas Desktop)
               if (Platform.OS !== 'web' && item.title === 'Relatórios') return false;
+              // Entrada de notas via XML e Estoque: estritamente apenas Desktop
+              if ((Platform.OS !== 'web' || width <= 768) && item.title === 'Estoque & XML') return false;
               return true;
             }).map((item, index) => (
               <TouchableOpacity

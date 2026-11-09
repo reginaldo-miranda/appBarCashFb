@@ -15,7 +15,7 @@ import {
   FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import api, { productService, categoryService, typeService, unidadeMedidaService } from '../../src/services/api';
 
 const { width } = Dimensions.get('window');
@@ -59,6 +59,9 @@ interface XmlItem {
   cfop: string;
   associatedProductId: number | null;
   associatedProductName: string | null;
+  associatedProductPrecoVenda?: number | null;
+  associatedProductPrecoCusto?: number | null;
+  precoVenda?: string | number;
   // Campos de controle do usuário
   productId: number | null;
   productName: string | null;
@@ -74,7 +77,8 @@ interface XmlItem {
 }
 
 export default function MovimentacaoEstoque() {
-  const [activeTab, setActiveTab] = useState<'manual' | 'xml'>('manual');
+  const params = useLocalSearchParams();
+  const [activeTab, setActiveTab] = useState<'manual' | 'xml'>(params.tab === 'manual' ? 'manual' : 'xml');
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -298,6 +302,9 @@ export default function MovimentacaoEstoque() {
         ...item,
         productId: item.associatedProductId,
         productName: item.associatedProductName,
+        associatedProductPrecoVenda: item.associatedProductPrecoVenda,
+        associatedProductPrecoCusto: item.associatedProductPrecoCusto,
+        precoVenda: item.associatedProductPrecoVenda ? String(item.associatedProductPrecoVenda) : '',
         fatorConversao: 1,
         cadastrarNovo: false,
       }));
@@ -363,11 +370,15 @@ export default function MovimentacaoEstoque() {
   const handleAssociateExisting = (prod: Product) => {
     if (associatingItemIndex !== null && xmlData) {
       const updatedItens = [...xmlData.itens];
+      const prodAny = prod as any;
       updatedItens[associatingItemIndex] = {
         ...updatedItens[associatingItemIndex],
         cadastrarNovo: false,
         productId: prod.id,
         productName: prod.nome,
+        associatedProductPrecoVenda: prodAny.precoVenda ? Number(prodAny.precoVenda) : null,
+        associatedProductPrecoCusto: prodAny.precoCusto ? Number(prodAny.precoCusto) : null,
+        precoVenda: prodAny.precoVenda ? String(prodAny.precoVenda) : (updatedItens[associatingItemIndex].precoVenda || ''),
         novoProduto: undefined,
       };
 
@@ -379,6 +390,15 @@ export default function MovimentacaoEstoque() {
 
     setShowNewProductModal(false);
     setAssociatingItemIndex(null);
+  };
+
+  // Alterar preço de venda de um item associado
+  const handlePrecoVendaChange = (index: number, val: string) => {
+    if (xmlData) {
+      const updatedItens = [...xmlData.itens];
+      updatedItens[index].precoVenda = val;
+      setXmlData({ ...xmlData, itens: updatedItens });
+    }
   };
 
   // Remover associação
@@ -432,7 +452,10 @@ export default function MovimentacaoEstoque() {
       const payload = {
         chave: xmlData!.chave,
         fornecedor: xmlData!.fornecedor,
-        itens: xmlData!.itens,
+        itens: xmlData!.itens.map(item => ({
+          ...item,
+          precoVenda: item.precoVenda ? Number(String(item.precoVenda).replace(',', '.')) : undefined,
+        })),
       };
 
       const res = await api.post('/stock/confirm-xml', payload);
@@ -699,58 +722,81 @@ export default function MovimentacaoEstoque() {
 
                 <Text style={styles.tableTitle}>Itens da Nota Fiscal ({xmlData.itens.length})</Text>
                 
-                {xmlData.itens.map((item, index) => (
-                  <View key={index} style={styles.xmlItemRow}>
-                    <View style={styles.xmlItemLeft}>
-                      <Text style={styles.xmlItemName}>{item.xProd}</Text>
-                      <Text style={styles.xmlItemEan}>Cód. Barras: {item.cEAN || 'Sem código'}</Text>
-                      <Text style={styles.xmlItemDetails}>
-                        Qtd XML: <Text style={{ fontWeight: 'bold' }}>{item.qCom} {item.uCom}</Text> | Unit: R$ {item.vUnCom.toFixed(2)} | Total: R$ {item.vProd.toFixed(2)}
-                      </Text>
-                    </View>
+                {xmlData.itens.map((item, index) => {
+                  const fatorNum = Number(item.fatorConversao) || 1;
+                  const custoConvertido = (item.vUnCom / fatorNum).toFixed(2);
+                  const qtdEntrada = (item.qCom * fatorNum);
 
-                    <View style={styles.xmlItemRight}>
-                      {/* Fator de conversão */}
-                      <View style={styles.fatorGroup}>
-                        <Text style={styles.fatorLabel}>Fator Conv.</Text>
-                        <TextInput
-                          style={styles.fatorInput}
-                          value={String(item.fatorConversao)}
-                          onChangeText={(val) => handleFatorChange(index, val)}
-                          keyboardType="numeric"
-                        />
+                  return (
+                    <View key={index} style={styles.xmlItemRow}>
+                      <View style={styles.xmlItemLeft}>
+                        <Text style={styles.xmlItemName}>{item.xProd}</Text>
+                        <Text style={styles.xmlItemEan}>Cód. Barras: {item.cEAN || 'Sem código'}</Text>
+                        <Text style={styles.xmlItemDetails}>
+                          Qtd XML: <Text style={{ fontWeight: 'bold' }}>{item.qCom} {item.uCom}</Text> | Custo NF: R$ {item.vUnCom.toFixed(2)} | Total: R$ {item.vProd.toFixed(2)}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#00838F', marginTop: 3, fontWeight: '600' }}>
+                          ➜ Custo Real: R$ {custoConvertido} / un (Entrada: {qtdEntrada} un)
+                        </Text>
                       </View>
 
-                      {/* Produto Associado */}
-                      <View style={styles.associationGroup}>
-                        {item.productId || item.cadastrarNovo ? (
-                          <View style={styles.associationActive}>
-                            <Text style={styles.associationText} numberOfLines={1}>
-                              Vínculo: {item.productName}
-                            </Text>
-                            <TouchableOpacity 
-                              style={styles.removeAssociationBtn}
-                              onPress={() => handleRemoveAssociation(index)}
-                            >
-                              <Ionicons name="trash-outline" size={14} color="#F44336" />
-                              <Text style={styles.removeAssociationText}>Remover</Text>
-                            </TouchableOpacity>
-                          </View>
-                        ) : (
-                          <View style={styles.associationPending}>
-                            <TouchableOpacity 
-                              style={styles.associateBtn}
-                              onPress={() => handleItemAssociation(index)}
-                            >
-                              <Ionicons name="link-outline" size={14} color="#FFF" style={{ marginRight: 4 }} />
-                              <Text style={styles.associateBtnText}>Vincular / Cadastrar</Text>
-                            </TouchableOpacity>
+                      <View style={styles.xmlItemRight}>
+                        {/* Fator de conversão */}
+                        <View style={styles.fatorGroup}>
+                          <Text style={styles.fatorLabel}>Fator Conv.</Text>
+                          <TextInput
+                            style={styles.fatorInput}
+                            value={String(item.fatorConversao)}
+                            onChangeText={(val) => handleFatorChange(index, val)}
+                            keyboardType="numeric"
+                          />
+                        </View>
+
+                        {/* Preço de Venda (Ajustar margem caso custo subiu) */}
+                        {(item.productId || item.cadastrarNovo) && (
+                          <View style={styles.precoVendaGroup}>
+                            <Text style={styles.precoVendaLabel}>Preço Venda R$</Text>
+                            <TextInput
+                              style={styles.precoVendaInput}
+                              placeholder="Ex: 10.00"
+                              value={item.precoVenda !== undefined ? String(item.precoVenda) : ''}
+                              onChangeText={(val) => handlePrecoVendaChange(index, val)}
+                              keyboardType="numeric"
+                            />
                           </View>
                         )}
+
+                        {/* Produto Associado */}
+                        <View style={styles.associationGroup}>
+                          {item.productId || item.cadastrarNovo ? (
+                            <View style={styles.associationActive}>
+                              <Text style={styles.associationText} numberOfLines={1}>
+                                Vínculo: {item.productName}
+                              </Text>
+                              <TouchableOpacity 
+                                style={styles.removeAssociationBtn}
+                                onPress={() => handleRemoveAssociation(index)}
+                              >
+                                <Ionicons name="trash-outline" size={14} color="#F44336" />
+                                <Text style={styles.removeAssociationText}>Alterar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <View style={styles.associationPending}>
+                              <TouchableOpacity 
+                                style={styles.associateBtn}
+                                onPress={() => handleItemAssociation(index)}
+                              >
+                                <Ionicons name="link-outline" size={14} color="#FFF" style={{ marginRight: 4 }} />
+                                <Text style={styles.associateBtnText}>Vincular / Cadastrar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
 
                 <TouchableOpacity 
                   style={styles.confirmXmlButton}
@@ -1513,6 +1559,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     color: '#333',
+  },
+  precoVendaGroup: {
+    alignItems: 'center',
+    width: 90,
+  },
+  precoVendaLabel: {
+    fontSize: 10,
+    color: '#0284C7',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  precoVendaInput: {
+    height: 36,
+    borderColor: '#BAE6FD',
+    borderWidth: 1,
+    borderRadius: 6,
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0369A1',
+    backgroundColor: '#F0F9FF',
   },
   associationGroup: {
     flex: 1,

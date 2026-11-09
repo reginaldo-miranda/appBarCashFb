@@ -322,6 +322,8 @@ router.post('/import-xml', upload.single('xml'), async (req, res) => {
         ...item,
         associatedProductId: productMatch ? productMatch.id : null,
         associatedProductName: productMatch ? productMatch.nome : null,
+        associatedProductPrecoVenda: productMatch ? Number(productMatch.precoVenda || 0) : null,
+        associatedProductPrecoCusto: productMatch ? Number(productMatch.precoCusto || 0) : null,
       });
     }
 
@@ -389,12 +391,12 @@ router.post('/confirm-xml', async (req, res) => {
               nome: np.nome,
               descricao: np.descricao || '',
               precoCusto: Number(np.precoCusto || item.vUnCom),
-              precoVenda: Number(np.precoVenda),
+              precoVenda: Number(np.precoVenda || 0),
               categoria: np.categoria || '',
               tipo: np.tipo || '',
               unidade: np.unidade || 'un',
-              quantidade: Number(np.quantidade || 0),
-              dadosFiscais: item.cEAN || '', // Código de barras no dadosFiscais
+              quantidade: 0, // Inicia zerado; a quantidade da nota será somada logo abaixo
+              dadosFiscais: item.cEAN || '',
               ncm: item.ncm || '',
               cest: item.cest || '',
               cfop: item.cfop || '',
@@ -423,13 +425,18 @@ router.post('/confirm-xml', async (req, res) => {
         // Novo custo unitário ponderado pelo fator de conversão
         const custoUnitarioConvertido = Number(item.vUnCom) / fator;
 
-        // Atualizar produto
+        // Atualizar produto (Estoque, Custo e opcionalmente Preço de Venda ajustado)
+        const updateProductData = {
+          quantidade: product.quantidade + qtEntrada,
+          precoCusto: custoUnitarioConvertido
+        };
+        if (item.precoVenda !== undefined && item.precoVenda !== null && Number(item.precoVenda) > 0) {
+          updateProductData.precoVenda = Number(item.precoVenda);
+        }
+
         const updated = await tx.product.update({
           where: { id: pId },
-          data: {
-            quantidade: product.quantidade + qtEntrada,
-            precoCusto: custoUnitarioConvertido
-          }
+          data: updateProductData
         });
 
         // Registrar movimentação de estoque
