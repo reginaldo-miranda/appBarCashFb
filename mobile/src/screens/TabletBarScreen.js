@@ -337,25 +337,43 @@ export default function TabletBarScreen(props = {}) {
   const renderItem = ({ item }) => {
     const screenWidth = Dimensions.get('window').width;
     const isPhone = screenWidth < 768;
-    const iconSize = isPhone ? 12 : 24;
+    const iconSize = isPhone ? 12 : 20;
     const waiting = getWaitingMinutes(item.horario);
     const urgencyStyle = waiting >= 20 ? styles.urgentHigh : waiting >= 10 ? styles.urgentMedium : waiting >= 5 ? styles.urgentLow : null;
     const timeStr = new Date(item.horario).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
     const rawMesa = String(item?.mesa || '');
     const isComanda = /comanda/i.test(rawMesa) || String(item?.tipo || '').toLowerCase() === 'comanda';
     const displayName = rawMesa.replace(/^\s*(comanda|mesa)\s*:?\s*/i, '').trim();
+    const hasResp = item.responsavel && !/não informado/i.test(String(item.responsavel));
+
     return (
       <Animated.View style={[styles.itemContainer, urgencyStyle, { opacity: fadeAnim }]}> 
         <View style={styles.itemInfo}>
+          {/* Linha 1: Produto + Badge de Status (Esquerda) | Tempo + Botão de Ação (Direita) */}
           <View style={styles.itemTopRow}>
-            <View style={{ flex: 1, marginRight: 12 }}>
+            <View style={styles.itemTitleGroup}>
               <Text style={styles.itemTitle}>
                 {Number(item?.displayQty || 1)}x {item.produto}
               </Text>
+              <Text style={[
+                styles.statusPill,
+                (item.status === 'pendente' || item.status === 'pago')
+                  ? styles.statusPending
+                  : item.status === 'pronto'
+                  ? styles.statusReady
+                  : styles.statusDelivered
+              ]}>
+                {(item.status === 'pendente' || item.status === 'pago')
+                  ? (item.isPago || item.status === 'pago' ? 'Em preparação • Pago' : 'Em preparação')
+                  : item.status === 'pronto'
+                  ? 'Pronto'
+                  : 'Entregue'}
+              </Text>
             </View>
+
             <View style={styles.topRightActions}>
               <View style={styles.itemMeta}>
-                <Ionicons name="time" size={16} color="#333" />
+                <Ionicons name="time" size={15} color="#475569" />
                 <Text style={styles.waitText}>{waiting} min</Text>
               </View>
               {(item.status === 'pendente' || item.status === 'pago') ? (
@@ -393,35 +411,42 @@ export default function TabletBarScreen(props = {}) {
               )}
             </View>
           </View>
-          <View style={styles.itemBodyRow}>
-            <View style={styles.itemDetailsCol}>
-              <View style={{ marginBottom: 6 }}>
-                <Text style={[
-                  styles.statusPill,
-                  (item.status === 'pendente' || item.status === 'pago')
-                    ? styles.statusPending
-                    : item.status === 'pronto'
-                    ? styles.statusReady
-                    : styles.statusDelivered
-                ]}>
-                  {(item.status === 'pendente' || item.status === 'pago')
-                    ? (item.isPago || item.status === 'pago' ? 'Em preparação • Pago' : 'Em preparação')
-                    : item.status === 'pronto'
-                    ? 'Pronto'
-                    : 'Entregue'}
-                </Text>
-              </View>
-              <Text style={styles.itemDetail}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>
-              <Text style={styles.itemDetail}>Responsável: {item.responsavel || 'Não informado'}</Text>
-              <Text style={styles.itemDetail}>Funcionário: {item.funcionario}</Text>
-              <Text style={styles.itemDetail}>Horário: {timeStr}</Text>
+
+          {/* Linha 2: Detalhes em Linha Horizontal */}
+          <View style={styles.itemDetailsInlineRow}>
+            <View style={styles.inlineTag}>
+              <Ionicons name={isComanda ? "receipt-outline" : "restaurant-outline"} size={13} color="#0284C7" />
+              <Text style={styles.inlineTagHighlight}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>
             </View>
-            {item.observacoes ? (
-              <View style={styles.obsCol}>
-                <View style={styles.obsBox}>
-                  <Ionicons name="document-text" size={18} color="#B45309" />
-                  <Text style={styles.obsText}>Obs: {item.observacoes}</Text>
+
+            <Text style={styles.inlineDot}>•</Text>
+
+            <View style={styles.inlineTag}>
+              <Ionicons name="person-outline" size={13} color="#64748B" />
+              <Text style={styles.inlineTagText}>{item.funcionario || 'Atendente'}</Text>
+            </View>
+
+            <Text style={styles.inlineDot}>•</Text>
+
+            <View style={styles.inlineTag}>
+              <Ionicons name="time-outline" size={13} color="#64748B" />
+              <Text style={styles.inlineTagText}>{timeStr}</Text>
+            </View>
+
+            {hasResp ? (
+              <>
+                <Text style={styles.inlineDot}>•</Text>
+                <View style={styles.inlineTag}>
+                  <Ionicons name="person-circle-outline" size={13} color="#64748B" />
+                  <Text style={styles.inlineTagText}>Resp: {item.responsavel}</Text>
                 </View>
+              </>
+            ) : null}
+
+            {item.observacoes ? (
+              <View style={styles.obsInlineTag}>
+                <Ionicons name="alert-circle" size={13} color="#B45309" />
+                <Text style={styles.obsInlineText} numberOfLines={1}>Obs: {item.observacoes}</Text>
               </View>
             ) : null}
           </View>
@@ -757,7 +782,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContainer: {
-    padding: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   mesaContainer: {
     backgroundColor: '#fff',
@@ -799,16 +825,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#f1f5f9',
     backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    marginBottom: 5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   itemInfo: {
     flex: 1,
@@ -819,64 +847,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  itemBodyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  itemDetailsCol: {
-    minWidth: 160,
-  },
-  obsCol: {
-    flex: 1,
-    paddingLeft: 16,
-    justifyContent: 'center',
-  },
   itemTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 5,
   },
-  obsBox: {
+  itemTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    marginVertical: 4,
-    gap: 6,
-  },
-  obsText: {
-    color: '#92400E',
-    fontSize: 13,
-    fontWeight: 'bold',
-    flexShrink: 1,
+    flexWrap: 'wrap',
+    flex: 1,
+    marginRight: 10,
+    gap: 8,
   },
   itemTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: '#0f172a',
+  },
+  itemDetailsInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 2,
+  },
+  inlineTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  inlineTagHighlight: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0284c7',
+  },
+  inlineTagText: {
+    fontSize: 12.5,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  inlineDot: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginHorizontal: 1,
+  },
+  obsInlineTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
+    gap: 4,
+  },
+  obsInlineText: {
+    color: '#92400e',
+    fontSize: 12,
+    fontWeight: '700',
   },
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   waitText: {
-    marginLeft: 6,
-    fontSize: 14,
+    marginLeft: 5,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#333',
-  },
-  itemDetail: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
-    fontWeight: '500',
+    color: '#475569',
   },
   readyButton: {
     backgroundColor: '#4CAF50',
@@ -904,7 +946,9 @@ const styles = StyleSheet.create({
   },
   filtersRow: {
     flexDirection: 'row',
-    marginTop: 12,
+    marginHorizontal: 12,
+    marginTop: 6,
+    marginBottom: 4,
   },
   advancedFilters: {
     marginHorizontal: 15,
@@ -928,10 +972,10 @@ const styles = StyleSheet.create({
   filterChip: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 6,
     backgroundColor: '#fff',
   },
   filterChipActive: {
@@ -939,36 +983,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#e7f5e7',
   },
   filterText: {
+    fontSize: 12,
     color: '#666',
     fontWeight: '600',
   },
   filterTextActive: {
+    fontSize: 12,
     color: '#4CAF50',
     fontWeight: '700',
   },
   checkbox: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Dimensions.get('window').width < 768 ? 6 : 12,
-    paddingVertical: Dimensions.get('window').width < 768 ? 5 : 10,
-    borderRadius: Dimensions.get('window').width < 768 ? 4 : 8,
+    paddingHorizontal: Dimensions.get('window').width < 768 ? 6 : 10,
+    paddingVertical: Dimensions.get('window').width < 768 ? 4 : 7,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#4CAF50',
-    minWidth: Dimensions.get('window').width < 768 ? 50 : 100,
+    minWidth: Dimensions.get('window').width < 768 ? 50 : 90,
     justifyContent: 'center',
   },
   checkboxText: {
     color: '#4CAF50',
     fontWeight: 'bold',
-    marginLeft: 6,
-    fontSize: Dimensions.get('window').width < 768 ? 8 : 16,
+    marginLeft: 5,
+    fontSize: Dimensions.get('window').width < 768 ? 10 : 13,
   },
   statusPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontSize: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontSize: 11,
     fontWeight: '700',
     overflow: 'hidden',
   },
