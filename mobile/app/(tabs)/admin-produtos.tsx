@@ -681,9 +681,12 @@ export default function AdminProdutosScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
+      {/* 1. Barra Superior com Título, Badge e Ações Principais */}
       <View style={styles.topBar}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={styles.pageTitle}>Gerenciar Produtos</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 150 }}>
+          <Text style={[styles.pageTitle, !isLargeScreen && { fontSize: 18 }]} numberOfLines={1}>
+            Gerenciar Produtos
+          </Text>
           {dbTarget ? (
              <View style={styles.dbBadge}>
                <SafeIcon name="server-outline" size={12} color="#64748B" fallbackText="DB" />
@@ -692,87 +695,225 @@ export default function AdminProdutosScreen() {
           ) : null}
         </View>
 
-        <TouchableOpacity 
-          style={isLargeScreen ? styles.estoqueXmlHeaderButton : styles.estoqueMobileHeaderButton}
-          onPress={() => router.push('/estoque/movimentacao' as any)}
-        >
-          <SafeIcon name="cube-outline" size={16} color="#fff" fallbackText="📦" />
-          <Text style={isLargeScreen ? styles.estoqueXmlHeaderButtonText : styles.estoqueMobileButtonText}>
-            {isLargeScreen ? 'Estoque & Transferência' : 'Estoque'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {/* Botão Novo Produto em destaque no topo */}
+          <TouchableOpacity 
+            style={[styles.novoProdutoHeaderBtn, !isLargeScreen && { paddingHorizontal: 10, paddingVertical: 7 }]}
+            onPress={() => {
+              resetForm();
+              setModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <SafeIcon name="add" size={16} color="#fff" fallbackText="+" />
+            <Text style={styles.novoProdutoHeaderBtnText}>
+              {isLargeScreen ? 'Novo Produto' : 'Novo'}
+            </Text>
+          </TouchableOpacity>
 
-      <View style={styles.searchSection}>
-        <View style={{ flex: 1 }}>
-          <SearchAndFilter
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            searchPlaceholder="Buscar produtos..."
-            filters={[...categoryFilters, ...statusFilters]}
-            selectedFilter={selectedCategory || (filterActive === null ? '' : filterActive ? 'ativo' : 'inativo')}
-            onFilterChange={handleFilterChange}
-            showFilters={true}
-          />
+          {/* Botão Estoque & Transferência */}
+          <TouchableOpacity 
+            style={isLargeScreen ? styles.estoqueXmlHeaderButton : styles.estoqueMobileHeaderButton}
+            onPress={() => router.push('/estoque/movimentacao' as any)}
+            activeOpacity={0.8}
+          >
+            <SafeIcon name="cube-outline" size={15} color="#fff" fallbackText="📦" />
+            <Text style={isLargeScreen ? styles.estoqueXmlHeaderButtonText : styles.estoqueMobileButtonText}>
+              {isLargeScreen ? 'Estoque & Transferência' : 'Estoque'}
+            </Text>
+          </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            resetForm();
-            setModalVisible(true);
-          }}
-        >
-          <SafeIcon name="add" size={24} color="#fff" fallbackText="+" />
-        </TouchableOpacity>
       </View>
 
+      {/* 2. Barra Unificada: Busca + Filtro de Status + Ordenação e Grade/Lista */}
+      <View style={styles.searchAndControlsRow}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color="#64748B" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchTextInput}
+            placeholder="Buscar produtos..."
+            placeholderTextColor="#94A3B8"
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchText('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Chips de Status (Totalmente independentes das Categorias!) */}
+        <View style={styles.statusChipsRow}>
+          {[
+            { key: 'todos', label: 'Todos', active: filterActive === null && !filterSemSetor },
+            { key: 'ativo', label: 'Ativos', active: filterActive === true && !filterSemSetor },
+            { key: 'inativo', label: 'Inativos', active: filterActive === false && !filterSemSetor },
+            { key: 'sem-setor', label: 'Sem Setor', active: filterSemSetor },
+          ].map(st => (
+            <TouchableOpacity
+              key={st.key}
+              onPress={() => {
+                if (st.key === 'todos') {
+                  setFilterActive(null);
+                  setFilterSemSetor(false);
+                } else if (st.key === 'ativo') {
+                  setFilterActive(true);
+                  setFilterSemSetor(false);
+                } else if (st.key === 'inativo') {
+                  setFilterActive(false);
+                  setFilterSemSetor(false);
+                } else if (st.key === 'sem-setor') {
+                  setFilterActive(null);
+                  setFilterSemSetor(true);
+                }
+              }}
+              style={[styles.statusChipBtn, st.active && styles.statusChipBtnActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.statusChipBtnText, st.active && styles.statusChipBtnTextActive]}>
+                {st.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Ordenação e Alternador de Grade/Lista */}
+        <View style={styles.sortAndViewModeRow}>
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={() => {
+              const sortOptions = ['nome', 'categoria', 'preco'] as const;
+              const nextIndex = (sortOptions.indexOf(sortBy) + 1) % sortOptions.length;
+              setSortBy(sortOptions[nextIndex]);
+            }}
+            activeOpacity={0.7}
+          >
+            <SafeIcon name="swap-vertical" size={15} color="#64748B" fallbackText="↕" />
+            <Text style={styles.sortText}>
+              {sortBy === 'nome' ? 'Nome' : sortBy === 'categoria' ? 'Categoria' : 'Preço'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.viewModeContainer}>
+            <TouchableOpacity
+              style={[styles.viewModeButton, viewMode === 'grid' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('grid')}
+              activeOpacity={0.7}
+            >
+              <SafeIcon name="grid" size={16} color={viewMode === 'grid' ? '#2196F3' : '#94A3B8'} fallbackText="▦" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('list')}
+              activeOpacity={0.7}
+            >
+              <SafeIcon name="list" size={16} color={viewMode === 'list' ? '#2196F3' : '#94A3B8'} fallbackText="≡" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* 3. Fita de Categorias com Scroll Horizontal Suave */}
+      <View style={styles.categoriesRibbon}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalScrollContent}
+        >
+          <TouchableOpacity
+            onPress={() => setSelectedCategory('')}
+            style={[
+              styles.categoryChip,
+              selectedCategory === '' && styles.categoryChipActive,
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.categoryChipText,
+                selectedCategory === '' && styles.categoryChipTextActive,
+              ]}
+            >
+              Todas as Categorias
+            </Text>
+          </TouchableOpacity>
+
+          {(categorias || []).map(cat => {
+            const isSel = selectedCategory === cat.nome;
+            return (
+              <TouchableOpacity
+                key={cat.id || cat.nome}
+                onPress={() => setSelectedCategory(isSel ? '' : cat.nome)}
+                style={[
+                  styles.categoryChip,
+                  isSel && styles.categoryChipActive,
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    isSel && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {cat.nome}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* 4. Fita de Locais de Estoque com Scroll Horizontal Suave */}
       {locaisEstoque.length > 0 && (
-        <View style={{ marginTop: 8, marginBottom: 4 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 4 }}>
+        <View style={styles.locaisRibbon}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScrollContent}
+          >
             <TouchableOpacity
               onPress={() => setSelectedLocalFilter('')}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 20,
-                backgroundColor: selectedLocalFilter === '' ? '#0F172A' : '#F1F5F9',
-                borderWidth: 1,
-                borderColor: selectedLocalFilter === '' ? '#0F172A' : '#CBD5E1',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5
-              }}
+              style={[
+                styles.localChip,
+                selectedLocalFilter === '' && styles.localChipAllActive,
+              ]}
+              activeOpacity={0.7}
             >
-              <Ionicons name="apps" size={13} color={selectedLocalFilter === '' ? '#fff' : '#64748B'} />
-              <Text style={{ fontSize: 12, fontWeight: 'bold', color: selectedLocalFilter === '' ? '#fff' : '#475569' }}>
+              <Ionicons
+                name="apps"
+                size={13}
+                color={selectedLocalFilter === '' ? '#fff' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.localChipText,
+                  selectedLocalFilter === '' && styles.localChipAllTextActive,
+                ]}
+              >
                 Todos os Locais
               </Text>
             </TouchableOpacity>
+
             {locaisEstoque.map(loc => {
               const isSel = selectedLocalFilter === loc.nome;
               return (
                 <TouchableOpacity
                   key={loc.id}
                   onPress={() => setSelectedLocalFilter(isSel ? '' : loc.nome)}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 20,
-                    backgroundColor: isSel ? '#0284C7' : '#F1F5F9',
-                    borderWidth: 1,
-                    borderColor: isSel ? '#0284C7' : '#CBD5E1',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 5
-                  }}
+                  style={[
+                    styles.localChip,
+                    isSel && styles.localChipActive,
+                  ]}
+                  activeOpacity={0.7}
                 >
                   <Ionicons 
                     name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
                     size={13} 
                     color={isSel ? '#fff' : '#475569'} 
                   />
-                  <Text style={{ fontSize: 12, fontWeight: isSel ? 'bold' : 'normal', color: isSel ? '#fff' : '#334155' }}>
+                  <Text style={[styles.localChipText, isSel && styles.localChipTextActive]}>
                     {loc.nome}
                   </Text>
                 </TouchableOpacity>
@@ -781,37 +922,6 @@ export default function AdminProdutosScreen() {
           </ScrollView>
         </View>
       )}
-
-      <View style={styles.controlsSection}>
-        <TouchableOpacity
-            style={styles.sortButton}
-            onPress={() => {
-              const sortOptions = ['nome', 'categoria', 'preco'] as const;
-              const nextIndex = (sortOptions.indexOf(sortBy) + 1) % sortOptions.length;
-              setSortBy(sortOptions[nextIndex]);
-            }}
-          >
-            <SafeIcon name="swap-vertical" size={16} color="#64748B" fallbackText="↕" />
-            <Text style={styles.sortText}>
-              Ordenar por: {sortBy === 'nome' ? 'Nome' : sortBy === 'categoria' ? 'Categoria' : 'Preço'}
-            </Text>
-          </TouchableOpacity>
-          
-          <View style={styles.viewModeContainer}>
-            <TouchableOpacity
-              style={[styles.viewModeButton, viewMode === 'grid' && styles.viewModeButtonActive]}
-              onPress={() => setViewMode('grid')}
-            >
-              <SafeIcon name="grid" size={18} color={viewMode === 'grid' ? '#2196F3' : '#94A3B8'} fallbackText="▦" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
-              onPress={() => setViewMode('list')}
-            >
-              <SafeIcon name="list" size={18} color={viewMode === 'list' ? '#2196F3' : '#94A3B8'} fallbackText="≡" />
-            </TouchableOpacity>
-          </View>
-      </View>
     </View>
   );
 
@@ -1449,8 +1559,8 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
@@ -1458,12 +1568,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   pageTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1E293B',
+  },
+  novoProdutoHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#2563EB',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  novoProdutoHeaderBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   estoqueXmlHeaderButton: {
     flexDirection: 'row',
@@ -1488,7 +1619,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#00838F',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 8,
   },
@@ -1511,39 +1642,144 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '600',
   },
-  searchSection: {
+  searchAndControlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
   },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#2196F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#2196F3',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  controlsSection: {
+  searchBar: {
+    flex: 1,
+    minWidth: 220,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'web' ? 8 : 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchTextInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '500',
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' as any } : {}),
+  },
+  statusChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 2,
+    gap: 2,
+  },
+  statusChipBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  statusChipBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statusChipBtnText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  statusChipBtnTextActive: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  sortAndViewModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoriesRibbon: {
+    marginBottom: 6,
+  },
+  horizontalScrollContent: {
+    gap: 6,
+    paddingHorizontal: 2,
+    alignItems: 'center',
+  },
+  categoryChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 5,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  categoryChipActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  categoryChipText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  categoryChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  locaisRibbon: {
+    marginBottom: 6,
+  },
+  localChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  localChipActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
+  },
+  localChipAllActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  localChipText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  localChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  localChipAllTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
   },
   sortText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '500',
+    fontSize: 12.5,
+    color: '#475569',
+    fontWeight: '600',
   },
   viewModeContainer: {
     flexDirection: 'row',
