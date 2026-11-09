@@ -21,7 +21,8 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { SafeIcon } from '../../components/SafeIcon';
-import { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService, getProductImageUrl } from '../../src/services/api';
+import { Ionicons } from '@expo/vector-icons';
+import { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService, stockService, getProductImageUrl } from '../../src/services/api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import SearchAndFilter from '../../src/components/SearchAndFilter';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
@@ -46,6 +47,8 @@ interface Product {
   quantidade: number;
   estoqueDeposito?: number;
   estoqueGeladeira?: number;
+  localVendaId?: number;
+  localVendaNome?: string;
   disponivel: boolean;
   imagem?: string;
   ncm?: string;
@@ -110,6 +113,11 @@ export default function AdminProdutosScreen() {
   const [apiHost, setApiHost] = useState('');
   const [setores, setSetores] = useState<SetorImpressao[]>([]);
   const [selectedSetores, setSelectedSetores] = useState<string[] | null>(null);
+  const [locaisEstoque, setLocaisEstoque] = useState<any[]>([]);
+  const [selectedLocalFilter, setSelectedLocalFilter] = useState<string>('');
+  const [showModalNovoLocal, setShowModalNovoLocal] = useState(false);
+  const [novoLocalNome, setNovoLocalNome] = useState('');
+  const [novoLocalTipo, setNovoLocalTipo] = useState('GELADEIRA');
 
   // Filtros para o SearchAndFilter
   const categoryFilters = [
@@ -160,6 +168,8 @@ export default function AdminProdutosScreen() {
     quantidade: '0',
     estoqueDeposito: '0',
     estoqueGeladeira: '0',
+    localVendaNome: 'Geladeira 1',
+    localVendaId: null as number | null,
     disponivel: true,
     imagem: '',
     ncm: '',
@@ -275,7 +285,8 @@ export default function AdminProdutosScreen() {
       loadCategorias(),
       loadTipos(),
       loadUnidades(),
-      loadSetores()
+      loadSetores(),
+      loadLocaisEstoque()
     ]);
   };
 
@@ -329,6 +340,45 @@ export default function AdminProdutosScreen() {
     }
   };
 
+  const loadLocaisEstoque = async () => {
+    try {
+      const res = await stockService.getLocations();
+      setLocaisEstoque(Array.isArray(res.data) ? res.data : []);
+    } catch (e: any) {
+      console.error('Erro ao carregar locais de estoque:', e);
+    }
+  };
+
+  const handleCreateNovoLocal = async () => {
+    if (!novoLocalNome.trim()) {
+      Alert.alert('Atenção', 'Informe o nome do local.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await stockService.createLocation({
+        nome: novoLocalNome.trim(),
+        tipo: novoLocalTipo,
+      });
+      const novo = res.data?.location;
+      await loadLocaisEstoque();
+      if (novo) {
+        setFormData((prev: any) => ({
+          ...prev,
+          localVendaNome: novo.nome,
+          localVendaId: novo.id
+        }));
+      }
+      setNovoLocalNome('');
+      setShowModalNovoLocal(false);
+      Alert.alert('Sucesso', 'Local cadastrado com sucesso!');
+    } catch (e: any) {
+      Alert.alert('Erro', e.response?.data?.error || 'Erro ao cadastrar local.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveProduct = async () => {
     if (!formData.nome || !formData.precoVenda || !formData.categoria) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios (Nome, Preço de Venda, Categoria)');
@@ -355,6 +405,8 @@ export default function AdminProdutosScreen() {
         quantidade: (parseInt(formData.estoqueDeposito) || 0) + (parseInt(formData.estoqueGeladeira) || 0),
         estoqueDeposito: parseInt(formData.estoqueDeposito) || 0,
         estoqueGeladeira: parseInt(formData.estoqueGeladeira) || 0,
+        localVendaNome: formData.localVendaNome || 'Geladeira 1',
+        localVendaId: formData.localVendaId || undefined,
         disponivel: formData.disponivel,
         imagem: formData.imagem || null,
         ncm: formData.ncm,
@@ -407,6 +459,8 @@ export default function AdminProdutosScreen() {
       quantidade: (product.quantidade ?? 0).toString(),
       estoqueDeposito: (product.estoqueDeposito ?? 0).toString(),
       estoqueGeladeira: (product.estoqueGeladeira ?? (product.quantidade ?? 0)).toString(),
+      localVendaNome: product.localVendaNome || 'Geladeira 1',
+      localVendaId: product.localVendaId || null,
       disponivel: product.disponivel !== undefined ? product.disponivel : true,
       imagem: (product as any).imagem || '',
       ncm: product.ncm || '',
@@ -471,6 +525,8 @@ export default function AdminProdutosScreen() {
       quantidade: '0',
       estoqueDeposito: '0',
       estoqueGeladeira: '0',
+      localVendaNome: 'Geladeira 1',
+      localVendaId: null as number | null,
       disponivel: true,
       imagem: '',
       ncm: '',
@@ -499,11 +555,13 @@ export default function AdminProdutosScreen() {
       
       const sids = (product as any)?.setoresImpressaoIds || [];
       const matchesSemSetor = !filterSemSetor || sids.length === 0;
+      const matchesLocal = !selectedLocalFilter || (product.localVendaNome || 'Geladeira 1') === selectedLocalFilter;
 
       return (nome.includes(q) || categoria.includes(q) || descricao.includes(q)) &&
              (!selectedCategory || product.categoria === selectedCategory) &&
              (filterActive === null || product.ativo === filterActive) &&
-             matchesSemSetor;
+             matchesSemSetor &&
+             matchesLocal;
     });
 
     filtered.sort((a, b) => {
@@ -570,7 +628,7 @@ export default function AdminProdutosScreen() {
           Estoque Total: <Text style={{ fontWeight: 'bold' }}>{item.quantidade ?? 0}</Text> {item.unidade || 'un'}
         </Text>
         <Text style={styles.stockSubText}>
-          📦 Dep: <Text style={{ fontWeight: 'bold', color: '#1565C0' }}>{item.estoqueDeposito ?? 0}</Text> | ❄️ Gel: <Text style={{ fontWeight: 'bold', color: (item.estoqueGeladeira ?? 0) <= 0 ? '#E65100' : '#2E7D32' }}>{item.estoqueGeladeira ?? 0}</Text>
+          📦 Dep: <Text style={{ fontWeight: 'bold', color: '#1565C0' }}>{item.estoqueDeposito ?? 0}</Text> | 📍 {item.localVendaNome || 'Geladeira'}: <Text style={{ fontWeight: 'bold', color: (item.estoqueGeladeira ?? 0) <= 0 ? '#E65100' : '#2E7D32' }}>{item.estoqueGeladeira ?? 0}</Text>
         </Text>
       </View>
       
@@ -584,7 +642,7 @@ export default function AdminProdutosScreen() {
           {(item.estoqueGeladeira ?? 0) <= 0 && (item.estoqueDeposito ?? 0) > 0 && (
             <View style={[styles.statusBadge, { backgroundColor: '#FFF3E0', borderColor: '#FF9800', borderWidth: 1 }]}>
               <Text style={[styles.statusText, { color: '#E65100', fontWeight: 'bold' }]}>
-                ⚠️ Repor Geladeira ({item.estoqueDeposito} no dep.)
+                ⚠️ Repor {item.localVendaNome || 'Geladeira'} ({item.estoqueDeposito} no dep.)
               </Text>
             </View>
           )}
@@ -668,6 +726,61 @@ export default function AdminProdutosScreen() {
           <SafeIcon name="add" size={24} color="#fff" fallbackText="+" />
         </TouchableOpacity>
       </View>
+
+      {locaisEstoque.length > 0 && (
+        <View style={{ marginTop: 8, marginBottom: 4 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 4 }}>
+            <TouchableOpacity
+              onPress={() => setSelectedLocalFilter('')}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 20,
+                backgroundColor: selectedLocalFilter === '' ? '#0F172A' : '#F1F5F9',
+                borderWidth: 1,
+                borderColor: selectedLocalFilter === '' ? '#0F172A' : '#CBD5E1',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
+              <Ionicons name="apps" size={13} color={selectedLocalFilter === '' ? '#fff' : '#64748B'} />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: selectedLocalFilter === '' ? '#fff' : '#475569' }}>
+                Todos os Locais
+              </Text>
+            </TouchableOpacity>
+            {locaisEstoque.map(loc => {
+              const isSel = selectedLocalFilter === loc.nome;
+              return (
+                <TouchableOpacity
+                  key={loc.id}
+                  onPress={() => setSelectedLocalFilter(isSel ? '' : loc.nome)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    backgroundColor: isSel ? '#0284C7' : '#F1F5F9',
+                    borderWidth: 1,
+                    borderColor: isSel ? '#0284C7' : '#CBD5E1',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                >
+                  <Ionicons 
+                    name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
+                    size={13} 
+                    color={isSel ? '#fff' : '#475569'} 
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: isSel ? 'bold' : 'normal', color: isSel ? '#fff' : '#334155' }}>
+                    {loc.nome}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       <View style={styles.controlsSection}>
         <TouchableOpacity
@@ -970,9 +1083,55 @@ export default function AdminProdutosScreen() {
                       {/* Grupo: Estoque e Controles */}
                       <View style={styles.formSection}>
                          <Text style={styles.sectionLabel}>Estoque e Disponibilidade</Text>
+                         
+                         {/* Local de Venda / Ponto de Saída */}
+                         <View style={{ marginBottom: 12 }}>
+                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                             <Text style={[styles.label, { marginBottom: 0 }]}>📍 Local de Venda (Onde o produto fica):</Text>
+                             <TouchableOpacity 
+                               onPress={() => setShowModalNovoLocal(true)}
+                               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                             >
+                               <Ionicons name="add-circle-outline" size={14} color="#0284C7" />
+                               <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0284C7', marginLeft: 4 }}>+ Novo Local</Text>
+                             </TouchableOpacity>
+                           </View>
+                           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                             {locaisEstoque.map(loc => {
+                               const isSelected = formData.localVendaNome === loc.nome;
+                               return (
+                                 <TouchableOpacity
+                                   key={loc.id}
+                                   onPress={() => setFormData({ ...formData, localVendaNome: loc.nome, localVendaId: loc.id })}
+                                   style={{
+                                     paddingHorizontal: 12,
+                                     paddingVertical: 7,
+                                     borderRadius: 8,
+                                     backgroundColor: isSelected ? '#0284C7' : '#F1F5F9',
+                                     borderWidth: 1,
+                                     borderColor: isSelected ? '#0284C7' : '#CBD5E1',
+                                     flexDirection: 'row',
+                                     alignItems: 'center',
+                                     gap: 5
+                                   }}
+                                 >
+                                   <Ionicons 
+                                     name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
+                                     size={14} 
+                                     color={isSelected ? '#fff' : '#475569'} 
+                                   />
+                                   <Text style={{ fontSize: 13, fontWeight: isSelected ? 'bold' : 'normal', color: isSelected ? '#fff' : '#334155' }}>
+                                     {loc.nome}
+                                   </Text>
+                                 </TouchableOpacity>
+                               );
+                             })}
+                           </ScrollView>
+                         </View>
+
                          <View style={styles.row}>
                             <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                               <Text style={styles.label}>No Depósito</Text>
+                               <Text style={styles.label}>📦 No Depósito</Text>
                                <TextInput
                                   style={styles.input}
                                   value={formData.estoqueDeposito}
@@ -987,7 +1146,7 @@ export default function AdminProdutosScreen() {
                             </View>
 
                             <View style={[styles.inputGroup, { flex: 1 }]}>
-                               <Text style={styles.label}>Na Geladeira / Balcão</Text>
+                               <Text style={styles.label}>📍 Em {formData.localVendaNome || 'Geladeira / Balcão'}</Text>
                                <TextInput
                                   style={styles.input}
                                   value={formData.estoqueGeladeira}
@@ -1191,6 +1350,87 @@ export default function AdminProdutosScreen() {
                    <Text style={styles.modalButtonTextPrimary}>Salvar Produto</Text>
                 </TouchableOpacity>
              </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Cadastro Rápido de Novo Local */}
+        <Modal
+          visible={showModalNovoLocal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowModalNovoLocal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 420, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 5 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1E293B' }}>📍 Novo Local de Estoque</Text>
+                <TouchableOpacity onPress={() => setShowModalNovoLocal(false)}>
+                  <Ionicons name="close" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 14 }}>
+                Cadastre um local físico onde os produtos ficam disponíveis para venda (ex: Geladeira 3, Chapa 2, Expositor, Freezer).
+              </Text>
+
+              <Text style={[styles.label, { marginBottom: 4 }]}>Nome do Local *</Text>
+              <TextInput
+                style={[styles.input, { marginBottom: 14 }]}
+                placeholder="Ex: Geladeira 3, Chapa 2, Balcão Doces"
+                value={novoLocalNome}
+                onChangeText={setNovoLocalNome}
+              />
+
+              <Text style={[styles.label, { marginBottom: 6 }]}>Tipo do Local:</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+                {[
+                  { tipo: 'GELADEIRA', label: 'Geladeira / Freezer', icon: 'snow' },
+                  { tipo: 'BALCAO', label: 'Balcão / Vitrine', icon: 'storefront' },
+                  { tipo: 'COZINHA', label: 'Cozinha / Chapa', icon: 'restaurant' },
+                  { tipo: 'BAR', label: 'Bar / Doses', icon: 'wine' },
+                  { tipo: 'OUTRO', label: 'Outro', icon: 'location' }
+                ].map(item => {
+                  const isSel = novoLocalTipo === item.tipo;
+                  return (
+                    <TouchableOpacity
+                      key={item.tipo}
+                      onPress={() => setNovoLocalTipo(item.tipo)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        backgroundColor: isSel ? '#0284C7' : '#F1F5F9',
+                        borderWidth: 1,
+                        borderColor: isSel ? '#0284C7' : '#CBD5E1',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Ionicons name={item.icon as any} size={14} color={isSel ? '#fff' : '#475569'} />
+                      <Text style={{ fontSize: 12, fontWeight: isSel ? 'bold' : 'normal', color: isSel ? '#fff' : '#334155' }}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => setShowModalNovoLocal(false)}
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748B' }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCreateNovoLocal}
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#0284C7', alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#fff' }}>Salvar Local</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </Modal>
       </View>

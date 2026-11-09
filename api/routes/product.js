@@ -83,6 +83,8 @@ const mapProduct = (p) => {
     tipoId: p.tipoId || null,
     groupId: p.groupId || null,
     unidadeMedidaId: p.unidadeMedidaId || null,
+    localVendaId: p.localVendaId || null,
+    localVendaNome: p.localVendaNome || 'Geladeira 1',
     dataInclusao: p.dataInclusao,
     temTamanhos: !!p.temTamanhos,
     tamanhos: Array.isArray(p.tamanhos) ? p.tamanhos.map(t => ({
@@ -139,6 +141,7 @@ router.post("/create", async (req, res) => {
             estoque, quantidade, estoqueMinimo, ativo, dadosFiscais, imagem, tempoPreparoMinutos, 
             disponivel, temVariacao, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, 
             temTamanhos, tamanhos,
+            localVendaId, localVendaNome,
             // Fiscal
             ncm, cest, cfop, csosn, origem,
             ibsCst, ibsClassTrib, ibsAliquota, cbsCst, cbsClassTrib, cbsAliquota, isAliquota,
@@ -164,6 +167,7 @@ router.post("/create", async (req, res) => {
             catNome = cat?.nome;
         }
 
+        const lVid = Number(localVendaId);
         const novoProduto = await tx.product.create({
             data: {
                 nome,
@@ -178,6 +182,8 @@ router.post("/create", async (req, res) => {
                 tipoId: Number.isInteger(tipId) && tipId > 0 ? tipId : undefined,
                 groupId: Number.isInteger(grpId) && grpId > 0 ? grpId : undefined,
                 unidadeMedidaId: Number.isInteger(uniId) && uniId > 0 ? uniId : undefined,
+                localVendaId: Number.isInteger(lVid) && lVid > 0 ? lVid : undefined,
+                localVendaNome: localVendaNome ? String(localVendaNome).trim() : (gelInput > 0 ? 'Geladeira 1' : undefined),
                 unidade: un,
                 ativo: ativo !== undefined ? !!ativo : true,
                 dadosFiscais,
@@ -255,6 +261,7 @@ router.post("/create", async (req, res) => {
         estoque, quantidade, estoqueMinimo, ativo, dadosFiscais, imagem, tempoPreparoMinutos, 
         disponivel, temVariacao, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, 
         temTamanhos, tamanhos,
+        localVendaId, localVendaNome,
         ncm, cest, cfop, csosn, origem,
         ibsCst, ibsClassTrib, ibsAliquota, cbsCst, cbsClassTrib, cbsAliquota, isAliquota
     } = req.body;
@@ -268,6 +275,7 @@ router.post("/create", async (req, res) => {
     const tipId = Number(tipoId);
     const uniId = Number(unidadeMedidaId);
     const grpId = Number(groupId);
+    const lVid = Number(localVendaId);
     let catNome = categoria;
     if ((!catNome || !String(catNome).trim()) && Number.isInteger(catId) && catId > 0) {
       const cat = await prisma.categoria.findUnique({ where: { id: catId } });
@@ -287,10 +295,16 @@ router.post("/create", async (req, res) => {
         tipoId: Number.isInteger(tipId) && tipId > 0 ? tipId : undefined,
         groupId: Number.isInteger(grpId) && grpId > 0 ? grpId : undefined,
         unidadeMedidaId: Number.isInteger(uniId) && uniId > 0 ? uniId : undefined,
+        localVendaId: Number.isInteger(lVid) && lVid > 0 ? lVid : undefined,
+        localVendaNome: localVendaNome ? String(localVendaNome).trim() : undefined,
         unidade: un,
         ativo: ativo !== undefined ? !!ativo : true,
         dadosFiscais,
         quantidade: Number(qtd) || 0,
+        estoqueDeposito: Number(req.body.estoqueDeposito || 0),
+        estoqueGeladeira: Number(req.body.estoqueGeladeira || 0) > 0 
+          ? Number(req.body.estoqueGeladeira) 
+          : (Number(req.body.estoqueDeposito || 0) > 0 ? 0 : Number(qtd) || 0),
         imagem,
         tempoPreparoMinutos: tempoPreparoMinutos ?? 0,
         disponivel: disponivel ?? true,
@@ -370,7 +384,7 @@ router.post("/bulk-create", async (req, res) => {
                 nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, 
                 estoque, quantidade, estoqueMinimo, ativo, dadosFiscais, imagem, tempoPreparoMinutos, 
                 disponivel, temVariacao, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, 
-                temTamanhos, tamanhos, ncm, cest, cfop, csosn, origem,
+                temTamanhos, tamanhos, localVendaId, localVendaNome, ncm, cest, cfop, csosn, origem,
                 ibsCst, ibsClassTrib, ibsAliquota, cbsCst, cbsClassTrib, cbsAliquota, isAliquota
             } = productData;
     
@@ -383,6 +397,7 @@ router.post("/bulk-create", async (req, res) => {
             const tipId = Number(tipoId);
             const uniId = Number(unidadeMedidaId);
             const grpId = Number(groupId);
+            const lVid = Number(localVendaId);
             
             let catNome = categoria;
             if ((!catNome || !String(catNome).trim()) && Number.isInteger(catId) && catId > 0) {
@@ -403,6 +418,8 @@ router.post("/bulk-create", async (req, res) => {
                     tipoId: Number.isInteger(tipId) && tipId > 0 ? tipId : undefined,
                     groupId: Number.isInteger(grpId) && grpId > 0 ? grpId : undefined,
                     unidadeMedidaId: Number.isInteger(uniId) && uniId > 0 ? uniId : undefined,
+                    localVendaId: Number.isInteger(lVid) && lVid > 0 ? lVid : undefined,
+                    localVendaNome: localVendaNome ? String(localVendaNome).trim() : undefined,
                     unidade: un,
                     ativo: ativo !== undefined ? !!ativo : true,
                     dadosFiscais,
@@ -751,7 +768,7 @@ router.put("/update/:id", async (req, res) => {
       return res.status(400).json({ error: "ID inválido" });
     }
 
-    const { nome, descricao, precoCusto, precoVenda, categoria, tipo, grupo, unidade, ativo, dadosFiscais, quantidade, imagem, tempoPreparoMinutos, disponivel, temVariacao, preco, estoque, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, temTamanhos, tamanhos } = req.body;
+    const { nome, descricao, precoCusto, precoVenda, categoria, tipo, grupo, unidade, ativo, dadosFiscais, quantidade, imagem, tempoPreparoMinutos, disponivel, temVariacao, preco, estoque, categoriaId, tipoId, unidadeMedidaId, groupId, setoresImpressaoIds, temTamanhos, tamanhos, localVendaId, localVendaNome } = req.body;
 
     const reqIbsCst = req.body.ibsCst;
     const reqIbsClassTrib = req.body.ibsClassTrib;
@@ -784,6 +801,8 @@ router.put("/update/:id", async (req, res) => {
       tipoId: tipoId !== undefined ? (Number.isInteger(Number(tipoId)) ? Number(tipoId) : undefined) : undefined,
       groupId: groupId !== undefined ? (Number.isInteger(Number(groupId)) ? Number(groupId) : undefined) : undefined,
       unidadeMedidaId: unidadeMedidaId !== undefined ? (Number.isInteger(Number(unidadeMedidaId)) ? Number(unidadeMedidaId) : undefined) : undefined,
+      localVendaId: localVendaId !== undefined ? (Number.isInteger(Number(localVendaId)) && Number(localVendaId) > 0 ? Number(localVendaId) : null) : undefined,
+      localVendaNome: localVendaNome !== undefined ? (localVendaNome ? String(localVendaNome).trim() : null) : undefined,
 
       // Fiscal (Updated)
       ncm: req.body.ncm ? String(req.body.ncm).replace(/\D/g, '') : undefined,
@@ -888,7 +907,7 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "ID inválido" });
     }
 
-    const { nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, estoque, quantidade, estoqueMinimo, ativo, imagem, categoriaId, tipoId, unidadeMedidaId, groupId } = req.body;
+    const { nome, descricao, preco, precoVenda, precoCusto, categoria, tipo, grupo, unidade, estoque, quantidade, estoqueMinimo, ativo, imagem, categoriaId, tipoId, unidadeMedidaId, groupId, localVendaId, localVendaNome } = req.body;
 
     const altIbsCst = req.body.ibsCst;
     const altIbsClassTrib = req.body.ibsClassTrib;
@@ -916,6 +935,8 @@ router.put("/:id", async (req, res) => {
       tipoId: tipoId !== undefined ? (Number.isInteger(Number(tipoId)) ? Number(tipoId) : undefined) : undefined,
       groupId: groupId !== undefined ? (Number.isInteger(Number(groupId)) ? Number(groupId) : undefined) : undefined,
       unidadeMedidaId: unidadeMedidaId !== undefined ? (Number.isInteger(Number(unidadeMedidaId)) ? Number(unidadeMedidaId) : undefined) : undefined,
+      localVendaId: localVendaId !== undefined ? (Number.isInteger(Number(localVendaId)) && Number(localVendaId) > 0 ? Number(localVendaId) : null) : undefined,
+      localVendaNome: localVendaNome !== undefined ? (localVendaNome ? String(localVendaNome).trim() : null) : undefined,
       
       // Fiscal
       ncm: req.body.ncm ? String(req.body.ncm).replace(/\D/g, '') : undefined,

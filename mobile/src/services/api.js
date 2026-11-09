@@ -678,8 +678,12 @@ export const systemService = {
   shutdown: () => api.post('/shutdown'),
 };
 
-// Serviço de Estoque e Locais (Depósito / Geladeira)
+// Serviço de Estoque e Locais (Depósito / Geladeira / Locais Customizados)
 export const stockService = {
+  getLocations: () => api.get('/stock/locations'),
+  createLocation: (data) => api.post('/stock/locations', data),
+  updateLocation: (id, data) => api.put(`/stock/locations/${id}`, data),
+  deleteLocation: (id) => api.delete(`/stock/locations/${id}`),
   move: (data) => api.post('/stock/move', data),
   transfer: (data) => api.post('/stock/transfer', data),
   getSuppliers: () => api.get('/stock/suppliers'),

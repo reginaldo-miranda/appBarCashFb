@@ -63,6 +63,8 @@ interface XmlItem {
   associatedProductName: string | null;
   associatedProductPrecoVenda?: number | null;
   associatedProductPrecoCusto?: number | null;
+  associatedProductLocalVendaNome?: string | null;
+  localDestino?: string;
   precoVenda?: string | number;
   // Campos de controle do usuário
   productId: number | null;
@@ -75,6 +77,7 @@ interface XmlItem {
     categoria: string;
     tipo: string;
     unidade: string;
+    localVendaNome?: string;
   };
 }
 
@@ -87,6 +90,7 @@ export default function MovimentacaoEstoque() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [tipos, setTipos] = useState<Tipo[]>([]);
+  const [locaisEstoque, setLocaisEstoque] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // States Transferência entre Locais (Depósito <-> Geladeira)
@@ -148,6 +152,7 @@ export default function MovimentacaoEstoque() {
     categoria: '',
     tipo: '',
     unidade: 'un',
+    localVendaNome: 'Geladeira 1',
   });
 
   const reasonsInput = {
@@ -188,17 +193,19 @@ export default function MovimentacaoEstoque() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [prodRes, supRes, catRes, tipRes] = await Promise.all([
+      const [prodRes, supRes, catRes, tipRes, locRes] = await Promise.all([
         productService.getAll(),
         api.get('/stock/suppliers'),
         categoryService.getAll(),
         typeService.getAll(),
+        api.get('/stock/locations'),
       ]);
       const prods = prodRes.data || [];
       setProducts(prods);
       setSuppliers(supRes.data || []);
       setCategorias(catRes || []);
       setTipos(tipRes || []);
+      setLocaisEstoque(locRes.data || []);
 
       // Atualiza produto selecionado se já houver um selecionado
       if (transferProduct) {
@@ -217,7 +224,7 @@ export default function MovimentacaoEstoque() {
     }
   };
 
-  // Transferência entre Depósito e Geladeira
+  // Transferência entre Depósito e Ponto de Venda (Geladeira, Balcão, Cozinha, etc.)
   const handleTransferStock = async () => {
     if (!transferProduct) {
       Alert.alert('Atenção', 'Selecione um produto para transferir.');
@@ -229,8 +236,9 @@ export default function MovimentacaoEstoque() {
     }
 
     const qtyNum = Number(transferQty);
-    const origem = transferDirection === 'DEP_TO_GEL' ? 'DEPOSITO' : 'GELADEIRA';
-    const destino = transferDirection === 'DEP_TO_GEL' ? 'GELADEIRA' : 'DEPOSITO';
+    const localNome = (transferProduct as any).localVendaNome || 'Geladeira 1';
+    const origem = transferDirection === 'DEP_TO_GEL' ? 'DEPOSITO' : localNome;
+    const destino = transferDirection === 'DEP_TO_GEL' ? localNome : 'DEPOSITO';
 
     setLoading(true);
     try {
@@ -243,13 +251,13 @@ export default function MovimentacaoEstoque() {
       });
 
       const depAtual = res.data?.estoqueDeposito ?? (origem === 'DEPOSITO' ? (transferProduct.estoqueDeposito || 0) - qtyNum : (transferProduct.estoqueDeposito || 0) + qtyNum);
-      const gelAtual = res.data?.estoqueGeladeira ?? (destino === 'GELADEIRA' ? (transferProduct.estoqueGeladeira || 0) + qtyNum : (transferProduct.estoqueGeladeira || 0) - qtyNum);
+      const gelAtual = res.data?.estoqueGeladeira ?? (destino === 'DEPOSITO' ? (transferProduct.estoqueGeladeira || 0) - qtyNum : (transferProduct.estoqueGeladeira || 0) + qtyNum);
 
       Alert.alert(
         'Sucesso',
         `Transferência concluída com sucesso!\n\n${transferProduct.nome}\n` +
         `📦 Depósito: ${depAtual} ${transferProduct.unidade}\n` +
-        `❄️ Geladeira: ${gelAtual} ${transferProduct.unidade}`
+        `📍 ${localNome}: ${gelAtual} ${transferProduct.unidade}`
       );
 
       setTransferProduct((prev) =>
@@ -395,6 +403,8 @@ export default function MovimentacaoEstoque() {
         productName: item.associatedProductName,
         associatedProductPrecoVenda: item.associatedProductPrecoVenda,
         associatedProductPrecoCusto: item.associatedProductPrecoCusto,
+        associatedProductLocalVendaNome: item.associatedProductLocalVendaNome,
+        localDestino: 'DEPOSITO', // Padrão
         precoVenda: item.associatedProductPrecoVenda ? String(item.associatedProductPrecoVenda) : '',
         fatorConversao: 1,
         cadastrarNovo: false,
@@ -425,6 +435,7 @@ export default function MovimentacaoEstoque() {
       categoria: categorias[0]?.nome || '',
       tipo: tipos[0]?.nome || '',
       unidade: 'un',
+      localVendaNome: locaisEstoque[0]?.nome || 'Geladeira 1',
     });
     
     setShowNewProductModal(true);
@@ -444,6 +455,7 @@ export default function MovimentacaoEstoque() {
         cadastrarNovo: true,
         productId: null,
         productName: tempNewProduct.nome + ' (Novo Cadastro)',
+        localDestino: tempNewProduct.localVendaNome || 'Geladeira 1',
         novoProduto: { ...tempNewProduct },
       };
 
@@ -469,6 +481,8 @@ export default function MovimentacaoEstoque() {
         productName: prod.nome,
         associatedProductPrecoVenda: prodAny.precoVenda ? Number(prodAny.precoVenda) : null,
         associatedProductPrecoCusto: prodAny.precoCusto ? Number(prodAny.precoCusto) : null,
+        associatedProductLocalVendaNome: prodAny.localVendaNome || null,
+        localDestino: prodAny.localVendaNome || updatedItens[associatingItemIndex].localDestino || 'DEPOSITO',
         precoVenda: prodAny.precoVenda ? String(prodAny.precoVenda) : (updatedItens[associatingItemIndex].precoVenda || ''),
         novoProduto: undefined,
       };
@@ -517,6 +531,27 @@ export default function MovimentacaoEstoque() {
     }
   };
 
+  // Configurar destino de todos os itens do XML em lote
+  const handleSetAllXmlDestino = (tipoDestino: 'DEPOSITO' | 'PADRAO') => {
+    if (!xmlData) return;
+    const updatedItens = xmlData.itens.map((item: any) => ({
+      ...item,
+      localDestino: tipoDestino === 'PADRAO' ? (item.associatedProductLocalVendaNome || 'Geladeira 1') : 'DEPOSITO',
+    }));
+    setXmlData({ ...xmlData, itens: updatedItens });
+  };
+
+  // Alterar destino de um item específico do XML
+  const handleItemDestinoChange = (index: number, localNome: string) => {
+    if (!xmlData) return;
+    const updatedItens = [...xmlData.itens];
+    updatedItens[index] = {
+      ...updatedItens[index],
+      localDestino: localNome,
+    };
+    setXmlData({ ...xmlData, itens: updatedItens });
+  };
+
   // Confirmar toda a nota fiscal (XML)
   const handleConfirmXml = async () => {
     if (!xmlData) return;
@@ -545,6 +580,7 @@ export default function MovimentacaoEstoque() {
         fornecedor: xmlData!.fornecedor,
         itens: xmlData!.itens.map(item => ({
           ...item,
+          localDestino: item.localDestino || 'DEPOSITO',
           precoVenda: item.precoVenda ? Number(String(item.precoVenda).replace(',', '.')) : undefined,
         })),
       };
@@ -669,7 +705,7 @@ export default function MovimentacaoEstoque() {
                   </View>
 
                   <View style={[styles.balanceBox, { borderColor: '#2E7D32', backgroundColor: '#E8F5E9' }]}>
-                    <Text style={[styles.balanceBoxLabel, { color: '#1B5E20' }]}>❄️ Geladeira / Venda</Text>
+                    <Text style={[styles.balanceBoxLabel, { color: '#1B5E20' }]}>📍 {(transferProduct as any)?.localVendaNome || 'Geladeira'}</Text>
                     <Text style={[styles.balanceBoxValue, { color: '#2E7D32' }]}>
                       {transferProduct.estoqueGeladeira ?? 0}
                     </Text>
@@ -701,7 +737,7 @@ export default function MovimentacaoEstoque() {
                   />
                   <View>
                     <Text style={[styles.radioText, transferDirection === 'DEP_TO_GEL' && { fontWeight: 'bold', color: '#1565C0' }]}>
-                      Depósito ➔ Geladeira
+                      Depósito ➔ {(transferProduct as any)?.localVendaNome || 'Geladeira'}
                     </Text>
                     <Text style={{ fontSize: 11, color: '#666' }}>Abastecer ponto de venda</Text>
                   </View>
@@ -722,7 +758,7 @@ export default function MovimentacaoEstoque() {
                   />
                   <View>
                     <Text style={[styles.radioText, transferDirection === 'GEL_TO_DEP' && { fontWeight: 'bold', color: '#E65100' }]}>
-                      Geladeira ➔ Depósito
+                      {(transferProduct as any)?.localVendaNome || 'Geladeira'} ➔ Depósito
                     </Text>
                     <Text style={{ fontSize: 11, color: '#666' }}>Devolução ao depósito</Text>
                   </View>
@@ -783,7 +819,7 @@ export default function MovimentacaoEstoque() {
                 const maxAvailable = transferDirection === 'DEP_TO_GEL' 
                   ? (transferProduct.estoqueDeposito ?? 0) 
                   : (transferProduct.estoqueGeladeira ?? 0);
-                const locNome = transferDirection === 'DEP_TO_GEL' ? 'Depósito' : 'Geladeira';
+                const locNome = transferDirection === 'DEP_TO_GEL' ? 'Depósito' : ((transferProduct as any)?.localVendaNome || 'Geladeira');
                 if (Number(transferQty) > maxAvailable) {
                   return (
                     <View style={styles.transferWarningBox}>
@@ -843,7 +879,7 @@ export default function MovimentacaoEstoque() {
               >
                 <Text style={selectedProduct ? styles.pickerTextSelected : styles.pickerText}>
                   {selectedProduct 
-                    ? `${selectedProduct.nome} (Total: ${selectedProduct.quantidade} | Dep: ${selectedProduct.estoqueDeposito ?? 0} | Gel: ${selectedProduct.estoqueGeladeira ?? 0} ${selectedProduct.unidade || 'un'})` 
+                    ? `${selectedProduct.nome} (Total: ${selectedProduct.quantidade} | Dep: ${selectedProduct.estoqueDeposito ?? 0} | 📍 ${(selectedProduct as any).localVendaNome || 'Ponto de Venda'}: ${selectedProduct.estoqueGeladeira ?? 0} ${selectedProduct.unidade || 'un'})` 
                     : 'Toque para selecionar um produto'}
                 </Text>
                 <Ionicons name="search" size={20} color="#666" />
@@ -920,7 +956,7 @@ export default function MovimentacaoEstoque() {
                     color={manualLocal === 'GELADEIRA' ? '#2E7D32' : '#666'} 
                   />
                   <Text style={[styles.radioText, manualLocal === 'GELADEIRA' && { fontWeight: 'bold', color: '#2E7D32' }]}>
-                    ❄️ Geladeira / Venda
+                    📍 {(selectedProduct as any)?.localVendaNome || 'Ponto de Venda'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1006,7 +1042,6 @@ export default function MovimentacaoEstoque() {
                     alignItems: 'center',
                   }}
                   onPress={() => setShowSupplierModal(true)}
-                  title="Cadastrar Novo Fornecedor"
                 >
                   <Ionicons name="add" size={24} color="#FFF" />
                 </TouchableOpacity>
@@ -1046,7 +1081,7 @@ export default function MovimentacaoEstoque() {
             <View style={{ backgroundColor: '#E3F2FD', padding: 12, borderRadius: 8, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="information-circle" size={20} color="#1565C0" />
               <Text style={{ fontSize: 13, color: '#0D47A1', flex: 1 }}>
-                Os itens da Nota Fiscal entrarão no estoque do <Text style={{ fontWeight: 'bold' }}>Depósito</Text>. Posteriormente, faça a transferência para a Geladeira na aba <Text style={{ fontWeight: 'bold' }}>Transferência</Text>.
+                <Text style={{ fontWeight: 'bold' }}>Distribuição de Estoque:</Text> Escolha o destino de cada produto (Depósito, Geladeiras, Balcão, Cozinha, etc.) ou use os botões rápidos abaixo para direcionar tudo ao Depósito ou aos Locais Padrão.
               </Text>
             </View>
 
@@ -1085,7 +1120,25 @@ export default function MovimentacaoEstoque() {
                   </View>
                 </View>
 
-                <Text style={styles.tableTitle}>Itens da Nota Fiscal ({xmlData.itens.length})</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <Text style={styles.tableTitle}>Itens da Nota Fiscal ({xmlData.itens.length})</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity 
+                      onPress={() => handleSetAllXmlDestino('DEPOSITO')}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#E3F2FD', borderRadius: 6, borderWidth: 1, borderColor: '#90CAF9', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    >
+                      <Ionicons name="cube-outline" size={14} color="#1565C0" />
+                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#1565C0' }}>📦 Tudo para Depósito</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => handleSetAllXmlDestino('PADRAO')}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#E8F5E9', borderRadius: 6, borderWidth: 1, borderColor: '#A5D6A7', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    >
+                      <Ionicons name="storefront-outline" size={14} color="#2E7D32" />
+                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#2E7D32' }}>📍 Aplicar Locais Padrão</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
                 
                 {xmlData.itens.map((item, index) => {
                   const fatorNum = Number(item.fatorConversao) || 1;
@@ -1103,6 +1156,52 @@ export default function MovimentacaoEstoque() {
                         <Text style={{ fontSize: 12, color: '#00838F', marginTop: 3, fontWeight: '600' }}>
                           ➜ Custo Real: R$ {custoConvertido} / un (Entrada: {qtdEntrada} un)
                         </Text>
+
+                        {/* Seletor de Destino do Estoque */}
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#475569', marginBottom: 4 }}>
+                            Destino do Estoque:
+                          </Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4 }}>
+                            <TouchableOpacity
+                              onPress={() => handleItemDestinoChange(index, 'DEPOSITO')}
+                              style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                backgroundColor: (!item.localDestino || item.localDestino === 'DEPOSITO') ? '#1E293B' : '#F1F5F9',
+                                borderWidth: 1,
+                                borderColor: (!item.localDestino || item.localDestino === 'DEPOSITO') ? '#1E293B' : '#CBD5E1',
+                              }}
+                            >
+                              <Text style={{ fontSize: 11, fontWeight: (!item.localDestino || item.localDestino === 'DEPOSITO') ? 'bold' : 'normal', color: (!item.localDestino || item.localDestino === 'DEPOSITO') ? '#fff' : '#475569' }}>
+                                📦 Depósito
+                              </Text>
+                            </TouchableOpacity>
+
+                            {locaisEstoque.map(loc => {
+                              const isSelected = item.localDestino === loc.nome;
+                              return (
+                                <TouchableOpacity
+                                  key={loc.id}
+                                  onPress={() => handleItemDestinoChange(index, loc.nome)}
+                                  style={{
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 4,
+                                    borderRadius: 6,
+                                    backgroundColor: isSelected ? '#0284C7' : '#F1F5F9',
+                                    borderWidth: 1,
+                                    borderColor: isSelected ? '#0284C7' : '#CBD5E1',
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 11, fontWeight: isSelected ? 'bold' : 'normal', color: isSelected ? '#fff' : '#475569' }}>
+                                    {loc.tipo === 'GELADEIRA' ? '❄️ ' : loc.tipo === 'COZINHA' ? '🍳 ' : '📍 '}{loc.nome}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        </View>
                       </View>
 
                       <View style={styles.xmlItemRight}>
@@ -1221,7 +1320,7 @@ export default function MovimentacaoEstoque() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.productSearchName}>{item.nome}</Text>
                     <Text style={styles.productSearchStock}>
-                      Total: {item.quantidade} {item.unidade || 'un'} (📦 Dep: {item.estoqueDeposito ?? 0} | ❄️ Gel: {item.estoqueGeladeira ?? 0})
+                      Total: {item.quantidade} {item.unidade || 'un'} (📦 Dep: {item.estoqueDeposito ?? 0} | 📍 {(item as any).localVendaNome || 'Ponto de Venda'}: {item.estoqueGeladeira ?? 0})
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#999" />
@@ -1403,6 +1502,29 @@ export default function MovimentacaoEstoque() {
                 </View>
               </View>
 
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Local de Venda Padrão (Onde o produto fica)</Text>
+                <select
+                  value={tempNewProduct.localVendaNome}
+                  onChange={(e) => setTempNewProduct({ ...tempNewProduct, localVendaNome: e.target.value })}
+                  style={{
+                    width: '100%',
+                    height: 48,
+                    borderRadius: 8,
+                    borderColor: '#DDD',
+                    borderWidth: 1,
+                    paddingLeft: 12,
+                    fontSize: 16,
+                    backgroundColor: '#FFF',
+                    outline: 'none',
+                  }}
+                >
+                  {locaisEstoque.map(loc => (
+                    <option key={loc.id || loc.nome} value={loc.nome}>{loc.nome}</option>
+                  ))}
+                </select>
+              </View>
+
               <TouchableOpacity 
                 style={styles.saveNewProductBtn}
                 onPress={handleSaveTempNewProduct}
@@ -1508,7 +1630,7 @@ export default function MovimentacaoEstoque() {
                     style={styles.input}
                     placeholder="Ex: vendas@fornecedor.com"
                     value={supplierEmail}
-                    onChangeText={supplierEmail}
+                    onChangeText={setSupplierEmail}
                     keyboardType="email-address"
                   />
                 </View>

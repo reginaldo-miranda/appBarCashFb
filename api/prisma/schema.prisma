@@ -89,12 +89,25 @@ model Product {
   tamanhos            ProductSize[]
   temTamanhos         Boolean          @default(false)
   movements           StockMovement[]
-
+  localVendaId        Int?
+  localVendaNome      String?          @default("Geladeira")
+  localVenda          StockLocation?   @relation(fields: [localVendaId], references: [id])
 
   @@index([categoriaId], map: "Product_categoriaId_fkey")
   @@index([groupId], map: "Product_groupId_fkey")
   @@index([tipoId], map: "Product_tipoId_fkey")
   @@index([unidadeMedidaId], map: "Product_unidadeMedidaId_fkey")
+  @@index([localVendaId], map: "Product_localVendaId_fkey")
+}
+
+model StockLocation {
+  id           Int       @id @default(autoincrement())
+  nome         String    @unique
+  descricao    String?
+  tipo         String?   @default("OUTRO")
+  ativo        Boolean   @default(true)
+  dataInclusao DateTime  @default(now())
+  produtos     Product[]
 }
 
 model ProductSize {

@@ -72,8 +72,18 @@ export interface Product {
   quantidade?: number;
   estoqueDeposito?: number;
   estoqueGeladeira?: number;
+  localVendaId?: number;
+  localVendaNome?: string;
   precoCusto?: number;
   tamanhos?: ProductSize[];
+}
+
+export interface StockLocation {
+  id: number;
+  nome: string;
+  descricao?: string;
+  tipo?: string;
+  ativo?: boolean;
 }
 
 export interface ProductSize {

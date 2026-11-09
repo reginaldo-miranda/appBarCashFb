@@ -1372,7 +1372,7 @@ router.put('/:id/finalize', async (req, res) => {
         // Não falha a venda se der erro aqui
     }
 
-    // Baixa de estoque automática na Geladeira
+    // Baixa de estoque automática no ponto de venda do produto (Geladeira, Balcão, Cozinha, etc.)
     try {
       if (Array.isArray(freshItens)) {
         for (const it of freshItens) {
@@ -1382,6 +1382,7 @@ router.put('/:id/finalize', async (req, res) => {
               const qtdVendida = Number(it.quantidade);
               const novoGeladeira = Number(p.estoqueGeladeira || 0) - qtdVendida;
               const novoTotal = Number(p.estoqueDeposito || 0) + novoGeladeira;
+              const nomeLocal = p.localVendaNome || 'Geladeira';
               await prisma.product.update({
                 where: { id: p.id },
                 data: {
@@ -1396,8 +1397,8 @@ router.put('/:id/finalize', async (req, res) => {
                   origem: 'VENDA',
                   quantidade: qtdVendida,
                   motivo: 'VENDA',
-                  observacao: `Venda #${vendaFinalizada.id} (${vendaFinalizada.tipoVenda || 'balcao'})`,
-                  localOrigem: 'GELADEIRA',
+                  observacao: `Venda #${vendaFinalizada.id} (${vendaFinalizada.tipoVenda || 'balcao'}) - Local: ${nomeLocal}`,
+                  localOrigem: nomeLocal,
                   usuarioId: req.user?.id || null
                 }
               });
@@ -1406,7 +1407,7 @@ router.put('/:id/finalize', async (req, res) => {
         }
       }
     } catch (errStock) {
-      console.error('[SALE-FINALIZE] Erro ao baixar estoque da geladeira:', errStock);
+      console.error('[SALE-FINALIZE] Erro ao baixar estoque do ponto de venda:', errStock);
       // Não bloqueia a venda se houver falha de log de estoque
     }
 

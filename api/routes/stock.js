@@ -16,6 +16,104 @@ function getTagValue(element, tagName) {
   return '';
 }
 
+// 0. Gerenciamento de Locais de Estoque (Geladeira 1, Balcão, Cozinha, etc.)
+router.get('/locations', async (req, res) => {
+  try {
+    const locations = await prisma.stockLocation.findMany({
+      where: { ativo: true },
+      orderBy: { nome: 'asc' },
+    });
+    res.json(locations);
+  } catch (error) {
+    console.error('Erro ao buscar locais de estoque:', error);
+    res.status(500).json({ error: 'Erro ao buscar locais de estoque' });
+  }
+});
+
+router.post('/locations', async (req, res) => {
+  try {
+    const { nome, tipo, descricao } = req.body;
+    if (!nome || !String(nome).trim()) {
+      return res.status(400).json({ error: 'Nome do local é obrigatório' });
+    }
+    const cleanNome = String(nome).trim();
+    const existing = await prisma.stockLocation.findFirst({
+      where: { nome: cleanNome }
+    });
+    if (existing) {
+      if (!existing.ativo) {
+        const reativado = await prisma.stockLocation.update({
+          where: { id: existing.id },
+          data: { ativo: true, tipo: tipo || existing.tipo, descricao: descricao !== undefined ? descricao : existing.descricao }
+        });
+        return res.status(200).json({ message: 'Local de estoque reativado', location: reativado });
+      }
+      return res.status(400).json({ error: 'Já existe um local com este nome' });
+    }
+
+    const location = await prisma.stockLocation.create({
+      data: {
+        nome: cleanNome,
+        tipo: tipo || 'OUTRO',
+        descricao: descricao || null,
+        ativo: true
+      }
+    });
+    res.status(201).json({ message: 'Local cadastrado com sucesso', location });
+  } catch (error) {
+    console.error('Erro ao cadastrar local de estoque:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar local de estoque' });
+  }
+});
+
+router.put('/locations/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { nome, tipo, descricao, ativo } = req.body;
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
+
+    const data = {};
+    if (nome && String(nome).trim()) data.nome = String(nome).trim();
+    if (tipo !== undefined) data.tipo = tipo;
+    if (descricao !== undefined) data.descricao = descricao;
+    if (ativo !== undefined) data.ativo = !!ativo;
+
+    const location = await prisma.stockLocation.update({
+      where: { id },
+      data
+    });
+
+    if (data.nome) {
+      await prisma.product.updateMany({
+        where: { localVendaId: id },
+        data: { localVendaNome: data.nome }
+      });
+    }
+
+    res.json({ message: 'Local atualizado com sucesso', location });
+  } catch (error) {
+    console.error('Erro ao atualizar local de estoque:', error);
+    res.status(500).json({ error: 'Erro ao atualizar local de estoque' });
+  }
+});
+
+router.delete('/locations/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
+
+    const location = await prisma.stockLocation.update({
+      where: { id },
+      data: { ativo: false }
+    });
+
+    res.json({ message: 'Local desativado com sucesso', location });
+  } catch (error) {
+    console.error('Erro ao desativar local de estoque:', error);
+    res.status(500).json({ error: 'Erro ao desativar local de estoque' });
+  }
+});
+
 // 1. Listar fornecedores
 router.get('/suppliers', async (req, res) => {
   try {
@@ -229,7 +327,7 @@ router.post('/move', async (req, res) => {
   }
 });
 
-// 4.1 Transferência de Estoque entre Locais (Depósito <-> Geladeira)
+// 4.1 Transferência de Estoque entre Locais (Depósito <-> Geladeira/Balcão/Cozinha)
 router.post('/transfer', async (req, res) => {
   try {
     const { productId, quantidade, origem = 'DEPOSITO', destino = 'GELADEIRA', observacao } = req.body;
@@ -245,12 +343,15 @@ router.post('/transfer', async (req, res) => {
       return res.status(400).json({ error: 'Parâmetros de transferência inválidos.' });
     }
 
-    const locOrigem = String(origem).toUpperCase();
-    const locDestino = String(destino).toUpperCase();
+    const locOrigem = String(origem).trim();
+    const locDestino = String(destino).trim();
 
-    if (locOrigem === locDestino) {
+    if (locOrigem.toUpperCase() === locDestino.toUpperCase()) {
       return res.status(400).json({ error: 'Origem e destino não podem ser o mesmo local.' });
     }
+
+    const isOrigemDep = /dep[oó]sito/i.test(locOrigem);
+    const isDestinoDep = /dep[oó]sito/i.test(locDestino);
 
     const result = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: pId } });
@@ -260,15 +361,35 @@ router.post('/transfer', async (req, res) => {
 
       let novoDeposito = Number(product.estoqueDeposito || 0);
       let novoGeladeira = Number(product.estoqueGeladeira || 0);
+      let novoLocalVendaNome = product.localVendaNome;
 
-      if (locOrigem === 'DEPOSITO' && locDestino === 'GELADEIRA') {
+      if (isOrigemDep && !isDestinoDep) {
+        // Depósito -> Local de Venda (Geladeira, Balcão, Cozinha...)
+        if (novoDeposito < qty) {
+          throw new Error(`Saldo insuficiente no Depósito (disponível: ${novoDeposito}).`);
+        }
         novoDeposito -= qty;
         novoGeladeira += qty;
-      } else if (locOrigem === 'GELADEIRA' && locDestino === 'DEPOSITO') {
+        // Se o destino for um local de venda explícito, sincroniza o local de venda
+        if (locDestino && locDestino.toUpperCase() !== 'GELADEIRA') {
+          novoLocalVendaNome = locDestino;
+        }
+      } else if (!isOrigemDep && isDestinoDep) {
+        // Local de Venda -> Depósito
+        if (novoGeladeira < qty) {
+          throw new Error(`Saldo insuficiente em ${locOrigem} (disponível: ${novoGeladeira}).`);
+        }
         novoGeladeira -= qty;
         novoDeposito += qty;
+      } else if (!isOrigemDep && !isDestinoDep) {
+        // Entre dois locais de venda (ex: Geladeira 1 -> Geladeira 2 ou Balcão)
+        if (novoGeladeira < qty) {
+          throw new Error(`Saldo insuficiente em ${locOrigem} (disponível: ${novoGeladeira}).`);
+        }
+        // O produto passa a ter o novo local de venda
+        novoLocalVendaNome = locDestino;
       } else {
-        throw new Error('Locais de transferência inválidos.');
+        throw new Error('Origem e destino não podem ser ambos Depósito.');
       }
 
       const updatedProduct = await tx.product.update({
@@ -276,7 +397,8 @@ router.post('/transfer', async (req, res) => {
         data: {
           estoqueDeposito: novoDeposito,
           estoqueGeladeira: novoGeladeira,
-          quantidade: novoDeposito + novoGeladeira
+          quantidade: novoDeposito + novoGeladeira,
+          localVendaNome: novoLocalVendaNome
         }
       });
 
@@ -287,7 +409,7 @@ router.post('/transfer', async (req, res) => {
           origem: 'MANUAL',
           quantidade: qty,
           precoCusto: product.precoCusto,
-          motivo: 'ABASTECIMENTO_GELADEIRA',
+          motivo: isDestinoDep ? 'RETORNO_DEPOSITO' : 'ABASTECIMENTO_PONTO_VENDA',
           observacao: observacao || `Transferência de ${qty} un de ${locOrigem} para ${locDestino}`,
           localOrigem: locOrigem,
           localDestino: locDestino,
@@ -426,6 +548,8 @@ router.post('/import-xml', upload.single('xml'), async (req, res) => {
         associatedProductName: productMatch ? productMatch.nome : null,
         associatedProductPrecoVenda: productMatch ? Number(productMatch.precoVenda || 0) : null,
         associatedProductPrecoCusto: productMatch ? Number(productMatch.precoCusto || 0) : null,
+        associatedProductLocalVendaNome: productMatch ? (productMatch.localVendaNome || 'Geladeira 1') : null,
+        associatedProductLocalVendaId: productMatch ? productMatch.localVendaId : null,
       });
     }
 
@@ -502,6 +626,8 @@ router.post('/confirm-xml', async (req, res) => {
               ncm: item.ncm || '',
               cest: item.cest || '',
               cfop: item.cfop || '',
+              localVendaId: np.localVendaId ? Number(np.localVendaId) : undefined,
+              localVendaNome: np.localVendaNome ? String(np.localVendaNome).trim() : undefined,
               ativo: true,
               disponivel: true,
             }
@@ -527,13 +653,24 @@ router.post('/confirm-xml', async (req, res) => {
         // Novo custo unitário ponderado pelo fator de conversão
         const custoUnitarioConvertido = Number(item.vUnCom) / fator;
 
-        const novoDeposito = Number(product.estoqueDeposito || 0) + qtEntrada;
-        const novoTotal = novoDeposito + Number(product.estoqueGeladeira || 0);
+        const itemDestino = String(item.localDestino || 'DEPOSITO').trim();
+        const isDep = /dep[oó]sito/i.test(itemDestino);
 
-        // Atualizar produto (Estoque no Depósito, Total, Custo e opcionalmente Preço de Venda ajustado)
+        let novoDeposito = Number(product.estoqueDeposito || 0);
+        let novoGeladeira = Number(product.estoqueGeladeira || 0);
+
+        if (isDep) {
+          novoDeposito += qtEntrada;
+        } else {
+          novoGeladeira += qtEntrada;
+        }
+        const novoTotal = novoDeposito + novoGeladeira;
+
+        // Atualizar produto (Estoque no Depósito/Local, Total, Custo e opcionalmente Preço de Venda ajustado)
         const updateProductData = {
           quantidade: novoTotal,
           estoqueDeposito: novoDeposito,
+          estoqueGeladeira: novoGeladeira,
           precoCusto: custoUnitarioConvertido
         };
         if (item.precoVenda !== undefined && item.precoVenda !== null && Number(item.precoVenda) > 0) {
@@ -545,6 +682,8 @@ router.post('/confirm-xml', async (req, res) => {
           data: updateProductData
         });
 
+        const destNome = isDep ? 'DEPOSITO' : (itemDestino || product.localVendaNome || 'GELADEIRA');
+
         // Registrar movimentação de estoque
         const movement = await tx.stockMovement.create({
           data: {
@@ -554,11 +693,11 @@ router.post('/confirm-xml', async (req, res) => {
             quantidade: qtEntrada,
             precoCusto: custoUnitarioConvertido,
             motivo: 'COMPRA',
-            observacao: `Entrada via XML Nota: ${chave} (Fator: 1:${fator}) - Depósito`,
+            observacao: `Entrada via XML Nota: ${chave} (Fator: 1:${fator}) - ${destNome}`,
             chaveNfe: chave,
             supplierId: dbSupplier.id,
             usuarioId: req.user?.id || null,
-            localDestino: 'DEPOSITO'
+            localDestino: destNome
           }
         });
 
