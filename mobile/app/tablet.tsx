@@ -9,6 +9,13 @@ import TabletBarScreen from '../src/screens/TabletBarScreen';
 import { apiService, authService, setApiBaseUrl } from '../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../src/services/storage';
+import {
+  SOUND_VOLUME_KEY,
+  SOUND_MUTED_KEY,
+  getSavedSoundConfig,
+  playOrderAlertSound,
+  stopOrderAlertSound,
+} from '../src/utils/orderAlertSound';
 
 export default function TabletMode() {
   const { width } = useWindowDimensions();
@@ -17,6 +24,64 @@ export default function TabletMode() {
   const [activeSetorId, setActiveSetorId] = React.useState<number | string | null>('todos');
   const [activeView, setActiveView] = React.useState<'setor' | 'pronto' | 'entregue'>('setor');
   const [hiddenDeliveredIds, setHiddenDeliveredIds] = React.useState<number[]>([]);
+  const [soundVolume, setSoundVolume] = React.useState<number>(80);
+  const [soundMuted, setSoundMuted] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    getSavedSoundConfig().then(({ volume, muted }) => {
+      setSoundVolume(volume);
+      setSoundMuted(muted);
+    });
+    return () => {
+      stopOrderAlertSound();
+    };
+  }, []);
+
+  const handleToggleMute = async () => {
+    const nextMuted = !soundMuted;
+    setSoundMuted(nextMuted);
+    try {
+      await AsyncStorage.setItem(SOUND_MUTED_KEY, String(nextMuted));
+    } catch {}
+    if (nextMuted) {
+      stopOrderAlertSound();
+    } else {
+      playOrderAlertSound(soundVolume, false);
+    }
+  };
+
+  const handleAdjustVolume = async (delta: number) => {
+    const nextVol = Math.max(0, Math.min(100, soundVolume + delta));
+    const nextMuted = nextVol === 0;
+    setSoundVolume(nextVol);
+    setSoundMuted(nextMuted);
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(SOUND_VOLUME_KEY, String(nextVol)),
+        AsyncStorage.setItem(SOUND_MUTED_KEY, String(nextMuted)),
+      ]);
+    } catch {}
+    if (!nextMuted) {
+      playOrderAlertSound(nextVol, false);
+    } else {
+      stopOrderAlertSound();
+    }
+  };
+
+  const handleTestSound = async () => {
+    const volToPlay = soundVolume > 0 ? soundVolume : 80;
+    if (soundMuted || soundVolume === 0) {
+      setSoundMuted(false);
+      setSoundVolume(volToPlay);
+      try {
+        await Promise.all([
+          AsyncStorage.setItem(SOUND_VOLUME_KEY, String(volToPlay)),
+          AsyncStorage.setItem(SOUND_MUTED_KEY, 'false'),
+        ]);
+      } catch {}
+    }
+    playOrderAlertSound(volToPlay, false);
+  };
 
   const isLocalHost = (url: string): boolean => {
     try {
@@ -153,6 +218,61 @@ export default function TabletMode() {
         </TouchableOpacity>
         <Text style={styles.navTitle}>Pedidos</Text>
         <View style={styles.navActions}>
+          {/* Controle de Volume e Toque de Telefone para Novos Pedidos */}
+          <View style={styles.soundControlBox}>
+            <TouchableOpacity
+              style={[
+                styles.soundIconBtn,
+                (soundMuted || soundVolume === 0) && { backgroundColor: 'rgba(244,67,54,0.85)' },
+              ]}
+              onPress={handleToggleMute}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={
+                  soundMuted || soundVolume === 0
+                    ? 'volume-mute'
+                    : soundVolume <= 40
+                    ? 'volume-low'
+                    : soundVolume <= 75
+                    ? 'volume-medium'
+                    : 'volume-high'
+                }
+                size={18}
+                color="#fff"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.soundStepBtn}
+              onPress={() => handleAdjustVolume(-20)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.soundStepText}>−</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.soundVolumeText}>
+              {soundMuted || soundVolume === 0 ? 'MUDO' : `${soundVolume}%`}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.soundStepBtn}
+              onPress={() => handleAdjustVolume(20)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.soundStepText}>+</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.soundTestBtn}
+              onPress={handleTestSound}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call" size={14} color="#fff" />
+              {!isMobile && <Text style={styles.soundTestText}>Testar</Text>}
+            </TouchableOpacity>
+          </View>
+
           {activeView === 'setor' ? (
             <>
               <TouchableOpacity style={styles.navActionBtn} onPress={() => marcarStatusEmLote('pronto')} activeOpacity={0.85}>
@@ -232,6 +352,8 @@ export default function TabletMode() {
           const compProps: any = {
             setorIdOverride: isTodos ? 'todos' : Number(ativo.id),
             setorNomeOverride: ativo.nome,
+            soundVolume,
+            soundMuted,
           };
           if (activeView === 'pronto') compProps.forceFilterStatus = 'pronto';
           if (activeView === 'entregue') compProps.forceFilterStatus = 'entregue';
@@ -265,6 +387,62 @@ const styles = StyleSheet.create({
   navActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  soundControlBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  soundIconBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  soundStepBtn: {
+    width: 26,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginHorizontal: 4,
+  },
+  soundStepText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    lineHeight: 18,
+  },
+  soundVolumeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    minWidth: 38,
+    textAlign: 'center',
+  },
+  soundTestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  soundTestText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   navActionBtn: {
     flexDirection: 'row',

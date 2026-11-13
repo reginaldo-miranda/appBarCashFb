@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, RefreshControl, Vibration, Animated, Pressable, TextInput, ScrollView, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { apiService, authService } from '../services/api';
@@ -9,9 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useSetorSync } from '../hooks/useSetorSync';
 import { imprimirPedidoSetor } from '../utils/printSetor';
+import { playOrderAlertSound } from '../utils/orderAlertSound';
 
 export default function TabletCozinhaScreen(props = {}) {
-  const { setorIdOverride, setorNomeOverride, forceFilterStatus, hiddenIds } = props || {};
+  const { setorIdOverride, setorNomeOverride, forceFilterStatus, hiddenIds, soundVolume, soundMuted } = props || {};
   const [items, setItems] = useState([]);
   const [rawItems, setRawItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,14 @@ export default function TabletCozinhaScreen(props = {}) {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [setores, setSetores] = useState([]);
   const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+
+  const knownItemKeysRef = useRef(new Set());
+  const isFirstLoadRef = useRef(true);
+
+  useEffect(() => {
+    isFirstLoadRef.current = true;
+    knownItemKeysRef.current = new Set();
+  }, [setorIdOverride]);
 
   const ensureToken = useCallback(async () => {
     try {
@@ -48,16 +57,17 @@ export default function TabletCozinhaScreen(props = {}) {
   // Sincronização em tempo real
   const handleUpdate = (updateData) => {
     console.log('Atualização recebida:', updateData);
-    // Recarregar lista quando houver atualização
-    if (setorId) {
-      buscarItensDoSetor(setorId);
-      // Notificar novo pedido
-      notificarNovoPedido();
+    // Recarregar lista quando houver atualização (notificarNovoPedido será acionado se entrar item pendente novo)
+    const id = setorIdOverride ?? setorId;
+    if (id) {
+      buscarItensDoSetor(id);
     }
   };
 
-  // Função para notificar novo pedido
+  // Função para notificar novo pedido (Toque de Telefone + Vibração + Animação)
   const notificarNovoPedido = async () => {
+    playOrderAlertSound(soundVolume, soundMuted);
+
     // Vibração
     Vibration.vibrate([0, 200, 100, 200]);
     
@@ -76,7 +86,7 @@ export default function TabletCozinhaScreen(props = {}) {
     ]).start();
   };
 
-  const { connected } = useSetorSync(setorId, handleUpdate);
+  const { connected } = useSetorSync(setorIdOverride ?? setorId, handleUpdate);
 
   // Buscar itens do setor
   const buscarItensDoSetor = async (idSetor, statusOverride) => {
@@ -117,6 +127,28 @@ export default function TabletCozinhaScreen(props = {}) {
           setFeedbackMsg({ type: null, text: '' });
         }
         setRawItems(arr);
+
+        // Detectar novos pedidos pendentes para tocar o alerta sonoro estilo telefone
+        if (activeStatus === 'pendente') {
+          const currentKeys = new Set(arr.map((it) => `${it.id}:${it.quantidade || 1}`));
+          if (isFirstLoadRef.current) {
+            isFirstLoadRef.current = false;
+            knownItemKeysRef.current = currentKeys;
+          } else {
+            let hasNewPending = false;
+            for (const k of currentKeys) {
+              if (!knownItemKeysRef.current.has(k)) {
+                hasNewPending = true;
+                break;
+              }
+            }
+            knownItemKeysRef.current = currentKeys;
+            if (hasNewPending) {
+              notificarNovoPedido();
+            }
+          }
+        }
+
         let base = Array.isArray(hiddenIds) && hiddenIds.length > 0 ? arr.filter((i) => !hiddenIds.includes(Number(i.id))) : arr;
         if (Array.isArray(selectedEmployeeIds) && selectedEmployeeIds.length > 0) {
           const empSet = new Set(selectedEmployeeIds.map((v) => Number(v)));
@@ -351,7 +383,7 @@ export default function TabletCozinhaScreen(props = {}) {
         if (id) {
           buscarItensDoSetor(id);
         }
-      }, 30000);
+      }, 8000);
       return () => clearInterval(interval);
     }, [setorId, setorIdOverride, setorNomeOverride, filterStatus, forceFilterStatus, hiddenIds])
   );
