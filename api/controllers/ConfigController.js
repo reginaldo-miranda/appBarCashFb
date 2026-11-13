@@ -46,7 +46,10 @@ export const saveSmtpConfig = async (req, res) => {
     
     // Only update password if it's not the obfuscated string and not empty
     if (password && password !== '**********') {
-      await setConfigValue('smtp_password', password);
+      const normalizedPassword = String(host || '').toLowerCase().includes('gmail')
+        ? String(password).replace(/\s+/g, '')
+        : password;
+      await setConfigValue('smtp_password', normalizedPassword);
     }
 
     res.json({ ok: true, message: 'Configurações SMTP salvas com sucesso' });
@@ -66,6 +69,10 @@ export const testSmtpConnection = async (req, res) => {
     if (password === '**********') {
         const storedPw = await getConfigValue('smtp_password');
         pwToUse = storedPw;
+    }
+
+    if (String(host || '').toLowerCase().includes('gmail') && pwToUse) {
+      pwToUse = String(pwToUse).replace(/\s+/g, '');
     }
 
     const transporter = nodemailer.createTransport({
@@ -89,7 +96,20 @@ export const testSmtpConnection = async (req, res) => {
     res.json({ ok: true, message: 'E-mail de teste enviado com sucesso! Verifique a caixa de entrada de ' + user });
   } catch (error) {
     console.error('Erro ao testar conexão SMTP:', error);
-    res.status(500).json({ ok: false, message: 'Falha ao conectar no servidor SMTP: ' + error.message });
+    const rawMsg = error?.message || '';
+    if (
+      error?.code === 'EAUTH' ||
+      rawMsg.includes('534') ||
+      rawMsg.includes('535') ||
+      rawMsg.includes('Application-specific password required')
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          'O Gmail recusou a senha normal. Ative a Verificação em duas etapas na sua Conta Google, gere uma "Senha de App" (16 letras) e cadastre-a neste campo de Senha SMTP.'
+      });
+    }
+    res.status(500).json({ ok: false, message: 'Falha ao conectar no servidor SMTP: ' + rawMsg });
   }
 };
 

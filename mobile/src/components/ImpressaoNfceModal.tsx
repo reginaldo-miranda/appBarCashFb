@@ -84,13 +84,14 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
 
     try {
         setSendingEmail(true);
-        await NfceService.sendNfceEmail(saleId, emailInput);
+        const resp = await NfceService.sendNfceEmail(saleId, emailInput);
         
         setShowEmailModal(false);
-        showAlert('Sucesso', 'Cupom enviado para o e-mail com sucesso!');
+        showAlert('Sucesso', resp?.message || 'Cupom (PDF + XML) enviado para o e-mail com sucesso!');
     } catch (error: any) {
         console.error("Erro ao enviar email", error);
-        showAlert('Erro', error.message || 'Falha ao enviar e-mail.');
+        const errMsg = typeof error === 'string' ? error : (error?.message || 'Falha ao enviar e-mail.');
+        showAlert('Erro', errMsg);
     } finally {
         setSendingEmail(false);
     }
@@ -161,7 +162,7 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
                   {nfceData?.pdfUrl && (
                       <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#009688' }]} onPress={() => setShowEmailModal(true)}>
                           <Ionicons name="mail" size={20} color="#fff" />
-                          <Text style={styles.actionText}>Enviar por E-mail</Text>
+                          <Text style={styles.actionText}>Enviar por E-mail (PDF + XML)</Text>
                       </TouchableOpacity>
                   )}
 
@@ -232,13 +233,13 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
           <View style={styles.overlay}>
               <View style={styles.emailContainer}>
                   <View style={styles.header}>
-                      <Text style={styles.title}>Enviar PDF por E-mail</Text>
+                      <Text style={styles.title}>Enviar PDF + XML por E-mail</Text>
                       <TouchableOpacity onPress={() => setShowEmailModal(false)} disabled={sendingEmail}>
                           <Ionicons name="close" size={24} color="#666" />
                       </TouchableOpacity>
                   </View>
                   <View style={styles.content}>
-                      <Text style={styles.subText}>Digite o e-mail do cliente abaixo para encaminhar o cupom fiscal (NFC-e):</Text>
+                      <Text style={styles.subText}>Digite o e-mail do cliente abaixo para encaminhar o cupom fiscal (PDF + XML da NFC-e):</Text>
                       
                       <TextInput
                           style={styles.input}

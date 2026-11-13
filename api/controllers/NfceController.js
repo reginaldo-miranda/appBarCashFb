@@ -640,6 +640,12 @@ export const sendPdfEmail = async (req, res) => {
             return res.status(400).json({ ok: false, message: 'Configuração SMTP incompleta. Acesse as Configurações de E-mail antes.', emailError: true });
         }
 
+        // Buscar dados da venda e NFC-e (para anexar também o XML autorizado)
+        const sale = await prisma.sale.findUnique({
+            where: { id: parseInt(saleId) },
+            include: { nfce: true }
+        });
+
         // Gerar o PDF nativamente aqui usando o Puppeteer
         const pdfUrl = `${req.protocol}://${req.get('host')}/api/nfce/${saleId}/pdf`;
         
@@ -665,31 +671,65 @@ export const sendPdfEmail = async (req, res) => {
             throw new Error("Não foi possível gerar o arquivo PDF nativo.");
         }
 
+        // Localizar XML da NFC-e (no banco ou na pasta xml_nfce)
+        let xmlContent = sale?.nfce?.xml || '';
+        const chaveNfce = sale?.nfce?.chave || '';
+        if (!xmlContent && chaveNfce) {
+            const candidatePaths = [
+                path.resolve(__dirname, '..', '..', 'xml_nfce', `${chaveNfce}.xml`),
+                path.resolve(__dirname, '..', 'xml_nfce', `${chaveNfce}.xml`)
+            ];
+            for (const p of candidatePaths) {
+                if (fs.existsSync(p)) {
+                    xmlContent = fs.readFileSync(p, 'utf-8');
+                    break;
+                }
+            }
+        }
+
+        const attachments = [
+            {
+                filename: `Cupom_Fiscal_NFCe_${saleId}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf'
+            }
+        ];
+
+        if (xmlContent) {
+            attachments.push({
+                filename: `${chaveNfce || `NFCe_${saleId}`}.xml`,
+                content: Buffer.from(xmlContent, 'utf-8'),
+                contentType: 'application/xml'
+            });
+        }
+
+        const cleanPass = String(host).toLowerCase().includes('gmail')
+            ? String(pass).replace(/\s+/g, '')
+            : pass;
+
         const transporter = nodemailer.createTransport({
-            host,
+            host: String(host).trim(),
             port: Number(port),
             secure: Number(port) === 465,
-            auth: { user, pass }
+            auth: { user: String(user).trim(), pass: cleanPass }
         });
 
         await transporter.sendMail({
-            from: `"${sender}" <${user}>`,
-            to: emailTo,
-            subject: `Cupom Fiscal NFC-e - Pedido #${saleId}`,
-            text: `Olá!\n\nSegue em anexo o Cupom Fiscal NFC-e referente à sua compra.\n\nObrigado por comprar conosco!`,
-            attachments: [
-                {
-                    filename: `Cupom_Fiscal_NFCe_${saleId}.pdf`,
-                    content: pdfBuffer,
-                    contentType: 'application/pdf'
-                }
-            ]
+            from: `"${sender || user}" <${String(user).trim()}>`,
+            to: String(emailTo).trim(),
+            subject: `Cupom Fiscal NFC-e (PDF e XML) - Pedido #${saleId}`,
+            text: `Olá!\n\nSeguem em anexo o Cupom Fiscal DANFE NFC-e (PDF)${xmlContent ? ' e o arquivo XML autorizado pela SEFAZ' : ''} referentes à sua compra.\n\nObrigado por comprar conosco!`,
+            attachments
         });
 
-        res.json({ ok: true, message: 'Cupom gerado e enviado para o e-mail com sucesso!' });
+        res.json({ ok: true, message: 'Cupom Fiscal (PDF e XML) enviado para o e-mail com sucesso!' });
     } catch (error) {
-        console.error('Erro ao enviar PDF por e-mail:', error);
-        res.status(500).json({ ok: false, message: 'Erro ao enviar e-mail: ' + error.message });
+        console.error('Erro ao enviar PDF/XML por e-mail:', error);
+        let friendlyMsg = 'Erro ao enviar e-mail: ' + (error?.message || error);
+        if (error?.code === 'EAUTH' || String(error?.message || '').includes('535') || String(error?.message || '').includes('534')) {
+            friendlyMsg = 'Falha de autenticação SMTP no Gmail (534/535): O Google não aceita a senha normal do e-mail. Crie uma "Senha de App" de 16 letras na sua Conta Google (Segurança -> Verificação em duas etapas -> Senhas de app) e salve nas Configurações de E-mail.';
+        }
+        res.status(500).json({ ok: false, message: friendlyMsg });
     }
 };
 
