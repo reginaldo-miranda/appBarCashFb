@@ -208,7 +208,7 @@ export default function ComandasAbertasScreen() {
   
   // Estados para filtros (igual à tela de produtos)
   const [searchText, setSearchText] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('aberta');
   const [statusFilters, setStatusFilters] = useState<any[]>([]);
   
   const { user } = useAuth() as any;
