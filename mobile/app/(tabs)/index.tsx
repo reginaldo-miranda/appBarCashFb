@@ -48,6 +48,7 @@ export default function HomeScreen() {
     openTables: 0,
     openComandas: 0,
   });
+  const [showRevenue, setShowRevenue] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadStats = async () => {
@@ -269,15 +270,30 @@ export default function HomeScreen() {
                 <Text style={styles.statLabel}>Vendas</Text>
               </View>
             </View>
-            <View style={[styles.statCard]}>
+            <TouchableOpacity
+              style={[styles.statCard, { position: 'relative' }]}
+              onPress={() => setShowRevenue((prev) => !prev)}
+              activeOpacity={0.75}
+              accessibilityLabel="Mostrar ou ocultar faturamento"
+            >
+              <View style={styles.eyeBadge}>
+                <SafeIcon
+                  name={showRevenue ? 'eye-off' : 'eye'}
+                  size={15}
+                  color="#64748B"
+                  fallbackText="👁"
+                />
+              </View>
               <View style={[styles.statIconBox, { backgroundColor: '#E3F2FD' }]}>
                 <SafeIcon name="cash" size={18} color="#2196F3" fallbackText="$" />
               </View>
               <View>
-                <Text style={styles.statNumber}>R$ {stats.totalRevenue.toFixed(2)}</Text>
+                <Text style={styles.statNumber}>
+                  {showRevenue ? `R$ ${stats.totalRevenue.toFixed(2)}` : 'R$ •••••'}
+                </Text>
                 <Text style={styles.statLabel}>Faturamento</Text>
               </View>
-            </View>
+            </TouchableOpacity>
             <View style={[styles.statCard]}>
               <View style={[styles.statIconBox, { backgroundColor: '#FFF3E0' }]}>
                 <SafeIcon name="restaurant" size={18} color="#FF9800" fallbackText="🍽" />
@@ -452,6 +468,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
+  },
+  eyeBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statNumber: {
     fontSize: 14,
