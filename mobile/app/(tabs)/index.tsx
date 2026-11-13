@@ -229,12 +229,22 @@ export default function HomeScreen() {
             </View>
             <View style={styles.headerActions}>
                {Platform.OS === 'web' && (
-                <TouchableOpacity
-                  style={styles.iconButton}
-                  onPress={() => router.push('/configuracoes')}
-                >
-                  <SafeIcon name="settings" size={18} color="#fff" fallbackText="⚙" />
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => events.emit('qrcode:open')}
+                    accessibilityLabel="Conectar Celular (QR Code)"
+                  >
+                    <SafeIcon name="qr-code" size={18} color="#fff" fallbackText="📱" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => router.push('/configuracoes')}
+                    accessibilityLabel="Configurações"
+                  >
+                    <SafeIcon name="settings" size={18} color="#fff" fallbackText="⚙" />
+                  </TouchableOpacity>
+                </>
                )}
               <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <SafeIcon name="log-out" size={18} color="#fff" fallbackText="Exit" />
