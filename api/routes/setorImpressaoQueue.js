@@ -30,11 +30,11 @@ router.get('/:id/queue', async (req, res) => {
     if (String(status) === 'entregue') {
       if (from) {
         const f = String(from).slice(0, 10);
-        extraFilters.push(`AND si.preparedAt >= '${f} 00:00:00'`);
+        extraFilters.push(`AND IFNULL(si.preparedAt, si.createdAt) >= '${f} 00:00:00'`);
       }
       if (to) {
         const t = String(to).slice(0, 10);
-        extraFilters.push(`AND si.preparedAt <= '${t} 23:59:59'`);
+        extraFilters.push(`AND IFNULL(si.preparedAt, si.createdAt) <= '${t} 23:59:59'`);
       }
       if (employees) {
         const ids = String(employees)
@@ -284,6 +284,62 @@ router.patch('/sale/:saleId/item/:itemId/status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao atualizar status do item',
+      error: String(error?.message || error)
+    });
+  }
+});
+
+/**
+ * POST /api/setor-impressao-queue/:id/clear-entregues
+ * Limpa (arquiva na fila) os itens entregues entre a data inicial e final informadas,
+ * preservando integralmente os dados financeiros da venda, relatórios e NFC-e.
+ */
+router.post('/:id/clear-entregues', async (req, res) => {
+  try {
+    const rawId = String(req.params.id || '').trim().toLowerCase();
+    const isTodos = rawId === 'todos' || rawId === 'all' || rawId === '0';
+    const setorId = isTodos ? 0 : parseInt(req.params.id, 10);
+    const { from, to } = req.body || {};
+
+    const conditions = [`si.status = 'entregue'`];
+
+    if (from && /^\d{4}-\d{2}-\d{2}$/.test(String(from).trim())) {
+      const f = String(from).trim();
+      conditions.push(`IFNULL(si.preparedAt, si.createdAt) >= '${f} 00:00:00'`);
+    }
+    if (to && /^\d{4}-\d{2}-\d{2}$/.test(String(to).trim())) {
+      const t = String(to).trim();
+      conditions.push(`IFNULL(si.preparedAt, si.createdAt) <= '${t} 23:59:59'`);
+    }
+
+    if (!isTodos && Number.isInteger(setorId) && setorId > 0) {
+      conditions.push(
+        `EXISTS (SELECT 1 FROM ProductSetorImpressao psi WHERE psi.productId = si.productId AND psi.setorId = ${setorId})`
+      );
+    }
+
+    const updateSql = `
+      UPDATE SaleItem si
+      INNER JOIN Sale sa ON sa.id = si.saleId
+      SET si.status = 'arquivado'
+      WHERE ${conditions.join(' AND ')}
+    `;
+
+    const affected = await prisma.$executeRawUnsafe(updateSql);
+
+    res.json({
+      success: true,
+      clearedCount: Number(affected || 0),
+      message:
+        Number(affected || 0) > 0
+          ? `${Number(affected)} pedido(s) entregue(s) limpo(s) com sucesso!`
+          : 'Nenhum pedido entregue encontrado no período selecionado.'
+    });
+  } catch (error) {
+    console.error('Erro ao limpar pedidos entregues:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao limpar pedidos entregues',
       error: String(error?.message || error)
     });
   }

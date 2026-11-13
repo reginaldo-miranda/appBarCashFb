@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useWindowDimensions, NativeModules, Platform } from 'react-native';
 import Constants from 'expo-constants';
@@ -26,6 +26,45 @@ export default function TabletMode() {
   const [hiddenDeliveredIds, setHiddenDeliveredIds] = React.useState<number[]>([]);
   const [soundVolume, setSoundVolume] = React.useState<number>(80);
   const [soundMuted, setSoundMuted] = React.useState<boolean>(false);
+  const [clearModalVisible, setClearModalVisible] = React.useState<boolean>(false);
+  const [clearDateFrom, setClearDateFrom] = React.useState<string>('');
+  const [clearDateTo, setClearDateTo] = React.useState<string>('');
+  const [clearingDelivered, setClearingDelivered] = React.useState<boolean>(false);
+  const [refreshKey, setRefreshKey] = React.useState<number>(0);
+
+  const formatDateBR = (d: Date): string => {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const applyDateMask = (val: string): string => {
+    const digits = String(val || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+  };
+
+  const parseBrToIso = (br: string): string | null => {
+    const trimmed = String(br || '').trim();
+    if (!trimmed) return '';
+    const m = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return null;
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yyyy = Number(m[3]);
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || yyyy < 2000 || yyyy > 2100) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  };
+
+  const showNotice = (title: string, msg: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(`${title}: ${msg}`);
+    } else {
+      Alert.alert(title, msg);
+    }
+  };
 
   React.useEffect(() => {
     getSavedSoundConfig().then(({ volume, muted }) => {
@@ -194,18 +233,71 @@ export default function TabletMode() {
     } catch {}
   };
 
-  const limparEntregues = async () => {
+  const limparEntregues = () => {
     if (!activeSetorId) return;
-    Alert.alert('Confirmar limpeza', 'Deseja ocultar todos os itens entregues desta tela?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Confirmar', style: 'destructive', onPress: async () => {
-        try {
-          const resp = await apiService.request({ method: 'GET', url: `/setor-impressao-queue/${activeSetorId}/queue?status=entregue&strict=1` });
-          const itens = resp?.data?.data || [];
-          setHiddenDeliveredIds(itens.map((i: any) => Number(i.id)).filter(Boolean));
-        } catch {}
-      } }
-    ]);
+    const hoje = formatDateBR(new Date());
+    setClearDateFrom(hoje);
+    setClearDateTo(hoje);
+    setClearModalVisible(true);
+  };
+
+  const aplicarAtalhoPeriodo = (tipo: 'hoje' | '7dias' | 'mes' | 'tudo') => {
+    const agora = new Date();
+    if (tipo === 'hoje') {
+      const hoje = formatDateBR(agora);
+      setClearDateFrom(hoje);
+      setClearDateTo(hoje);
+    } else if (tipo === '7dias') {
+      const seteDiasAtras = new Date(agora.getTime() - 6 * 24 * 60 * 60 * 1000);
+      setClearDateFrom(formatDateBR(seteDiasAtras));
+      setClearDateTo(formatDateBR(agora));
+    } else if (tipo === 'mes') {
+      const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+      setClearDateFrom(formatDateBR(inicioMes));
+      setClearDateTo(formatDateBR(agora));
+    } else {
+      setClearDateFrom('');
+      setClearDateTo('');
+    }
+  };
+
+  const confirmarLimpezaEntregues = async () => {
+    if (!activeSetorId) return;
+    const isoFrom = parseBrToIso(clearDateFrom);
+    const isoTo = parseBrToIso(clearDateTo);
+    if (isoFrom === null) {
+      showNotice('Data Inválida', 'Informe a Data Inicial no formato DD/MM/AAAA (ex: 13/11/2026) ou deixe em branco para todas.');
+      return;
+    }
+    if (isoTo === null) {
+      showNotice('Data Inválida', 'Informe a Data Final no formato DD/MM/AAAA (ex: 13/11/2026) ou deixe em branco para todas.');
+      return;
+    }
+    if (isoFrom && isoTo && isoFrom > isoTo) {
+      showNotice('Período Inválido', 'A Data Inicial não pode ser maior que a Data Final.');
+      return;
+    }
+
+    try {
+      setClearingDelivered(true);
+      const resp = await apiService.request({
+        method: 'POST',
+        url: `/setor-impressao-queue/${activeSetorId}/clear-entregues`,
+        data: {
+          from: isoFrom || undefined,
+          to: isoTo || undefined,
+        },
+      });
+      setClearModalVisible(false);
+      setHiddenDeliveredIds([]);
+      setRefreshKey((k) => k + 1);
+      const msg = resp?.data?.message || 'Pedidos entregues limpos com sucesso!';
+      showNotice('Concluído', msg);
+    } catch (err: any) {
+      showNotice('Erro', err?.response?.data?.message || 'Não foi possível limpar os pedidos entregues.');
+    } finally {
+      setClearingDelivered(false);
+    }
   };
 
   const isMobile = width < 768;
@@ -359,12 +451,131 @@ export default function TabletMode() {
           if (activeView === 'entregue') compProps.forceFilterStatus = 'entregue';
           compProps.hiddenIds = activeView === 'entregue' ? hiddenDeliveredIds : [];
           return isTodos || String(ativo.nome || '').toLowerCase().includes('cozinha') ? (
-            <TabletCozinhaScreen key={String(activeSetorId)} {...compProps} />
+            <TabletCozinhaScreen key={`${activeSetorId}-${refreshKey}`} {...compProps} />
           ) : (
-            <TabletBarScreen key={String(activeSetorId)} {...compProps} />
+            <TabletBarScreen key={`${activeSetorId}-${refreshKey}`} {...compProps} />
           );
         })()}
       </View>
+
+      {/* Modal de Limpeza de Pedidos Entregues por Período */}
+      <Modal
+        visible={clearModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !clearingDelivered && setClearModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="trash-outline" size={22} color="#D32F2F" />
+                <Text style={styles.modalTitle}>Limpar Pedidos Entregues</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setClearModalVisible(false)}
+                disabled={clearingDelivered}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Setor selecionado:{' '}
+              <Text style={{ fontWeight: '700', color: '#0F172A' }}>
+                {activeSetorId === 'todos'
+                  ? 'Todos os Setores'
+                  : setores.find((s) => Number(s.id) === Number(activeSetorId))?.nome || 'Setor Atual'}
+              </Text>
+            </Text>
+            <Text style={styles.modalHint}>
+              Os pedidos entregues no período serão removidos desta lista de Pedidos (as vendas e relatórios financeiros permanecem intactos).
+            </Text>
+
+            <View style={styles.shortcutRow}>
+              <TouchableOpacity
+                style={styles.shortcutChip}
+                onPress={() => aplicarAtalhoPeriodo('hoje')}
+              >
+                <Text style={styles.shortcutChipText}>Hoje</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shortcutChip}
+                onPress={() => aplicarAtalhoPeriodo('7dias')}
+              >
+                <Text style={styles.shortcutChipText}>Últimos 7 dias</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shortcutChip}
+                onPress={() => aplicarAtalhoPeriodo('mes')}
+              >
+                <Text style={styles.shortcutChipText}>Este Mês</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shortcutChip}
+                onPress={() => aplicarAtalhoPeriodo('tudo')}
+              >
+                <Text style={styles.shortcutChipText}>Todas as datas</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.dateInputsRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.dateInputLabel}>Data Inicial</Text>
+                <TextInput
+                  style={styles.dateInput}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                  value={clearDateFrom}
+                  onChangeText={(txt) => setClearDateFrom(applyDateMask(txt))}
+                  maxLength={10}
+                  editable={!clearingDelivered}
+                />
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.dateInputLabel}>Data Final</Text>
+                <TextInput
+                  style={styles.dateInput}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numeric"
+                  value={clearDateTo}
+                  onChangeText={(txt) => setClearDateTo(applyDateMask(txt))}
+                  maxLength={10}
+                  editable={!clearingDelivered}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setClearModalVisible(false)}
+                disabled={clearingDelivered}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, clearingDelivered && { opacity: 0.7 }]}
+                onPress={confirmarLimpezaEntregues}
+                disabled={clearingDelivered}
+              >
+                {clearingDelivered ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="trash" size={18} color="#fff" />
+                    <Text style={styles.modalConfirmText}>Limpar Entregues</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -524,5 +735,119 @@ const styles = StyleSheet.create({
     flex: 1,
     borderLeftWidth: 1,
     borderLeftColor: '#eee',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 460,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginLeft: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 6,
+  },
+  modalHint: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 17,
+    marginBottom: 14,
+  },
+  shortcutRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  shortcutChip: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  shortcutChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1D4ED8',
+  },
+  dateInputsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  dateInputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 6,
+  },
+  dateInput: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#fff',
+  },
+  modalCancelText: {
+    color: '#475569',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalConfirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D32F2F',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modalConfirmText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+    marginLeft: 6,
   },
 });
