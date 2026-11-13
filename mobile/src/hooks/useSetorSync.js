@@ -11,13 +11,36 @@ export function useSetorSync(setorId, onUpdate) {
   const reconnectTimeoutRef = useRef(null);
   const onUpdateRef = useRef(onUpdate);
   const lastSinceRef = useRef(Date.now());
+  const activeRef = useRef(false);
 
   useEffect(() => {
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
 
+  const disconnect = () => {
+    activeRef.current = false;
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    if (wsRef.current) {
+      const sock = wsRef.current;
+      wsRef.current = null;
+      try {
+        sock.onopen = null;
+        sock.onmessage = null;
+        sock.onerror = null;
+        sock.onclose = null;
+        sock.close();
+      } catch {}
+    }
+
+    setConnected(false);
+  };
+
   const connect = () => {
-    if (!setorId) return;
+    if (!setorId || !activeRef.current) return;
 
     const wsUrl = apiService.getWsUrl();
     if (!wsUrl) {
@@ -27,13 +50,24 @@ export function useSetorSync(setorId, onUpdate) {
 
     try {
       if (wsRef.current) {
-        try { wsRef.current.close(); } catch {}
+        const oldSock = wsRef.current;
         wsRef.current = null;
+        try {
+          oldSock.onopen = null;
+          oldSock.onmessage = null;
+          oldSock.onerror = null;
+          oldSock.onclose = null;
+          oldSock.close();
+        } catch {}
       }
 
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        if (!activeRef.current) {
+          try { ws.close(); } catch {}
+          return;
+        }
         console.log('WebSocket conectado para setor:', setorId);
         setConnected(true);
         lastSinceRef.current = Date.now();
@@ -47,6 +81,7 @@ export function useSetorSync(setorId, onUpdate) {
       };
 
       ws.onmessage = (event) => {
+        if (!activeRef.current) return;
         try {
           const payload = JSON.parse(event.data);
           if (payload && payload.type === 'sale:update' && payload.payload) {
@@ -61,16 +96,20 @@ export function useSetorSync(setorId, onUpdate) {
       };
 
       ws.onerror = () => {
+        if (!activeRef.current) return;
         setConnected(false);
       };
 
       ws.onclose = () => {
+        if (!activeRef.current) return;
         setConnected(false);
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
+          if (activeRef.current) {
+            connect();
+          }
         }, 4000);
       };
 
@@ -81,21 +120,8 @@ export function useSetorSync(setorId, onUpdate) {
     }
   };
 
-  const disconnect = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (wsRef.current) {
-      try { wsRef.current.close(); } catch {}
-      wsRef.current = null;
-    }
-
-    setConnected(false);
-  };
-
   useEffect(() => {
+    activeRef.current = true;
     connect();
     return () => {
       disconnect();

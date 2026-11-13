@@ -32,6 +32,20 @@ export default function TabletCozinhaScreen(props = {}) {
 
   const knownItemQtyMapRef = useRef(new Map());
   const isFirstLoadRef = useRef(true);
+  const isMountedRef = useRef(true);
+  const lastRingAtRef = useRef(0);
+  const activeSetorRef = useRef(setorIdOverride ?? null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    activeSetorRef.current = setorIdOverride ?? setorId;
+  }, [setorIdOverride, setorId]);
 
   useEffect(() => {
     isFirstLoadRef.current = true;
@@ -56,6 +70,11 @@ export default function TabletCozinhaScreen(props = {}) {
 
   // Função para notificar novo pedido (Toque de Telefone + Vibração + Animação)
   const notificarNovoPedido = async () => {
+    if (!isMountedRef.current) return;
+    const now = Date.now();
+    if (now - lastRingAtRef.current < 1500) return;
+    lastRingAtRef.current = now;
+
     playOrderAlertSound(soundVolume, soundMuted);
 
     // Vibração
@@ -78,6 +97,7 @@ export default function TabletCozinhaScreen(props = {}) {
 
   // Sincronização em tempo real
   const handleUpdate = (updateData) => {
+    if (!isMountedRef.current) return;
     console.log('Atualização recebida:', updateData);
     const id = setorIdOverride ?? setorId;
     if (!id) return;
@@ -112,6 +132,8 @@ export default function TabletCozinhaScreen(props = {}) {
         url: `/setor-impressao-queue/${idSetor}/queue?status=${activeStatus}${dateParams}&strict=1`,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+
+      if (!isMountedRef.current || String(idSetor) !== String(activeSetorRef.current)) return;
 
       if (response.data?.success) {
         let arr = response.data.data || [];

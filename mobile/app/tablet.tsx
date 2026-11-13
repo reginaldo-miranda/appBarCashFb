@@ -359,9 +359,9 @@ export default function TabletMode() {
           if (activeView === 'entregue') compProps.forceFilterStatus = 'entregue';
           compProps.hiddenIds = activeView === 'entregue' ? hiddenDeliveredIds : [];
           return isTodos || String(ativo.nome || '').toLowerCase().includes('cozinha') ? (
-            <TabletCozinhaScreen {...compProps} />
+            <TabletCozinhaScreen key={String(activeSetorId)} {...compProps} />
           ) : (
-            <TabletBarScreen {...compProps} />
+            <TabletBarScreen key={String(activeSetorId)} {...compProps} />
           );
         })()}
       </View>
