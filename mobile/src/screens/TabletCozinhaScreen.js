@@ -30,12 +30,12 @@ export default function TabletCozinhaScreen(props = {}) {
   const [setores, setSetores] = useState([]);
   const [showCustomDateModal, setShowCustomDateModal] = useState(false);
 
-  const knownItemKeysRef = useRef(new Set());
+  const knownItemQtyMapRef = useRef(new Map());
   const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
     isFirstLoadRef.current = true;
-    knownItemKeysRef.current = new Set();
+    knownItemQtyMapRef.current = new Map();
   }, [setorIdOverride]);
 
   const ensureToken = useCallback(async () => {
@@ -53,16 +53,6 @@ export default function TabletCozinhaScreen(props = {}) {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [sound, setSound] = useState();
   const [filterStatus, setFilterStatus] = useState(forceFilterStatus || 'pendente');
-
-  // Sincronização em tempo real
-  const handleUpdate = (updateData) => {
-    console.log('Atualização recebida:', updateData);
-    // Recarregar lista quando houver atualização (notificarNovoPedido será acionado se entrar item pendente novo)
-    const id = setorIdOverride ?? setorId;
-    if (id) {
-      buscarItensDoSetor(id);
-    }
-  };
 
   // Função para notificar novo pedido (Toque de Telefone + Vibração + Animação)
   const notificarNovoPedido = async () => {
@@ -86,14 +76,33 @@ export default function TabletCozinhaScreen(props = {}) {
     ]).start();
   };
 
+  // Sincronização em tempo real
+  const handleUpdate = (updateData) => {
+    console.log('Atualização recebida:', updateData);
+    const id = setorIdOverride ?? setorId;
+    if (!id) return;
+
+    // Tocar alerta imediatamente se o evento indicar novo item ou incremento (+) para a aba aberta
+    if (updateData && updateData.eventType === 'new_order_item') {
+      const isTodosTab = String(id).toLowerCase() === 'todos';
+      const evSetorIds = Array.isArray(updateData.setorIds) ? updateData.setorIds.map(Number) : [];
+      const belongsToOpenTab = isTodosTab || evSetorIds.includes(Number(id));
+      if (belongsToOpenTab) {
+        notificarNovoPedido();
+      }
+    }
+
+    buscarItensDoSetor(id, undefined, true);
+  };
+
   const { connected } = useSetorSync(setorIdOverride ?? setorId, handleUpdate);
 
   // Buscar itens do setor
-  const buscarItensDoSetor = async (idSetor, statusOverride) => {
+  const buscarItensDoSetor = async (idSetor, statusOverride, silent = false) => {
     if (!idSetor) return;
     
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const activeStatus = statusOverride || (forceFilterStatus || filterStatus);
       const range = computeDateRange(datePreset, customFrom, customTo);
@@ -106,44 +115,32 @@ export default function TabletCozinhaScreen(props = {}) {
 
       if (response.data?.success) {
         let arr = response.data.data || [];
-        if (arr.length === 0) {
-          try {
-            const respCompat = await apiService.request({
-              method: 'GET',
-              url: `/setor-impressao-queue/${idSetor}/queue?status=${activeStatus}${dateParams}`,
-              headers: token ? { Authorization: `Bearer ${token}` } : {}
-            });
-            const arr2 = respCompat?.data?.data || [];
-            if (arr2.length > 0) {
-              arr = arr2;
-              setFeedbackMsg({ type: 'success', text: 'Exibindo itens sem vínculo de setor (compatibilidade). Cadastre o setor nos produtos.' });
-            } else {
-              setFeedbackMsg({ type: null, text: '' });
-            }
-          } catch {
-            setFeedbackMsg({ type: null, text: '' });
-          }
-        } else {
-          setFeedbackMsg({ type: null, text: '' });
-        }
+        setFeedbackMsg({ type: null, text: '' });
         setRawItems(arr);
 
-        // Detectar novos pedidos pendentes para tocar o alerta sonoro estilo telefone
+        // Detectar novos pedidos pendentes ou aumento de quantidade (+) apenas desta aba aberta
         if (activeStatus === 'pendente') {
-          const currentKeys = new Set(arr.map((it) => `${it.id}:${it.quantidade || 1}`));
+          const nextMap = new Map();
+          for (const it of arr) {
+            const itemId = Number(it.id);
+            const qty = Math.max(1, Number(it.quantidade || 1));
+            nextMap.set(itemId, (nextMap.get(itemId) || 0) + qty);
+          }
+
           if (isFirstLoadRef.current) {
             isFirstLoadRef.current = false;
-            knownItemKeysRef.current = currentKeys;
+            knownItemQtyMapRef.current = nextMap;
           } else {
-            let hasNewPending = false;
-            for (const k of currentKeys) {
-              if (!knownItemKeysRef.current.has(k)) {
-                hasNewPending = true;
+            let hasNewOrIncremented = false;
+            for (const [itemId, qty] of nextMap.entries()) {
+              const prevQty = knownItemQtyMapRef.current.get(itemId);
+              if (prevQty === undefined || qty > prevQty) {
+                hasNewOrIncremented = true;
                 break;
               }
             }
-            knownItemKeysRef.current = currentKeys;
-            if (hasNewPending) {
+            knownItemQtyMapRef.current = nextMap;
+            if (hasNewOrIncremented) {
               notificarNovoPedido();
             }
           }
@@ -381,9 +378,9 @@ export default function TabletCozinhaScreen(props = {}) {
       const interval = setInterval(() => {
         const id = setorIdOverride ?? setorId;
         if (id) {
-          buscarItensDoSetor(id);
+          buscarItensDoSetor(id, undefined, true);
         }
-      }, 8000);
+      }, 3000);
       return () => clearInterval(interval);
     }, [setorId, setorIdOverride, setorNomeOverride, filterStatus, forceFilterStatus, hiddenIds])
   );

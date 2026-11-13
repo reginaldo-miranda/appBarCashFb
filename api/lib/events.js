@@ -1,12 +1,18 @@
 let saleUpdates = [];
 let listeners = [];
 
-export function recordSaleUpdate(id) {
+export function recordSaleUpdate(id, eventType = 'sale_updated', meta = {}) {
   try {
     const ts = Date.now();
-    saleUpdates.push({ id: Number(id) || id, ts });
+    const evt = {
+      id: Number(id) || id,
+      ts,
+      eventType: String(eventType || 'sale_updated'),
+      ...(meta && typeof meta === 'object' ? meta : {}),
+    };
+    saleUpdates.push(evt);
     if (saleUpdates.length > 1000) saleUpdates = saleUpdates.slice(-500);
-    try { listeners.forEach((fn) => fn({ id: Number(id) || id, ts })); } catch {}
+    try { listeners.forEach((fn) => fn(evt)); } catch {}
   } catch {}
 }
 

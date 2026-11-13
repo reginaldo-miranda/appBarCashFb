@@ -727,8 +727,9 @@ router.get('/:id', async (req, res) => {
       },
     });
 
+    let setores = [];
     try {
-      const setores = await prisma.$queryRawUnsafe(`SELECT s.id AS id, s.nome AS nome, s.modoEnvio AS modo, s.whatsappDestino AS whatsappDestino, s.printerId AS printerId FROM \`SetorImpressao\` s INNER JOIN \`ProductSetorImpressao\` psi ON psi.setorId = s.id WHERE psi.productId = ${prodId} AND s.ativo = 1`);
+      setores = await prisma.$queryRawUnsafe(`SELECT s.id AS id, s.nome AS nome, s.modoEnvio AS modo, s.whatsappDestino AS whatsappDestino, s.printerId AS printerId FROM \`SetorImpressao\` s INNER JOIN \`ProductSetorImpressao\` psi ON psi.setorId = s.id WHERE psi.productId = ${prodId} AND s.ativo = 1`);
       let cozinha = false;
       let bar = false;
       const saleRef = { mesa: vendaAtualizada?.mesa || null, comanda: vendaAtualizada?.nomeComanda || null };
@@ -766,7 +767,10 @@ router.get('/:id', async (req, res) => {
       }
     } catch {}
     res.json(payload);
-    try { recordSaleUpdate(vendaAtualizada.id); } catch {}
+    try {
+      const setorIds = Array.isArray(setores) ? setores.map((s) => Number(s?.id)).filter(Boolean) : [];
+      recordSaleUpdate(vendaAtualizada.id, 'new_order_item', { productId: Number(prodId), setorIds, delta: Number(quantidade || 1) });
+    } catch {}
   } catch (error) {
     console.error('Erro ao adicionar item:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -963,8 +967,10 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
         itens: { include: { product: { select: { nome: true, precoVenda: true } } } },
       },
     });
+    let setores = [];
+    const deltaNow = qnt - prevQty;
     try {
-      const setores = await prisma.$queryRawUnsafe(`SELECT s.id AS id, s.nome AS nome, s.modoEnvio AS modo, s.whatsappDestino AS whatsappDestino, s.printerId AS printerId FROM \`SetorImpressao\` s INNER JOIN \`ProductSetorImpressao\` psi ON psi.setorId = s.id WHERE psi.productId = ${prodId} AND s.ativo = 1`);
+      setores = await prisma.$queryRawUnsafe(`SELECT s.id AS id, s.nome AS nome, s.modoEnvio AS modo, s.whatsappDestino AS whatsappDestino, s.printerId AS printerId FROM \`SetorImpressao\` s INNER JOIN \`ProductSetorImpressao\` psi ON psi.setorId = s.id WHERE psi.productId = ${prodId} AND s.ativo = 1`);
       
       let cozinha = false;
       let bar = false;
@@ -973,7 +979,6 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
       
       // Re-fetch item to be sure we have the latest data
       const it = Array.isArray(vendaAtualizada?.itens) ? vendaAtualizada.itens.find((i) => Number(i.productId) === prodId) : null;
-      const deltaNow = qnt - prevQty;
       
       if (deltaNow > 0) {
         for (const s of Array.isArray(setores) ? setores : []) {
@@ -1021,7 +1026,14 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
     }
 
     res.json(mapSaleResponse(normalizeSale(vendaAtualizada)));
-    try { recordSaleUpdate(vendaAtualizada.id); } catch {}
+    try {
+      const setorIds = Array.isArray(setores) ? setores.map((s) => Number(s?.id)).filter(Boolean) : [];
+      if (deltaNow > 0) {
+        recordSaleUpdate(vendaAtualizada.id, 'new_order_item', { productId: Number(prodId), setorIds, delta: deltaNow });
+      } else {
+        recordSaleUpdate(vendaAtualizada.id, 'item_quantity_decreased', { productId: Number(prodId), setorIds, delta: deltaNow });
+      }
+    } catch {}
   } catch (error) {
     console.error('Erro ao atualizar item:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });

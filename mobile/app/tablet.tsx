@@ -46,7 +46,7 @@ export default function TabletMode() {
     if (nextMuted) {
       stopOrderAlertSound();
     } else {
-      playOrderAlertSound(soundVolume, false);
+      playOrderAlertSound(soundVolume, false, true);
     }
   };
 
@@ -62,7 +62,7 @@ export default function TabletMode() {
       ]);
     } catch {}
     if (!nextMuted) {
-      playOrderAlertSound(nextVol, false);
+      playOrderAlertSound(nextVol, false, true);
     } else {
       stopOrderAlertSound();
     }
@@ -80,7 +80,7 @@ export default function TabletMode() {
         ]);
       } catch {}
     }
-    playOrderAlertSound(volToPlay, false);
+    playOrderAlertSound(volToPlay, false, true);
   };
 
   const isLocalHost = (url: string): boolean => {

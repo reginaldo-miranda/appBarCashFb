@@ -435,6 +435,8 @@ router.post('/pedido', async (req, res) => {
 
       const saleRef = { mesa: vendaCompleta?.mesa || null, comanda: vendaCompleta?.nomeComanda || null };
 
+      const allSetorIds = new Set();
+
       // Processar impressão de cada item recém-inserido
       for (const itemInserido of result.itensInseridos) {
         if (!itemInserido.productId) continue;
@@ -451,6 +453,7 @@ router.post('/pedido', async (req, res) => {
         let bar = false;
 
         for (const s of Array.isArray(setores) ? setores : []) {
+          if (s?.id) allSetorIds.add(Number(s.id));
           const nomeSetorLower = String(s.nome || '').toLowerCase();
           const modo = String(s.modo || '').toLowerCase();
 
@@ -499,8 +502,11 @@ router.post('/pedido', async (req, res) => {
         }
       }
 
-      // 5. Notificar via WebSockets / SSE em tempo real para os garçons/caixa
-      recordSaleUpdate(result.vendaId);
+      // 5. Notificar via WebSockets / SSE em tempo real para os garçons/caixa/tablet
+      recordSaleUpdate(result.vendaId, 'new_order_item', {
+        setorIds: Array.from(allSetorIds),
+        delta: result.itensInseridos.length,
+      });
     } catch (err) {
       console.error('Erro ao processar impressões ou alertas do cardápio:', err);
     }

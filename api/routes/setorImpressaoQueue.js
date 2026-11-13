@@ -52,14 +52,7 @@ router.get('/:id/queue', async (req, res) => {
     const setorFilterClause = isTodos
       ? '1=1'
       : isStrict
-        ? `(
-          psi.setorId = ?
-          OR (
-            psi.setorId IS NULL
-            AND sa.tipoVenda IN ('balcao', 'delivery')
-            AND sa.status IN ('aberta', 'finalizada')
-          )
-        )`
+        ? 'psi.setorId = ?'
         : `(
           psi.setorId = ?
           OR (

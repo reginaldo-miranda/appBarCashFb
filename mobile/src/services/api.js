@@ -711,10 +711,13 @@ export function getCurrentBaseUrl() {
 
 export function getWsUrl() {
   try {
+    const port = (process.env?.WS_PORT && Number(process.env.WS_PORT)) || 4001;
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
+      return `ws://${window.location.hostname}:${port}`;
+    }
     const base = getCurrentBaseUrl();
     const u = new URL(String(base));
     const host = u.hostname;
-    const port = (process.env?.WS_PORT && Number(process.env.WS_PORT)) || 4001;
     if (LOCAL_HOSTNAMES.has(host)) {
       const pickLanHost = () => {
         try {
@@ -751,7 +754,7 @@ export function getWsUrl() {
         return '';
       };
       const lanHost = pickLanHost();
-      return lanHost ? `ws://${lanHost}:${port}` : '';
+      return lanHost ? `ws://${lanHost}:${port}` : `ws://${host}:${port}`;
     }
     return `ws://${host}:${port}`;
   } catch {

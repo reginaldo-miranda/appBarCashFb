@@ -7,6 +7,7 @@ export const SOUND_MUTED_KEY = '@barapp:tablet_sound_muted';
 let sharedAudioCtx: any = null;
 let activeTimeouts: any[] = [];
 let activeOscillators: any[] = [];
+let lastPlayTimestamp = 0;
 
 function getAudioContext(): any {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
@@ -15,13 +16,10 @@ function getAudioContext(): any {
   if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
     sharedAudioCtx = new AudioCtx();
   }
-  if (sharedAudioCtx.state === 'suspended') {
-    sharedAudioCtx.resume().catch(() => {});
-  }
   return sharedAudioCtx;
 }
 
-// Desbloqueia o AudioContext no primeiro clique do usuário na página (requisito de navegadores)
+// Desbloqueia o AudioContext na primeira interação do usuário na página
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   const unlock = () => {
     try {
@@ -31,8 +29,9 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
       }
     } catch {}
   };
-  window.addEventListener('click', unlock, { passive: true });
-  window.addEventListener('touchstart', unlock, { passive: true });
+  ['click', 'touchstart', 'pointerdown', 'mousedown', 'keydown'].forEach((evtName) => {
+    window.addEventListener(evtName, unlock, { passive: true });
+  });
 }
 
 export function stopOrderAlertSound() {
@@ -68,9 +67,16 @@ export async function getSavedSoundConfig(): Promise<{ volume: number; muted: bo
  * Toca um alerta estilo telefone comercial ("Trim-Trim!") com 3 toques duplos.
  * @param customVolume Volume de 0 a 100 (opcional; se omitido, lê do AsyncStorage)
  * @param customMuted Se está mudo (opcional; se omitido, lê do AsyncStorage)
+ * @param force Se true (ex: botão Testar), ignora debounce de toque recente
  */
-export async function playOrderAlertSound(customVolume?: number, customMuted?: boolean) {
+export async function playOrderAlertSound(customVolume?: number, customMuted?: boolean, force: boolean = false) {
   try {
+    const nowMs = Date.now();
+    if (!force && nowMs - lastPlayTimestamp < 1200) {
+      return;
+    }
+    lastPlayTimestamp = nowMs;
+
     let volume = customVolume;
     let muted = customMuted;
 
@@ -96,6 +102,12 @@ export async function playOrderAlertSound(customVolume?: number, customMuted?: b
     const ctx = getAudioContext();
     if (!ctx) return;
 
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {}
+    }
+
     // Cancela toque anterior se ainda estiver tocando para não sobrepor
     stopOrderAlertSound();
 
@@ -106,6 +118,9 @@ export async function playOrderAlertSound(customVolume?: number, customMuted?: b
     const playPhoneBurst = (startDelayMs: number, durationMs: number) => {
       const tId = setTimeout(() => {
         try {
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
           const now = ctx.currentTime;
           const durationSec = durationMs / 1000;
 
@@ -151,4 +166,3 @@ export async function playOrderAlertSound(customVolume?: number, customMuted?: b
     console.warn('Erro ao reproduzir som de novo pedido:', err);
   }
 }
-
