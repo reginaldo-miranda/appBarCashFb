@@ -11,7 +11,9 @@ const prisma = getActivePrisma();
  */
 router.get('/:id/queue', async (req, res) => {
   try {
-    const setorId = parseInt(req.params.id);
+    const rawId = String(req.params.id || '').trim().toLowerCase();
+    const isTodos = rawId === 'todos' || rawId === 'all' || rawId === '0';
+    const setorId = isTodos ? 0 : parseInt(req.params.id);
     const { status = 'pendente', from, to, employees, strict } = req.query;
     // Obter setor padrão (fallback) quando produto não estiver vinculado
     let defaultSetorId = null;
@@ -47,6 +49,26 @@ router.get('/:id/queue', async (req, res) => {
 
     const isStrict = String(strict).toLowerCase() === '1' || String(strict).toLowerCase() === 'true';
 
+    const setorFilterClause = isTodos
+      ? '1=1'
+      : isStrict
+        ? `(
+          psi.setorId = ?
+          OR (
+            psi.setorId IS NULL
+            AND sa.tipoVenda IN ('balcao', 'delivery')
+            AND sa.status IN ('aberta', 'finalizada')
+          )
+        )`
+        : `(
+          psi.setorId = ?
+          OR (
+            psi.setorId IS NULL
+            AND ? IS NOT NULL
+            AND ? = ?
+          )
+        )`;
+
     const sql = `
       SELECT 
         si.id,
@@ -68,9 +90,11 @@ router.get('/:id/queue', async (req, res) => {
         fr.nome as responsavelNome,
         f.nome as funcionarioNome,
         c.nome as clienteNome,
-        pb.nome as preparedByNome
+        pb.nome as preparedByNome,
+        st.nome as setorNome
       FROM SaleItem si
       LEFT JOIN ProductSetorImpressao psi ON psi.productId = si.productId
+      LEFT JOIN SetorImpressao st ON st.id = psi.setorId
       INNER JOIN Sale sa ON sa.id = si.saleId
       LEFT JOIN Mesa s ON s.id = sa.mesaId
       LEFT JOIN Employee fr ON fr.id = s.funcionarioResponsavelId
@@ -79,28 +103,31 @@ router.get('/:id/queue', async (req, res) => {
       LEFT JOIN Employee pb ON pb.id = si.preparedById
       WHERE (si.status = ? OR (si.status = 'pago' AND ? = 'pendente'))
         AND (sa.status = 'aberta' OR (sa.status = 'finalizada' AND sa.tipoVenda IN ('balcao', 'delivery')))
-        AND ${isStrict ? `(
-          psi.setorId = ?
-          OR (
-            psi.setorId IS NULL
-            AND sa.tipoVenda IN ('balcao', 'delivery')
-            AND sa.status IN ('aberta', 'finalizada')
-          )
-        )` : `(
-          psi.setorId = ?
-          OR (
-            psi.setorId IS NULL
-            AND ? IS NOT NULL
-            AND ? = ?
-          )
-        )`}
+        AND ${setorFilterClause}
       ${extraFilters.join(' ')}
       ORDER BY si.createdAt ASC
     `;
 
-    const items = isStrict
-      ? await prisma.$queryRawUnsafe(sql, status, status, setorId)
-      : await prisma.$queryRawUnsafe(sql, status, status, setorId, defaultSetorId, defaultSetorId, setorId);
+    const rawItems = isTodos
+      ? await prisma.$queryRawUnsafe(sql, status, status)
+      : isStrict
+        ? await prisma.$queryRawUnsafe(sql, status, status, setorId)
+        : await prisma.$queryRawUnsafe(sql, status, status, setorId, defaultSetorId, defaultSetorId, setorId);
+
+    // Deduplicar itens (caso um produto esteja vinculado a mais de um setor) agrupando os nomes dos setores
+    const dedupMap = new Map();
+    for (const row of rawItems) {
+      const existing = dedupMap.get(row.id);
+      if (!existing) {
+        dedupMap.set(row.id, {
+          ...row,
+          setorNomes: row.setorNome ? [row.setorNome] : []
+        });
+      } else if (row.setorNome && !existing.setorNomes.includes(row.setorNome)) {
+        existing.setorNomes.push(row.setorNome);
+      }
+    }
+    const items = Array.from(dedupMap.values());
 
     // Formatar os dados para exibição
     const formattedItems = items.map(item => {
@@ -117,6 +144,9 @@ router.get('/:id/queue', async (req, res) => {
       const responsavel = respMesa || respComanda || item.clienteNome || null;
       // Normalizar status operacional: se estiver 'pago', para a cozinha/bar é 'pendente' (em preparação)
       const operationalStatus = (item.status === 'pago') ? 'pendente' : item.status;
+      const resolvedSetorNome = item.setorNomes && item.setorNomes.length > 0
+        ? item.setorNomes.join(' / ')
+        : (item.setorNome || 'Geral');
       return {
         id: item.id,
         saleId: item.saleId,
@@ -124,6 +154,7 @@ router.get('/:id/queue', async (req, res) => {
         responsavel: responsavel || 'Não informado',
         quantidade: item.quantidade,
         produto: item.nomeProduto,
+        setorNome: resolvedSetorNome,
         funcionario: item.funcionarioNome || 'Não informado',
         funcionarioId: item.funcionarioId || null,
         horario: item.createdAt,

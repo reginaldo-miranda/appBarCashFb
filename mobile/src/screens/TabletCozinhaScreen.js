@@ -459,6 +459,13 @@ const renderItem = ({ item }) => {
                 ? 'Pronto'
                 : 'Entregue'}
             </Text>
+
+            {item.setorNome ? (
+              <View style={styles.setorBadge}>
+                <Ionicons name="pricetag-outline" size={11} color="#4338CA" />
+                <Text style={styles.setorBadgeText}>{String(item.setorNome).toUpperCase()}</Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.topRightActions}>
@@ -1132,5 +1139,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffebee',
     borderColor: '#ef5350',
     borderWidth: 1,
+  },
+  setorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
+  },
+  setorBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4338CA',
   },
 });

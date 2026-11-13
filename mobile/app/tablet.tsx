@@ -14,7 +14,7 @@ export default function TabletMode() {
   const { width } = useWindowDimensions();
   const split = false;
   const [setores, setSetores] = React.useState<any[]>([]);
-  const [activeSetorId, setActiveSetorId] = React.useState<number | null>(null);
+  const [activeSetorId, setActiveSetorId] = React.useState<number | string | null>('todos');
   const [activeView, setActiveView] = React.useState<'setor' | 'pronto' | 'entregue'>('setor');
   const [hiddenDeliveredIds, setHiddenDeliveredIds] = React.useState<number[]>([]);
 
@@ -89,7 +89,7 @@ export default function TabletMode() {
         const ativos = Array.isArray(arr) ? arr.filter((s: any) => s?.ativo !== false) : [];
         if (alive) {
           setSetores(ativos);
-          setActiveSetorId(ativos.length > 0 ? Number(ativos[0].id) : null);
+          setActiveSetorId((prev) => prev ?? 'todos');
         }
       } catch (err) {
         // silencioso
@@ -101,9 +101,9 @@ export default function TabletMode() {
   React.useEffect(() => {
     (async () => {
       try {
-        if (activeSetorId) {
+        if (activeSetorId && activeSetorId !== 'todos') {
           const { setorImpressaoService } = await import('../src/services/api');
-          await setorImpressaoService.select(activeSetorId);
+          await setorImpressaoService.select(Number(activeSetorId));
         }
       } catch {}
     })();
@@ -197,6 +197,14 @@ export default function TabletMode() {
       {(activeView === 'setor' || activeView === 'entregue' || activeView === 'pronto') && (
       <View style={styles.tabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+          <TouchableOpacity
+            key="todos"
+            style={[styles.tabDynamic, activeSetorId === 'todos' && styles.activeTab]}
+            onPress={() => setActiveSetorId('todos')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabText, activeSetorId === 'todos' && styles.activeTabText]}>Todos</Text>
+          </TouchableOpacity>
           {setores.map((s) => {
             const isActive = Number(s.id) === activeSetorId;
             return (
@@ -216,13 +224,19 @@ export default function TabletMode() {
 
       <View style={styles.content}>
         {(() => {
-          const ativo = setores.find((s) => Number(s.id) === activeSetorId);
+          const isTodos = activeSetorId === 'todos';
+          const ativo = isTodos
+            ? { id: 'todos', nome: 'Todos os Setores' }
+            : setores.find((s) => Number(s.id) === activeSetorId);
           if (!ativo) return null;
-          const compProps: any = { setorIdOverride: Number(ativo.id), setorNomeOverride: ativo.nome };
+          const compProps: any = {
+            setorIdOverride: isTodos ? 'todos' : Number(ativo.id),
+            setorNomeOverride: ativo.nome,
+          };
           if (activeView === 'pronto') compProps.forceFilterStatus = 'pronto';
           if (activeView === 'entregue') compProps.forceFilterStatus = 'entregue';
           compProps.hiddenIds = activeView === 'entregue' ? hiddenDeliveredIds : [];
-          return String(ativo.nome || '').toLowerCase().includes('cozinha') ? (
+          return isTodos || String(ativo.nome || '').toLowerCase().includes('cozinha') ? (
             <TabletCozinhaScreen {...compProps} />
           ) : (
             <TabletBarScreen {...compProps} />
