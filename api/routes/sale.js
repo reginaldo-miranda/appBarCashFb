@@ -593,17 +593,16 @@ router.get('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Produto inativo' });
     }
 
-    // Busca item pendente idêntico (mesmo produto, sem variação e com a mesma observação)
+    // Busca item idêntico na venda (mesmo produto, sem variação e com a mesma observação) para somar quantidade
     const itemExistente = Array.isArray(venda.itens)
       ? venda.itens.find((i) => {
           const sameProduct = Number(i.productId) === prodId;
-          const isPendente = i.status === 'pendente';
           // Garante que o item existente não tenha variação (nem tipo, nem opções)
           // Isso evita mesclar um produto simples com um que já tem variação
           const hasNoVariation = !i.variacaoTipo && (!i.variacaoOpcoes || (Array.isArray(i.variacaoOpcoes) && i.variacaoOpcoes.length === 0));
           const sameObs = (i.observacoes || null) === obsItem;
           
-          return sameProduct && isPendente && hasNoVariation && sameObs;
+          return sameProduct && hasNoVariation && sameObs;
       })
       : null;
       
@@ -616,6 +615,7 @@ router.get('/:id', async (req, res) => {
         data: {
           quantidade: novaQtd,
           subtotal: String((Number(novaQtd) * Number(itemExistente.precoUnitario ?? produto.precoVenda)).toFixed(2)),
+          status: 'pendente',
           origem: origem === 'tablet' ? 'tablet' : itemExistente.origem,
           createdAt: new Date() // Atualiza data para resetar tempo de ociosidade
         }
@@ -923,40 +923,11 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
         data: { quantidade: qnt, subtotal: qnt * item.precoUnitario },
       });
     } else {
-      // Se o item já foi processado (não está pendente), não podemos misturar o status.
-      // Devemos criar um NOVO item para o incremento (delta).
-      if (item.status && item.status !== 'pendente') {
-          console.log('[SALE] Incremento em item processado. Criando novo item com qty:', delta);
-          // Clonar os dados do item original
-          await prisma.saleItem.create({
-            data: {
-              saleId: venda.id,
-              productId: item.productId,
-              nomeProduto: item.nomeProduto,
-              quantidade: delta,
-              precoUnitario: item.precoUnitario, // Mantém preço da época ou original
-              subtotal: String((Number(delta) * Number(item.precoUnitario)).toFixed(2)),
-              status: 'pendente', // Novo item nasce pendente
-              createdAt: new Date(),
-              origem: origem === 'tablet' ? 'tablet' : 'default',
-              variacaoTipo: item.variacaoTipo,
-              variacaoRegraPreco: item.variacaoRegraPreco,
-              variacaoOpcoes: item.variacaoOpcoes
-            },
-          });
-          // O item original permanece inalterado (ou talvez precisasse ser atualizado se o delta fosse parcial, mas aqui assumimos incremento total do contador visual)
-          // Na verdade, o frontend mandou quantidade TOTAL (ex: era 2 virou 3).
-          // Se eu crio um novo item de 1, o item original deve permanecer com 2.
-          // O frontend vai receber a lista atualizada com 2 itens: um de 2 e um de 1.
-          
-          // Nenhuma alteração no item original necessária.
-      } else {
-        // Item ainda está pendente, podemos apenas somar
-        await prisma.saleItem.update({
-          where: { id: item.id },
-          data: { quantidade: qnt, subtotal: qnt * item.precoUnitario, status: 'pendente', createdAt: new Date() }, // Atualiza createdAt para resetar tempo
-        });
-      }
+      // Sempre somar no próprio item existente (sem criar nova linha duplicada na lista)
+      await prisma.saleItem.update({
+        where: { id: item.id },
+        data: { quantidade: qnt, subtotal: qnt * item.precoUnitario, status: 'pendente', createdAt: new Date() },
+      });
     }
 
     const vendaAtualizada = await prisma.sale.findUnique({

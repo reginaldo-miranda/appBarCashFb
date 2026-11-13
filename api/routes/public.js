@@ -355,12 +355,11 @@ router.post('/pedido', async (req, res) => {
 
         const obsItem = (reqItem.observacao || reqItem.observacoes || '').toString().trim() || null;
 
-        // Buscar se já há um item pendente idêntico sem variação na comanda com a MESMA observação para somar quantidade
+        // Buscar se já há um item idêntico sem variação na comanda com a MESMA observação para somar quantidade
         const itemExistente = !variacao ? await tx.saleItem.findFirst({
           where: {
             saleId: vendaId,
             productId: prodId,
-            status: 'pendente',
             variacaoTipo: null,
             observacoes: obsItem
           }
@@ -375,6 +374,7 @@ router.post('/pedido', async (req, res) => {
             data: {
               quantidade: novaQtd,
               subtotal: subtotalCalculado,
+              status: 'pendente',
               createdAt: new Date()
             }
           });
