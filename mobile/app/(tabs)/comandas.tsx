@@ -756,9 +756,27 @@ useEffect(() => {
           </TouchableOpacity>
           <Text style={[styles.title, Platform.OS !== 'web' && Dimensions.get('window').width < 768 && { fontSize: 18 }]}>Comandas</Text>
         </View>
-        <TouchableOpacity style={styles.button} onPress={handleOpenModal}>
-          <Text style={styles.buttonText}>Nova Comanda</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: '#2196F3',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={() => events.emit('qrcode:open')}
+              accessibilityLabel="Conectar Celular (QR Code)"
+            >
+              <SafeIcon name="qr-code" size={18} color="#fff" fallbackText="📱" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.button} onPress={handleOpenModal}>
+            <Text style={styles.buttonText}>Nova Comanda</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       
       <CriarComandaModal

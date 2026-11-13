@@ -342,7 +342,6 @@ export default function HomeScreen() {
         
         <View style={{ height: 16 }} />
       </ScrollView>
-      {Platform.OS === 'web' && <QrCodeAcessoMobile hideButton={true} />}
     </View>
   );
 }

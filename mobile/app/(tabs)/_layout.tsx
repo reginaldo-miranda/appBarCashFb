@@ -11,6 +11,7 @@ import { SafeIcon } from '../../components/SafeIcon';
 import { Platform, useWindowDimensions } from 'react-native';
 import api from '../../src/services/api';
 import SidebarMenu from '../../src/components/SidebarMenu';
+import QrCodeAcessoMobile from '../../src/components/QrCodeAcessoMobile';
 import { events } from '../../src/utils/eventBus';
 
 export default function TabLayout() {
@@ -275,6 +276,7 @@ export default function TabLayout() {
       />
     </Tabs>
     <SidebarMenu />
+    {Platform.OS === 'web' && <QrCodeAcessoMobile hideButton={true} />}
   </View>
   );
 }

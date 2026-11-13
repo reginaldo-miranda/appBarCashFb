@@ -1780,6 +1780,28 @@ useEffect(() => {
               </View>
             )}
           </View>
+
+          {Platform.OS === 'web' && (
+            <View style={styles.tooltipContainer}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => events.emit('qrcode:open')}
+                onPressIn={() => showTooltip('qrcode')}
+                onPressOut={hideTooltip}
+                // @ts-ignore - Web only propertys
+                onMouseEnter={() => Platform.OS === 'web' && showTooltip('qrcode')}
+                onMouseLeave={() => Platform.OS === 'web' && hideTooltip()}
+                accessibilityLabel="Conectar Celular (QR Code)"
+              >
+                <SafeIcon name="qr-code" size={18} color="#fff" fallbackText="📱" />
+              </TouchableOpacity>
+              {tooltipVisible === 'qrcode' && (
+                <View style={[styles.tooltip, styles.tooltipVisible]}>
+                  <Text style={styles.tooltipText}>Conectar Celular</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </View>
 
