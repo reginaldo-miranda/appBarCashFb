@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, ActivityIndicator, Modal, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, ActivityIndicator, Modal, Platform, Dimensions, TextInput, Linking } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import CriarComandaModal from '../../src/components/CriarComandaModal';
@@ -114,6 +114,8 @@ export default function ComandasAbertasScreen() {
 
   const [qrCodeModalVisible, setQrCodeModalVisible] = useState(false);
   const [qrCodeComanda, setQrCodeComanda] = useState<Comanda | null>(null);
+  const [qrWhatsappPhone, setQrWhatsappPhone] = useState('');
+  const [qrCopied, setQrCopied] = useState(false);
 
   const [ipLan, setIpLan] = useState<string>(obterIpLanCardapio());
 
@@ -203,6 +205,9 @@ export default function ComandasAbertasScreen() {
 
   const abrirQrCodeComanda = (comanda: Comanda) => {
     setQrCodeComanda(comanda);
+    const foneCliente = (comanda as any)?.cliente?.telefone || (comanda as any)?.cliente?.fone || (comanda as any)?.cliente?.celular || (comanda as any)?.cliente?.whatsapp || '';
+    setQrWhatsappPhone(foneCliente ? String(foneCliente) : '');
+    setQrCopied(false);
     setQrCodeModalVisible(true);
   };
   
@@ -1068,35 +1073,109 @@ useEffect(() => {
 
             {qrCodeComanda && (() => {
               const porta = obterPortaCardapio();
-              const linkCardapio = `http://${ipLan}:${porta}/cardapio/comanda/${qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda}`;
+              const nomeOuNum = qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda || '';
+              const linkCardapio = `http://${ipLan}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
+              const handleSendWhatsapp = () => {
+                const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
+                const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Comanda ${nomeOuNum}* e faça seus pedidos direto pelo celular:\n${linkCardapio}`;
+                const encodedMsg = encodeURIComponent(msg);
+                const phoneParam = digits.length >= 10 ? (digits.startsWith('55') ? digits : `55${digits}`) : '';
+                const waUrl = phoneParam
+                  ? `https://wa.me/${phoneParam}?text=${encodedMsg}`
+                  : `https://wa.me/?text=${encodedMsg}`;
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.open(waUrl, '_blank');
+                } else {
+                  Linking.openURL(waUrl).catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'));
+                }
+              };
+              const handleCopyLink = async () => {
+                try {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    await navigator.clipboard.writeText(linkCardapio);
+                    setQrCopied(true);
+                    setTimeout(() => setQrCopied(false), 2000);
+                  }
+                } catch {}
+              };
               return (
                 <>
                   <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
-                    Comanda {qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda}
+                    Comanda {nomeOuNum}
                   </Text>
-                  <Text style={{ fontSize: 13, color: '#AAA', textAlign: 'center', marginBottom: 20 }}>
-                    Aponte a câmera do celular para abrir o cardápio e fazer pedidos para esta comanda.
+                  <Text style={{ fontSize: 13, color: '#AAA', textAlign: 'center', marginBottom: 16 }}>
+                    Aponte a câmera do celular ou envie o link direto para o WhatsApp do cliente.
                   </Text>
 
                   {/* QR Code Container */}
-                  <View style={{ backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
+                  <View style={{ backgroundColor: '#FFF', padding: 14, borderRadius: 12, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
                     <QRCode
                       value={linkCardapio}
-                      size={200}
+                      size={180}
                       logoBackgroundColor='transparent'
                     />
                   </View>
 
                   {/* URL informativa para copiar/acessar manual */}
-                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 10, width: '100%', marginBottom: 20, borderWidth: 1, borderColor: '#333' }}>
-                    <Text style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>Link de Acesso:</Text>
+                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 10, width: '100%', marginBottom: 14, borderWidth: 1, borderColor: '#333' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 11, color: '#888' }}>Link de Acesso:</Text>
+                      {Platform.OS === 'web' && (
+                        <TouchableOpacity onPress={handleCopyLink} style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: '#333', borderRadius: 4 }}>
+                          <Text style={{ fontSize: 11, color: qrCopied ? '#4CAF50' : '#FF8C00', fontWeight: 'bold' }}>
+                            {qrCopied ? '✓ Copiado!' : '📋 Copiar'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                     <Text style={{ fontSize: 12, color: '#FF8C00', fontWeight: 'bold', textAlign: 'center' }} selectable>
                       {linkCardapio}
                     </Text>
                   </View>
 
+                  {/* Envio via WhatsApp */}
+                  <View style={{ width: '100%', marginBottom: 14 }}>
+                    <Text style={{ fontSize: 12, color: '#CCC', marginBottom: 6 }}>
+                      WhatsApp do Cliente (opcional):
+                    </Text>
+                    <TextInput
+                      style={{
+                        backgroundColor: '#262626',
+                        borderWidth: 1,
+                        borderColor: '#444',
+                        borderRadius: 8,
+                        paddingHorizontal: 12,
+                        paddingVertical: 9,
+                        color: '#FFF',
+                        fontSize: 14,
+                        marginBottom: 10,
+                      }}
+                      placeholder="Ex: (11) 99999-9999"
+                      placeholderTextColor="#777"
+                      keyboardType="phone-pad"
+                      value={qrWhatsappPhone}
+                      onChangeText={setQrWhatsappPhone}
+                    />
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#25D366',
+                        paddingVertical: 11,
+                        borderRadius: 25,
+                        width: '100%',
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                      onPress={handleSendWhatsapp}
+                    >
+                      <SafeIcon name="logo-whatsapp" size={18} color="#FFF" fallbackText="📲" />
+                      <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Enviar Link no WhatsApp</Text>
+                    </TouchableOpacity>
+                  </View>
+
                   <TouchableOpacity
-                    style={{ backgroundColor: '#FF8C00', paddingVertical: 12, borderRadius: 25, width: '100%', alignItems: 'center' }}
+                    style={{ backgroundColor: '#333', paddingVertical: 10, borderRadius: 25, width: '100%', alignItems: 'center' }}
                     onPress={() => setQrCodeModalVisible(false)}
                   >
                     <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Fechar</Text>
