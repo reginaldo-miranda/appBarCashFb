@@ -1514,49 +1514,66 @@ useEffect(() => {
            ]}
         >
           <View style={styles.mesaHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => !mergeMode && handleOpenReceiptMesa(item)} disabled={mergeMode}>
-                <Text style={[styles.mesaNumero, { textDecorationLine: 'underline', color: '#2196F3' }]}>
-                    Mesa {item.numero}
-                    {(item.nomeResponsavel || item.funcionarioResponsavel?.nome) &&
-                    (() => {
-                        const id = String(item?._id ?? (item as any)?.id ?? '');
-                        const vt = item?.vendaAtual?.total;
-                        const mapData = id ? mesaOpenTotals[id] : undefined;
-                        const displayTotal = vt != null && Number(vt) > 0 ? Number(vt) : (mapData?.total || 0);
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
+              <TouchableOpacity
+                style={{ flexShrink: 1 }}
+                onPress={() => !mergeMode && handleOpenReceiptMesa(item)}
+                disabled={mergeMode}
+              >
+                <Text
+                  style={[styles.mesaNumero, { textDecorationLine: 'underline', color: '#2196F3' }]}
+                  numberOfLines={2}
+                >
+                  Mesa {item.numero}
+                  {(() => {
+                    const id = String(item?._id ?? (item as any)?.id ?? '');
+                    const vt = Number(item?.vendaAtual?.total || 0);
+                    const mapData = id ? mesaOpenTotals[id] : undefined;
+                    const liveTotal = mapData?.total != null && Number(mapData.total) > 0 ? Number(mapData.total) : vt;
+                    const respNome = item.nomeResponsavel || item.funcionarioResponsavel?.nome;
 
-                        const valorTotal = displayTotal.toFixed(2).replace('.', ',');
-                        
-                        let text = ``;
-                        if (displayTotal > 0) {
-                            text += ` - R$ ${valorTotal}`;
-                        }
-                        text += ` - Responsável: ${item.nomeResponsavel || item.funcionarioResponsavel?.nome}`;
-                        return text;
-                    })()
+                    let text = '';
+                    if (liveTotal > 0 && item.status === 'ocupada') {
+                      text += ` - R$ ${liveTotal.toFixed(2).replace('.', ',')}`;
                     }
+                    if (respNome) {
+                      text += ` - Resp: ${respNome}`;
+                    }
+                    return text;
+                  })()}
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               {!mergeMode && (
-                <TouchableOpacity 
-                  style={{ marginLeft: 8, padding: 4, backgroundColor: '#333', borderRadius: 4, borderWidth: 1, borderColor: '#444' }}
+                <TouchableOpacity
+                  style={{ padding: 5, backgroundColor: '#333', borderRadius: 6, borderWidth: 1, borderColor: '#444' }}
                   onPress={() => abrirQrCodeMesa(item)}
                 >
                   <SafeIcon name="qr-code" size={14} color="#FF8C00" fallbackText="QR" />
                 </TouchableOpacity>
               )}
+
+              {/* Badges for Merge Mode */}
+              {isTarget && (
+                <View style={[styles.statusBadge, { backgroundColor: '#2196F3' }]}>
+                  <Text style={styles.statusText}>PRINCIPAL</Text>
+                </View>
+              )}
+              {isSource && (
+                <View style={[styles.statusBadge, { backgroundColor: '#FF9800' }]}>
+                  <Text style={styles.statusText}>JUNTAR</Text>
+                </View>
+              )}
+
+              {!mergeMode && (
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                  <SafeIcon name={getStatusIcon(item.status)} size={11} color="#fff" fallbackText="•" />
+                  <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+                </View>
+              )}
             </View>
-            
-            {/* Badges for Merge Mode */}
-            {isTarget && <View style={[styles.statusBadge, {backgroundColor: '#2196F3'}]}><Text style={styles.statusText}>PRINCIPAL</Text></View>}
-            {isSource && <View style={[styles.statusBadge, {backgroundColor: '#FF9800'}]}><Text style={styles.statusText}>JUNTAR</Text></View>}
-            
-            {!mergeMode && (
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                <SafeIcon name={getStatusIcon(item.status)} size={12} color="#fff" fallbackText="•" />
-                <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
-              </View>
-            )}
           </View>
 
           <View style={styles.mesaInfo}>
@@ -1567,8 +1584,9 @@ useEffect(() => {
 
             {(() => {
               const id = String(item?._id ?? (item as any)?.id ?? '');
+              const vt = Number(item?.vendaAtual?.total || 0);
               const mapData = id ? mesaOpenTotals[id] : undefined;
-              const total = mapData?.total || 0;
+              const total = mapData?.total != null && Number(mapData.total) > 0 ? Number(mapData.total) : vt;
               const pago = mapData?.pago || 0;
 
               if (total > 0 && item.status === 'ocupada') {
@@ -2943,31 +2961,37 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    gap: 6,
   },
   statsLeft: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     flex: 1,
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    gap: 4,
   },
   headerButtons: {
     flexDirection: 'row',
-    gap: 6,
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 0,
   },
   tooltipContainer: {
     position: 'relative',
   },
   headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
@@ -2985,7 +3009,7 @@ const styles = StyleSheet.create({
   },
   tooltip: {
     position: 'absolute',
-    top: 42,
+    top: 38,
     left: '50%',
     transform: [{ translateX: -60 }],
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
@@ -3019,39 +3043,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
     borderRadius: 8,
-    gap: 6,
+    gap: 4,
   },
   statItemSelected: {
     backgroundColor: '#e3f2fd',
   },
   statNumber: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#555',
     marginTop: 0,
   },
   statIndicator: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
     marginTop: 0,
   },
   listContainer: {
-    padding: 10,
+    padding: 8,
     paddingBottom: 80,
   },
   mesaCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     marginBottom: 8,
     borderLeftWidth: 4,
     shadowColor: '#000',
@@ -3067,14 +3091,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 5,
+    width: '100%',
   },
   mesaNumero: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
-    flex: 1,
-    flexWrap: 'wrap',
+    lineHeight: 18,
   },
   statusBadge: {
     flexDirection: 'row',
