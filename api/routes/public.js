@@ -63,7 +63,23 @@ router.get('/menu', async (req, res) => {
   }
 });
 
-// Rota 2: GET /api/public/mesa/:id - Validar mesa por ID e retornar status
+// Rota 1.5: GET /api/public/mesas - Listar mesas ativas para seleção no cardápio
+router.get('/mesas', async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const mesas = await prisma.mesa.findMany({
+      where: { ativo: true },
+      select: { id: true, numero: true, nome: true, status: true },
+      orderBy: { numero: 'asc' }
+    });
+    res.json({ success: true, mesas });
+  } catch (error) {
+    console.error('Erro ao listar mesas públicas:', error);
+    res.status(500).json({ success: false, error: 'Erro ao listar mesas' });
+  }
+});
+
+// Rota 2: GET /api/public/mesa/:id - Validar mesa por ID (ou número) e retornar status
 router.get('/mesa/:id', async (req, res) => {
   try {
     const prisma = getActivePrisma();
@@ -73,20 +89,29 @@ router.get('/mesa/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'ID de mesa inválido' });
     }
 
-    const mesa = await prisma.mesa.findUnique({
-      where: { id },
-      include: {
-        vendaAtual: {
-          select: {
-            id: true,
-            status: true,
-            tipoVenda: true,
-            subtotal: true,
-            total: true,
-          }
+    const includeObj = {
+      vendaAtual: {
+        select: {
+          id: true,
+          status: true,
+          tipoVenda: true,
+          subtotal: true,
+          total: true,
         }
       }
+    };
+
+    let mesa = await prisma.mesa.findUnique({
+      where: { id },
+      include: includeObj
     });
+
+    if (!mesa || !mesa.ativo) {
+      mesa = await prisma.mesa.findFirst({
+        where: { numero: id, ativo: true },
+        include: includeObj
+      });
+    }
 
     if (!mesa || !mesa.ativo) {
       return res.status(404).json({ success: false, error: 'Mesa não cadastrada ou inativa' });
@@ -171,8 +196,16 @@ router.post('/pedido', async (req, res) => {
       });
 
       if (!mesa || !mesa.ativo) {
+        mesa = await prisma.mesa.findFirst({
+          where: { numero: mesaIdNum, ativo: true },
+          include: { vendaAtual: true }
+        });
+      }
+
+      if (!mesa || !mesa.ativo) {
         return res.status(404).json({ success: false, error: 'Mesa não encontrada ou desativada' });
       }
+      mesaIdNum = mesa.id;
     }
 
     // Usando transação para criar a venda/itens com total segurança

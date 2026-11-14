@@ -59,6 +59,9 @@ export default function RootLayout() {
             <Stack.Screen name="tablet" options={{ headerShown: false }} />
             <Stack.Screen name="delivery-dashboard" options={{ headerShown: false }} />
             <Stack.Screen name="sale" options={{ headerShown: false }} />
+            <Stack.Screen name="cardapio/index" options={{ headerShown: false }} />
+            <Stack.Screen name="cardapio/[mesaId]" options={{ headerShown: false }} />
+            <Stack.Screen name="cardapio/comanda/[comandaNome]" options={{ headerShown: false }} />
             <Stack.Screen name="TestScreen" options={{ title: 'Testes e Diagnóstico' }} />
           </Stack>
         </SafeAreaView>
