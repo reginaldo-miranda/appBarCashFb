@@ -1518,7 +1518,7 @@ export default function CaixaScreen() {
         </View>
       </Modal>
 
-      {/* Opção 1: Modal de Conferência e Fechamento de Caixa */}
+      {/* Opção 1: Modal de Conferência e Fechamento de Caixa (Ultra Compacto) */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -1526,73 +1526,117 @@ export default function CaixaScreen() {
         onRequestClose={() => setFecharCaixaModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxWidth: 480, width: Platform.OS === 'web' ? 460 : '94%' }]}>
-            <Text style={styles.modalTitle}>🔒 Conferência e Fechamento de Caixa</Text>
-
-            <View style={styles.conferenciaBox}>
-              <Text style={styles.conferenciaSectionTitle}>1. CONFERÊNCIA DA GAVETA (EM DINHEIRO)</Text>
-              <View style={styles.conferenciaLine}>
-                <Text style={styles.conferenciaLabel}>(+) Fundo de Troco Inicial:</Text>
-                <Text style={styles.conferenciaVal}>{formatMoneyPlain(valorAberturaTurno)}</Text>
-              </View>
-              <View style={styles.conferenciaLine}>
-                <Text style={styles.conferenciaLabel}>(+) Vendas em Dinheiro:</Text>
-                <Text style={[styles.conferenciaVal, { color: '#16A34A' }]}>
-                  +{formatMoneyPlain(totalDinheiroTurno)}
-                </Text>
-              </View>
-              <View style={styles.conferenciaLine}>
-                <Text style={styles.conferenciaLabel}>(+) Suprimentos (Entradas):</Text>
-                <Text style={[styles.conferenciaVal, { color: '#0284C7' }]}>
-                  +{formatMoneyPlain(totalSuprimentosTurno)}
-                </Text>
-              </View>
-              <View style={styles.conferenciaLine}>
-                <Text style={styles.conferenciaLabel}>(-) Sangrias (Retiradas):</Text>
-                <Text style={[styles.conferenciaVal, { color: '#DC2626' }]}>
-                  -{formatMoneyPlain(totalSangriasTurno)}
-                </Text>
-              </View>
-              <View style={[styles.conferenciaLine, styles.conferenciaTotalLine]}>
-                <Text style={styles.conferenciaTotalLabel}>(=) Saldo Esperado na Gaveta:</Text>
-                <Text style={styles.conferenciaTotalVal}>{formatMoneyPlain(saldoEsperadoGaveta)}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.conferenciaBox, { marginTop: 8, backgroundColor: '#F8FAFC' }]}>
-              <Text style={styles.conferenciaSectionTitle}>2. FATURAMENTO GERAL DO TURNO ({caixaVendas.length} VENDAS)</Text>
-              <View style={styles.conferenciaLine}>
-                <Text style={styles.conferenciaLabel}>💳 Cartão:</Text>
-                <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalCartaoTurno)}</Text>
-              </View>
-              <View style={styles.conferenciaLine}>
-                <Text style={styles.conferenciaLabel}>💠 PIX:</Text>
-                <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalPixTurno)}</Text>
-              </View>
-              <View style={styles.conferenciaLine}>
-                <Text style={[styles.conferenciaLabel, { fontWeight: '700', color: '#1E293B' }]}>
-                  💰 Total Faturado (Vendas):
-                </Text>
-                <Text style={[styles.conferenciaVal, { fontWeight: '700', color: '#1D4ED8' }]}>
-                  {formatMoneyPlain(totalVendasTurno)}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={[styles.inputLabel, { marginTop: 10 }]}>
-              Valor Físico Contado na Gaveta (em Dinheiro R$):
+          <View
+            style={[
+              styles.modalContent,
+              {
+                maxWidth: 580,
+                width: Platform.OS === 'web' ? 560 : '95%',
+                padding: 14,
+                maxHeight: '94%',
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { fontSize: 16, marginBottom: 10 }]}>
+              🔒 Conferência e Fechamento de Caixa
             </Text>
-            <TextInput
-              style={styles.textInputField}
-              value={valorContadoInput}
-              onChangeText={setValorContadoInput}
-              keyboardType="numeric"
-              placeholder="0,00"
-            />
 
+            {/* Caixas 1 e 2 lado a lado para economizar metade da altura */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={[styles.conferenciaBox, { flex: 1.25, minWidth: 230, padding: 8 }]}>
+                <Text style={styles.conferenciaSectionTitle}>1. GAVETA (EM DINHEIRO)</Text>
+                <View style={styles.conferenciaLine}>
+                  <Text style={styles.conferenciaLabel}>(+) Troco Inicial:</Text>
+                  <Text style={styles.conferenciaVal}>{formatMoneyPlain(valorAberturaTurno)}</Text>
+                </View>
+                <View style={styles.conferenciaLine}>
+                  <Text style={styles.conferenciaLabel}>(+) Vendas Dinheiro:</Text>
+                  <Text style={[styles.conferenciaVal, { color: '#16A34A' }]}>
+                    +{formatMoneyPlain(totalDinheiroTurno)}
+                  </Text>
+                </View>
+                <View style={styles.conferenciaLine}>
+                  <Text style={styles.conferenciaLabel}>(+) Suprimentos:</Text>
+                  <Text style={[styles.conferenciaVal, { color: '#0284C7' }]}>
+                    +{formatMoneyPlain(totalSuprimentosTurno)}
+                  </Text>
+                </View>
+                <View style={styles.conferenciaLine}>
+                  <Text style={styles.conferenciaLabel}>(-) Sangrias:</Text>
+                  <Text style={[styles.conferenciaVal, { color: '#DC2626' }]}>
+                    -{formatMoneyPlain(totalSangriasTurno)}
+                  </Text>
+                </View>
+                <View style={[styles.conferenciaLine, styles.conferenciaTotalLine]}>
+                  <Text style={styles.conferenciaTotalLabel}>(=) Saldo Esperado:</Text>
+                  <Text style={styles.conferenciaTotalVal}>{formatMoneyPlain(saldoEsperadoGaveta)}</Text>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.conferenciaBox,
+                  { flex: 1, minWidth: 195, padding: 8, backgroundColor: '#F8FAFC', justifyContent: 'space-between' },
+                ]}
+              >
+                <View>
+                  <Text style={styles.conferenciaSectionTitle}>
+                    2. RESUMO ({caixaVendas.length} VENDAS)
+                  </Text>
+                  <View style={styles.conferenciaLine}>
+                    <Text style={styles.conferenciaLabel}>🟢 Dinheiro:</Text>
+                    <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalDinheiroTurno)}</Text>
+                  </View>
+                  <View style={styles.conferenciaLine}>
+                    <Text style={styles.conferenciaLabel}>💳 Cartão:</Text>
+                    <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalCartaoTurno)}</Text>
+                  </View>
+                  <View style={styles.conferenciaLine}>
+                    <Text style={styles.conferenciaLabel}>💠 PIX:</Text>
+                    <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalPixTurno)}</Text>
+                  </View>
+                </View>
+                <View style={[styles.conferenciaLine, styles.conferenciaTotalLine, { borderTopColor: '#CBD5E1' }]}>
+                  <Text style={[styles.conferenciaTotalLabel, { color: '#1E293B' }]}>💰 Total Vendas:</Text>
+                  <Text style={[styles.conferenciaTotalVal, { color: '#1D4ED8' }]}>
+                    {formatMoneyPlain(totalVendasTurno)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Valor Contado e Observações lado a lado */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.inputLabel, { marginTop: 0, marginBottom: 3 }]}>
+                  Valor Contado na Gaveta (R$):
+                </Text>
+                <TextInput
+                  style={[styles.textInputField, { paddingVertical: 6, marginBottom: 0 }]}
+                  value={valorContadoInput}
+                  onChangeText={setValorContadoInput}
+                  keyboardType="numeric"
+                  placeholder="0,00"
+                />
+              </View>
+              <View style={{ flex: 1.3 }}>
+                <Text style={[styles.inputLabel, { marginTop: 0, marginBottom: 3 }]}>
+                  Observações (opcional):
+                </Text>
+                <TextInput
+                  style={[styles.textInputField, { paddingVertical: 6, marginBottom: 0 }]}
+                  value={obsFechamentoInput}
+                  onChangeText={setObsFechamentoInput}
+                  placeholder="Ex: Conferido pelo gerente"
+                />
+              </View>
+            </View>
+
+            {/* Banner compacto de Diferença */}
             <View
               style={[
                 styles.diffBanner,
+                { marginTop: 8, marginBottom: 8, paddingVertical: 5 },
                 diferencaFechamento === 0
                   ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }
                   : diferencaFechamento > 0
@@ -1620,29 +1664,29 @@ export default function CaixaScreen() {
               </Text>
             </View>
 
-            <Text style={styles.inputLabel}>Observações do Fechamento (opcional):</Text>
-            <TextInput
-              style={styles.textInputField}
-              value={obsFechamentoInput}
-              onChangeText={setObsFechamentoInput}
-              placeholder="Ex: Conferido e assinado pelo gerente"
-            />
-
-            <TouchableOpacity style={styles.printReportBtn} onPress={handleImprimirResumoCaixa}>
-              <SafeIcon name="print-outline" size={16} color="#1E293B" fallbackText="🖨" />
-              <Text style={styles.printReportBtnText}>Imprimir Resumo do Turno (80mm)</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.modalActions, { marginTop: 10 }]}>
+            {/* Botões de ação todos na mesma linha inferior */}
+            <View style={[styles.modalActions, { gap: 8 }]}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { flex: 0.7, paddingVertical: 9 }]}
                 onPress={() => setFecharCaixaModalVisible(false)}
                 disabled={actionLoading}
               >
                 <Text style={styles.cancelButtonText}>Voltar</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={[styles.confirmButton, { backgroundColor: '#DC2626' }]}
+                style={[
+                  styles.printReportBtn,
+                  { flex: 1, marginTop: 0, paddingVertical: 9 },
+                ]}
+                onPress={handleImprimirResumoCaixa}
+              >
+                <SafeIcon name="print-outline" size={15} color="#1E293B" fallbackText="🖨" />
+                <Text style={styles.printReportBtnText}>Imprimir (80mm)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmButton, { flex: 1.2, backgroundColor: '#DC2626', paddingVertical: 9 }]}
                 onPress={handleConfirmarFechamentoCaixa}
                 disabled={actionLoading}
               >
