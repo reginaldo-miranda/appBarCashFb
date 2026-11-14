@@ -2840,7 +2840,7 @@ useEffect(() => {
               const hostClean = String(ipLan || '').trim();
               const mesaIdParam = qrCodeMesa._id || (qrCodeMesa as any).id || qrCodeMesa.numero;
               const linkCardapio = `http://${hostClean}:${porta}/cardapio/${mesaIdParam}`;
-              const linkWhatsapp = `https://reginaldo-miranda.github.io/appBarCashFb/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&mesa=${encodeURIComponent(String(mesaIdParam))}`;
+              const linkWhatsapp = `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&mesa=${encodeURIComponent(String(mesaIdParam))}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Mesa ${numMesa}* (conectado no Wi-Fi) e faça seus pedidos direto pelo celular:\n${linkWhatsapp}`;

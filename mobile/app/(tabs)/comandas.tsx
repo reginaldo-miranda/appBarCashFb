@@ -1094,7 +1094,7 @@ useEffect(() => {
               const nomeOuNum = qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda || '';
               const hostClean = String(ipLan || '').trim();
               const linkCardapio = `http://${hostClean}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
-              const linkWhatsapp = `https://reginaldo-miranda.github.io/appBarCashFb/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&comanda=${encodeURIComponent(String(nomeOuNum))}`;
+              const linkWhatsapp = `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&comanda=${encodeURIComponent(String(nomeOuNum))}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Comanda ${nomeOuNum}* (conectado no Wi-Fi) e faça seus pedidos direto pelo celular:\n${linkWhatsapp}`;
