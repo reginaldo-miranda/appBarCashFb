@@ -2840,9 +2840,10 @@ useEffect(() => {
               const hostClean = String(ipLan || '').trim();
               const mesaIdParam = qrCodeMesa._id || (qrCodeMesa as any).id || qrCodeMesa.numero;
               const linkCardapio = `http://${hostClean}:${porta}/cardapio/${mesaIdParam}`;
+              const linkWhatsapp = `https://reginaldo-miranda.github.io/appBarCashFb/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&mesa=${encodeURIComponent(String(mesaIdParam))}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
-                const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Mesa ${numMesa}* e faça seus pedidos direto pelo celular:\n${linkCardapio}`;
+                const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Mesa ${numMesa}* (conectado no Wi-Fi) e faça seus pedidos direto pelo celular:\n${linkWhatsapp}`;
                 const encodedMsg = encodeURIComponent(msg);
                 const phoneParam = digits.length >= 10 ? (digits.startsWith('55') ? digits : `55${digits}`) : '';
                 const waUrl = phoneParam
@@ -2857,7 +2858,7 @@ useEffect(() => {
               const handleCopyLink = async () => {
                 try {
                   if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    await navigator.clipboard.writeText(linkCardapio);
+                    await navigator.clipboard.writeText(linkWhatsapp);
                     setQrCopied(true);
                     setTimeout(() => setQrCopied(false), 2000);
                   }
