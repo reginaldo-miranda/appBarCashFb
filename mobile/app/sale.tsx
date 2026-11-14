@@ -1660,35 +1660,36 @@ export default function SaleScreen() {
   }
 
   const renderFooter = () => (
-    <View style={{ paddingBottom: 100 }}>
+    <View style={{ paddingBottom: 60 }}>
       {/* Botões de Ação no Final da Lista */}
       {!isViewMode && cart.length > 0 && (
-        <View style={{ gap: 10, padding: 16 }}>
+        <View style={{ gap: 8, paddingHorizontal: 12, paddingVertical: 10 }}>
              {/* Botão Delivery */}
              {/* Botão Delivery - Apenas para Balcão (Sem mesa, sem comanda) */}
              {(!mesaId && tipo !== 'comanda' && tipo !== 'mesa') && (
              <TouchableOpacity
                 style={{
                     backgroundColor: isDelivery ? '#FF9800' : '#fff',
-                    padding: 16,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
                     borderRadius: 8,
                     alignItems: 'center',
                     borderWidth: 1,
                     borderColor: '#FF9800',
                     flexDirection: 'row',
                     justifyContent: 'center',
-                    gap: 8
+                    gap: 6
                 }}
                 onPress={() => {
                     setIsDelivery(true);
                     setDeliveryModalVisible(true);
                 }}
              >
-                <Ionicons name="bicycle" size={24} color={isDelivery ? '#fff' : '#FF9800'} />
+                <Ionicons name="bicycle" size={20} color={isDelivery ? '#fff' : '#FF9800'} />
                 <Text style={{ 
                     color: isDelivery ? '#fff' : '#FF9800', 
                     fontWeight: 'bold', 
-                    fontSize: 16 
+                    fontSize: 14 
                 }}>
                     {isDelivery ? 'Configurar Entrega' : 'Vender como Delivery'}
                 </Text>
@@ -3010,8 +3011,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#2196F3',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -3022,14 +3023,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   backButton: {
-    padding: 8,
-    borderRadius: 20,
+    padding: 6,
+    borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
-    marginHorizontal: 16,
+    marginHorizontal: 12,
   },
   headerRight: {
     width: 40,
@@ -3037,12 +3038,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   headerSubtitle: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.9,
   },
   date: {
@@ -3113,8 +3114,8 @@ const styles = StyleSheet.create({
   },
   finalizeButton: {
     backgroundColor: '#4CAF50',
-    margin: 16,
-    paddingVertical: 16,
+    margin: 12,
+    paddingVertical: 11,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -3123,7 +3124,7 @@ const styles = StyleSheet.create({
   },
   finalizeButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   modalOverlay: {

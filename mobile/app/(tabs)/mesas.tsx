@@ -1559,44 +1559,43 @@ useEffect(() => {
             )}
           </View>
 
-          {/* Exibição explícita de valores financeiros se houver totais */}
-          {(() => {
-               const id = String(item?._id ?? (item as any)?.id ?? '');
-               const mapData = id ? mesaOpenTotals[id] : undefined;
-               const total = mapData?.total || 0;
-               const pago = mapData?.pago || 0;
-               
-               if (total > 0 && item.status === 'ocupada') {
-                   return (
-                       <View style={{ marginTop: 4, marginBottom: 8, paddingHorizontal: 4 }}>
-                           <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#2196F3' }}>
-                             Total: R$ {total.toFixed(2).replace('.', ',')}
-                           </Text>
-                           {pago > 0 && (
-                             <>
-                               <Text style={{ fontSize: 13, color: '#4CAF50', marginTop: 2 }}>
-                                 Já pago: R$ {pago.toFixed(2).replace('.', ',')}
-                               </Text>
-                               <Text style={{ fontSize: 13, color: '#F44336', fontWeight: 'bold', marginTop: 2 }}>
-                                 Restante: R$ {Math.max(0, total - pago).toFixed(2).replace('.', ',')}
-                               </Text>
-                             </>
-                           )}
-                       </View>
-                   );
-               }
-               return null;
-          })()}
-
           <View style={styles.mesaInfo}>
             <View style={styles.infoRow}>
-              <SafeIcon name="people" size={16} color="#666" fallbackText="👥" />
+              <SafeIcon name="people" size={14} color="#666" fallbackText="👥" />
               <Text style={styles.infoText}>Capacidade: {item.capacidade} pessoas</Text>
             </View>
+
+            {(() => {
+              const id = String(item?._id ?? (item as any)?.id ?? '');
+              const mapData = id ? mesaOpenTotals[id] : undefined;
+              const total = mapData?.total || 0;
+              const pago = mapData?.pago || 0;
+
+              if (total > 0 && item.status === 'ocupada') {
+                return (
+                  <View style={styles.financialInlineRow}>
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#2196F3' }}>
+                      Total: R$ {total.toFixed(2).replace('.', ',')}
+                    </Text>
+                    {pago > 0 && (
+                      <>
+                        <Text style={{ fontSize: 12, color: '#4CAF50', fontWeight: '600' }}>
+                          • Pago: R$ {pago.toFixed(2).replace('.', ',')}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#F44336', fontWeight: 'bold' }}>
+                          • Restante: R$ {Math.max(0, total - pago).toFixed(2).replace('.', ',')}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                );
+              }
+              return null;
+            })()}
             
             {item.observacoes && (
               <View style={styles.infoRow}>
-                <SafeIcon name="document-text" size={16} color="#666" fallbackText="📄" />
+                <SafeIcon name="document-text" size={14} color="#666" fallbackText="📄" />
                 <Text style={styles.infoText}>Obs: {item.observacoes}</Text>
               </View>
             )}
@@ -2947,8 +2946,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -2956,41 +2955,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flex: 1,
     justifyContent: 'space-around',
+    alignItems: 'center',
   },
   headerButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   tooltipContainer: {
     position: 'relative',
   },
   headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowOpacity: 0.18,
+    shadowRadius: 2,
   },
   headerButtonSecondary: {
     backgroundColor: '#4CAF50',
   },
   tooltip: {
     position: 'absolute',
-    top: 50,
+    top: 42,
     left: '50%',
     transform: [{ translateX: -60 }],
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 6,
     opacity: 0,
     zIndex: 1000,
@@ -3016,58 +3016,61 @@ const styles = StyleSheet.create({
   },
 
   statItem: {
+    flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     borderRadius: 8,
+    gap: 6,
   },
   statItemSelected: {
     backgroundColor: '#e3f2fd',
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+    color: '#555',
+    marginTop: 0,
   },
   statIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 0,
   },
   listContainer: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: 10,
+    paddingBottom: 80,
   },
   mesaCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
     borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 2.5,
+    elevation: 3,
   },
   mesaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   mesaNumero: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#333',
     flex: 1,
@@ -3077,46 +3080,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   statusText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
     marginLeft: 4,
   },
   mesaInfo: {
-    gap: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12,
+  },
+  financialInlineRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   actionButtons: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
     flex: 1,
-    minWidth: 80,
+    minWidth: 75,
     justifyContent: 'center',
   },
   actionButtonText: {
