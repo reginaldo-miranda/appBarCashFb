@@ -303,18 +303,22 @@ export default function TabletMode() {
   const isMobile = width < 768;
 
   return (
-    <View style={[styles.container, isMobile && { paddingTop: 80 }]}>
-      <View style={styles.navbar}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>Pedidos</Text>
-        <View style={styles.navActions}>
+    <View style={[styles.container, Platform.OS !== 'web' && isMobile && { paddingTop: 28 }]}>
+      <View style={[styles.navbar, isMobile && styles.navbarMobile]}>
+        <View style={[styles.navTopRow, isMobile && { width: '100%' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={onBack} style={[styles.backButton, isMobile && styles.backButtonMobile]} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={isMobile ? 20 : 24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={[styles.navTitle, isMobile && { fontSize: 16 }]}>Pedidos</Text>
+          </View>
+
           {/* Controle de Volume e Toque de Telefone para Novos Pedidos */}
-          <View style={styles.soundControlBox}>
+          <View style={[styles.soundControlBox, isMobile && { marginRight: 0, paddingHorizontal: 5, paddingVertical: 3 }]}>
             <TouchableOpacity
               style={[
                 styles.soundIconBtn,
+                isMobile && { width: 26, height: 26 },
                 (soundMuted || soundVolume === 0) && { backgroundColor: 'rgba(244,67,54,0.85)' },
               ]}
               onPress={handleToggleMute}
@@ -330,25 +334,25 @@ export default function TabletMode() {
                     ? 'volume-medium'
                     : 'volume-high'
                 }
-                size={18}
+                size={isMobile ? 15 : 18}
                 color="#fff"
               />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.soundStepBtn}
+              style={[styles.soundStepBtn, isMobile && { width: 24, height: 24, marginHorizontal: 3 }]}
               onPress={() => handleAdjustVolume(-20)}
               activeOpacity={0.75}
             >
               <Text style={styles.soundStepText}>−</Text>
             </TouchableOpacity>
 
-            <Text style={styles.soundVolumeText}>
+            <Text style={[styles.soundVolumeText, isMobile && { minWidth: 34, fontSize: 11 }]}>
               {soundMuted || soundVolume === 0 ? 'MUDO' : `${soundVolume}%`}
             </Text>
 
             <TouchableOpacity
-              style={styles.soundStepBtn}
+              style={[styles.soundStepBtn, isMobile && { width: 24, height: 24, marginHorizontal: 3 }]}
               onPress={() => handleAdjustVolume(20)}
               activeOpacity={0.75}
             >
@@ -356,50 +360,52 @@ export default function TabletMode() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.soundTestBtn}
+              style={[styles.soundTestBtn, isMobile && { paddingHorizontal: 7, paddingVertical: 5 }]}
               onPress={handleTestSound}
               activeOpacity={0.8}
             >
-              <Ionicons name="call" size={14} color="#fff" />
+              <Ionicons name="call" size={13} color="#fff" />
               {!isMobile && <Text style={styles.soundTestText}>Testar</Text>}
             </TouchableOpacity>
           </View>
+        </View>
 
+        <View style={[styles.navActions, isMobile && styles.navActionsMobile]}>
           {activeView === 'setor' ? (
             <>
-              <TouchableOpacity style={styles.navActionBtn} onPress={() => marcarStatusEmLote('pronto')} activeOpacity={0.85}>
-                <Ionicons name="checkmark-done" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Prontos</Text>
+              <TouchableOpacity style={[styles.navActionBtn, isMobile && styles.navActionBtnMobile]} onPress={() => marcarStatusEmLote('pronto')} activeOpacity={0.85}>
+                <Ionicons name="checkmark-done" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Prontos</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.navActionBtn, { marginLeft: 8 }]} onPress={() => setActiveView('pronto')} activeOpacity={0.85}>
-                <Ionicons name="albums" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Ver Prontos</Text>
+              <TouchableOpacity style={[styles.navActionBtn, !isMobile && { marginLeft: 8 }, isMobile && styles.navActionBtnMobile]} onPress={() => setActiveView('pronto')} activeOpacity={0.85}>
+                <Ionicons name="albums" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Ver Prontos</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.navActionBtn, { marginLeft: 8 }]} onPress={() => setActiveView('entregue')} activeOpacity={0.85}>
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Ver Entregues</Text>
+              <TouchableOpacity style={[styles.navActionBtn, !isMobile && { marginLeft: 8 }, isMobile && styles.navActionBtnMobile]} onPress={() => setActiveView('entregue')} activeOpacity={0.85}>
+                <Ionicons name="checkmark-circle" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Ver Entregues</Text>
               </TouchableOpacity>
             </>
           ) : activeView === 'pronto' ? (
             <>
-              <TouchableOpacity style={styles.navActionBtn} onPress={() => marcarStatusEmLote('entregue')} activeOpacity={0.85}>
-                <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Entregar</Text>
+              <TouchableOpacity style={[styles.navActionBtn, isMobile && styles.navActionBtnMobile]} onPress={() => marcarStatusEmLote('entregue')} activeOpacity={0.85}>
+                <Ionicons name="checkmark" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Entregar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.navActionBtn, { marginLeft: 8 }]} onPress={() => setActiveView('entregue')} activeOpacity={0.85}>
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Ver Entregues</Text>
+              <TouchableOpacity style={[styles.navActionBtn, !isMobile && { marginLeft: 8 }, isMobile && styles.navActionBtnMobile]} onPress={() => setActiveView('entregue')} activeOpacity={0.85}>
+                <Ionicons name="checkmark-circle" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Ver Entregues</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <TouchableOpacity style={styles.navActionBtn} onPress={limparEntregues} activeOpacity={0.85}>
-                <Ionicons name="trash" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Limpar entregues</Text>
+              <TouchableOpacity style={[styles.navActionBtn, isMobile && styles.navActionBtnMobile]} onPress={limparEntregues} activeOpacity={0.85}>
+                <Ionicons name="trash" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Limpar entregues</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.navActionBtn, { marginLeft: 8 }]} onPress={() => setActiveView('pronto')} activeOpacity={0.85}>
-                <Ionicons name="albums" size={20} color="#fff" />
-                <Text style={styles.navActionText}>Ver Prontos</Text>
+              <TouchableOpacity style={[styles.navActionBtn, !isMobile && { marginLeft: 8 }, isMobile && styles.navActionBtnMobile]} onPress={() => setActiveView('pronto')} activeOpacity={0.85}>
+                <Ionicons name="albums" size={isMobile ? 15 : 20} color="#fff" />
+                <Text style={[styles.navActionText, isMobile && styles.navActionTextMobile]}>Ver Prontos</Text>
               </TouchableOpacity>
             </>
           )}
@@ -408,25 +414,25 @@ export default function TabletMode() {
 
       {(activeView === 'setor' || activeView === 'entregue' || activeView === 'pronto') && (
       <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsContent, isMobile && { flexGrow: 1, justifyContent: 'space-around', paddingHorizontal: 4 }]}>
           <TouchableOpacity
             key="todos"
-            style={[styles.tabDynamic, activeSetorId === 'todos' && styles.activeTab]}
+            style={[styles.tabDynamic, isMobile && styles.tabDynamicMobile, activeSetorId === 'todos' && styles.activeTab]}
             onPress={() => setActiveSetorId('todos')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, activeSetorId === 'todos' && styles.activeTabText]}>Todos</Text>
+            <Text style={[styles.tabText, isMobile && styles.tabTextMobile, activeSetorId === 'todos' && styles.activeTabText]}>Todos</Text>
           </TouchableOpacity>
           {setores.map((s) => {
             const isActive = Number(s.id) === activeSetorId;
             return (
               <TouchableOpacity
                 key={String(s.id)}
-                style={[styles.tabDynamic, isActive && styles.activeTab]}
+                style={[styles.tabDynamic, isMobile && styles.tabDynamicMobile, isActive && styles.activeTab]}
                 onPress={() => setActiveSetorId(Number(s.id))}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.tabText, isActive && styles.activeTabText]}>{s.nome}</Text>
+                <Text style={[styles.tabText, isMobile && styles.tabTextMobile, isActive && styles.activeTabText]}>{s.nome}</Text>
               </TouchableOpacity>
             );
           })}
@@ -586,18 +592,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   navbar: {
-    height: 56,
+    minHeight: 54,
     backgroundColor: '#2196F3',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#1e88e5',
+  },
+  navbarMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  navTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   navActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  navActionsMobile: {
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 6,
   },
   soundControlBox: {
     flexDirection: 'row',
@@ -658,15 +683,26 @@ const styles = StyleSheet.create({
   navActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
   },
+  navActionBtnMobile: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
   navActionText: {
     color: '#fff',
     marginLeft: 6,
     fontWeight: '600',
+  },
+  navActionTextMobile: {
+    fontSize: 12,
+    marginLeft: 4,
   },
   backButton: {
     width: 48,
@@ -675,6 +711,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  backButtonMobile: {
+    width: 34,
+    height: 34,
+    borderRadius: 6,
   },
   navTitle: {
     color: '#fff',
@@ -711,6 +752,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
     minWidth: 110,
   },
+  tabDynamicMobile: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginHorizontal: 2,
+    minWidth: 74,
+    flex: 1,
+  },
   activeTab: {
     borderBottomWidth: 3,
     borderBottomColor: '#ff6b6b',
@@ -719,6 +767,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '600',
+  },
+  tabTextMobile: {
+    fontSize: 13.5,
   },
   activeTabText: {
     color: '#ff6b6b',

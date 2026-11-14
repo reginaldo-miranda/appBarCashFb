@@ -497,6 +497,7 @@ const renderItem = ({ item }) => {
             <Text
               style={[
                 styles.statusPill,
+                isPhone && { paddingHorizontal: 5, paddingVertical: 1, fontSize: 10 },
                 (item.status === 'pendente' || item.status === 'pago')
                   ? styles.statusPending
                   : item.status === 'pronto'
@@ -505,29 +506,33 @@ const renderItem = ({ item }) => {
               ]}
             >
               {(item.status === 'pendente' || item.status === 'pago')
-                ? (item.isPago || item.status === 'pago' ? 'Em preparação • Pago' : 'Em preparação')
+                ? (item.isPago || item.status === 'pago'
+                    ? (isPhone ? 'Prep.•Pago' : 'Em preparação • Pago')
+                    : (isPhone ? 'Em prep.' : 'Em preparação'))
                 : item.status === 'pronto'
                 ? 'Pronto'
                 : 'Entregue'}
             </Text>
 
             {item.setorNome ? (
-              <View style={styles.setorBadge}>
-                <Ionicons name="pricetag-outline" size={11} color="#4338CA" />
-                <Text style={styles.setorBadgeText}>{String(item.setorNome).toUpperCase()}</Text>
+              <View style={[styles.setorBadge, isPhone && { paddingHorizontal: 5, paddingVertical: 1, gap: 2 }]}>
+                <Ionicons name="pricetag-outline" size={isPhone ? 9 : 11} color="#4338CA" />
+                <Text style={[styles.setorBadgeText, isPhone && { fontSize: 9.5 }]}>{String(item.setorNome).toUpperCase()}</Text>
               </View>
             ) : null}
           </View>
 
-          <View style={styles.topRightActions}>
+          <View style={[styles.topRightActions, isPhone && { gap: 5 }]}>
             <View style={styles.itemMeta}>
-              <Ionicons name="time" size={15} color="#475569" />
-              <Text style={styles.waitText}>{waiting} min</Text>
+              <Ionicons name="time" size={isPhone ? 12 : 15} color="#475569" />
+              <Text style={[styles.waitText, isPhone && { fontSize: 11, marginLeft: 3 }]}>{waiting} min</Text>
             </View>
             {(item.status === 'pendente' || item.status === 'pago') ? (
               <TouchableOpacity style={[styles.checkbox, { borderColor: '#4CAF50', backgroundColor: '#E8F5E9' }]} onPress={() => marcarComoPronto(item)} activeOpacity={0.8}>
                 <Ionicons name="checkmark-circle-outline" size={iconSize} color="#2E7D32" />
-                <Text style={[styles.checkboxText, { color: '#2E7D32', fontWeight: 'bold' }]}>Marcar como pronto</Text>
+                <Text style={[styles.checkboxText, { color: '#2E7D32', fontWeight: 'bold' }]}>
+                  {isPhone ? 'Pronto' : 'Marcar como pronto'}
+                </Text>
               </TouchableOpacity>
             ) : item.status === 'pronto' ? (
               <TouchableOpacity
@@ -549,7 +554,9 @@ const renderItem = ({ item }) => {
                 disabled={submittingId === item.id}
               >
                 <Ionicons name="checkmark" size={iconSize} color="#1565C0" />
-                <Text style={[styles.checkboxText, { color: '#1565C0', fontWeight: 'bold' }]}>Marcar como entregue</Text>
+                <Text style={[styles.checkboxText, { color: '#1565C0', fontWeight: 'bold' }]}>
+                  {isPhone ? 'Entregar' : 'Marcar como entregue'}
+                </Text>
               </TouchableOpacity>
             ) : (
               <View style={[styles.checkbox, { borderColor: '#9E9E9E', backgroundColor: '#F5F5F5' }]}> 
@@ -561,40 +568,40 @@ const renderItem = ({ item }) => {
         </View>
 
         {/* Linha 2: Detalhes em Linha Horizontal (Mesa/Comanda, Funcionário, Horário, Responsável e Obs) */}
-        <View style={styles.itemDetailsInlineRow}>
+        <View style={[styles.itemDetailsInlineRow, isPhone && { gap: 4, marginTop: 1 }]}>
           <View style={styles.inlineTag}>
-            <Ionicons name={isComanda ? "receipt-outline" : "restaurant-outline"} size={13} color="#0284C7" />
-            <Text style={styles.inlineTagHighlight}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>
+            <Ionicons name={isComanda ? "receipt-outline" : "restaurant-outline"} size={isPhone ? 11 : 13} color="#0284C7" />
+            <Text style={[styles.inlineTagHighlight, isPhone && { fontSize: 11.5 }]}>{isComanda ? 'Comanda' : 'Mesa'}: {displayName || rawMesa}</Text>
           </View>
 
           <Text style={styles.inlineDot}>•</Text>
 
           <View style={styles.inlineTag}>
-            <Ionicons name="person-outline" size={13} color="#64748B" />
-            <Text style={styles.inlineTagText}>{item.funcionario || 'Atendente'}</Text>
+            <Ionicons name="person-outline" size={isPhone ? 11 : 13} color="#64748B" />
+            <Text style={[styles.inlineTagText, isPhone && { fontSize: 11 }]}>{item.funcionario || 'Atendente'}</Text>
           </View>
 
           <Text style={styles.inlineDot}>•</Text>
 
           <View style={styles.inlineTag}>
-            <Ionicons name="time-outline" size={13} color="#64748B" />
-            <Text style={styles.inlineTagText}>{timeStr}</Text>
+            <Ionicons name="time-outline" size={isPhone ? 11 : 13} color="#64748B" />
+            <Text style={[styles.inlineTagText, isPhone && { fontSize: 11 }]}>{timeStr}</Text>
           </View>
 
           {hasResp ? (
             <>
               <Text style={styles.inlineDot}>•</Text>
               <View style={styles.inlineTag}>
-                <Ionicons name="person-circle-outline" size={13} color="#64748B" />
-                <Text style={styles.inlineTagText}>Resp: {item.responsavel}</Text>
+                <Ionicons name="person-circle-outline" size={isPhone ? 11 : 13} color="#64748B" />
+                <Text style={[styles.inlineTagText, isPhone && { fontSize: 11 }]}>Resp: {item.responsavel}</Text>
               </View>
             </>
           ) : null}
 
           {item.observacoes ? (
-            <View style={styles.obsInlineTag}>
-              <Ionicons name="alert-circle" size={13} color="#B45309" />
-              <Text style={styles.obsInlineText} numberOfLines={1}>Obs: {item.observacoes}</Text>
+            <View style={[styles.obsInlineTag, isPhone && { paddingHorizontal: 5, paddingVertical: 1, marginLeft: 2 }]}>
+              <Ionicons name="alert-circle" size={isPhone ? 11 : 13} color="#B45309" />
+              <Text style={[styles.obsInlineText, isPhone && { fontSize: 11 }]} numberOfLines={1}>Obs: {item.observacoes}</Text>
             </View>
           ) : null}
         </View>
@@ -972,13 +979,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   itemContainer: {
-    paddingVertical: 9,
+    paddingVertical: Dimensions.get('window').width < 768 ? 6 : 9,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     backgroundColor: '#fff',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 6,
+    paddingHorizontal: Dimensions.get('window').width < 768 ? 8 : 12,
+    marginBottom: Dimensions.get('window').width < 768 ? 4 : 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -998,18 +1005,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: Dimensions.get('window').width < 768 ? 3 : 5,
   },
   itemTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
-    marginRight: 10,
-    gap: 8,
+    marginRight: Dimensions.get('window').width < 768 ? 4 : 10,
+    gap: Dimensions.get('window').width < 768 ? 4 : 8,
   },
   itemTitle: {
-    fontSize: 16,
+    fontSize: Dimensions.get('window').width < 768 ? 13.5 : 16,
     fontWeight: 'bold',
     color: '#0f172a',
   },
