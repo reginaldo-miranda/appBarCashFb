@@ -21,7 +21,7 @@ const getEnvBaseUrl = () => {
         // Se a pessoa abriu o site via localhost, 127.0.0.1 ou IP de rede (192.168., 10.0.), 
         // e a variável de ambiente aponta para a nuvem (railway), DEVEMOS IGNORAR A VARIÁVEL DE AMBIENTE
         // e forçar a detecção inteligente do resolveApiBaseUrl para buscar a API local!
-        const isCurrentHostLocalNetwork = LOCAL_HOSTNAMES.has(currentHost) || currentHost.startsWith('192.168.') || currentHost.startsWith('10.') || currentHost.startsWith('172.') || currentHost.endsWith('.nip.io') || currentHost.endsWith('.sslip.io');
+        const isCurrentHostLocalNetwork = LOCAL_HOSTNAMES.has(currentHost) || currentHost.startsWith('192.168.') || currentHost.startsWith('10.') || currentHost.startsWith('172.') || currentHost.endsWith('.nip.io') || currentHost.endsWith('.sslip.io') || currentHost.endsWith('.trycloudflare.com') || currentHost.endsWith('.loca.lt');
         
         if (isCurrentHostLocalNetwork) {
            return undefined; 
@@ -67,6 +67,9 @@ function resolveApiBaseUrl() {
         const envUrl = getEnvBaseUrl();
         if (envUrl && !isLocalUrl(envUrl)) return envUrl;
         return `http://localhost:${DEFAULT_PORT}/api`;
+      }
+      if (protocol === 'https:' && window.location.origin) {
+        return `${window.location.origin}/api`;
       }
       // O navegador está acessando um IP da rede (ex: 192.168.0.x). Usar ESSE ip!
       return `http://${hostname}:${DEFAULT_PORT}/api`;
@@ -203,8 +206,12 @@ api.interceptors.request.use(
         }
       }
       
-      // Montamos sempre a API local.
-      config.baseURL = `http://${hostname}:4000/api`;
+      // Montamos a API local ou HTTPS do túnel (se aberto via https://)
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.protocol === 'https:' && window.location?.origin) {
+        config.baseURL = `${window.location.origin}/api`;
+      } else {
+        config.baseURL = `http://${hostname}:4000/api`;
+      }
 
 
       // Timeout configurável

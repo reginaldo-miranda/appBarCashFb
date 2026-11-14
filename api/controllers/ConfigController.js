@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import nodemailer from 'nodemailer';
+import { getTunnelStatus, startTunnel, stopTunnel } from '../services/TunnelService.js';
 
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_sender'];
 
@@ -133,4 +134,31 @@ export const saveCardapioIpConfig = async (req, res) => {
     res.status(500).json({ ok: false, message: 'Erro ao salvar configurações' });
   }
 };
+
+export const getCardapioTunnelStatus = async (req, res) => {
+  try {
+    return res.json(getTunnelStatus());
+  } catch (error) {
+    return res.status(500).json({ ok: false, active: false, url: null, error: error.message });
+  }
+};
+
+export const startCardapioTunnel = async (req, res) => {
+  try {
+    const status = await startTunnel(process.env.PORT || 4000);
+    return res.json(status);
+  } catch (error) {
+    return res.status(500).json({ ok: false, active: false, url: null, error: error.message });
+  }
+};
+
+export const stopCardapioTunnel = async (req, res) => {
+  try {
+    const status = stopTunnel();
+    return res.json(status);
+  } catch (error) {
+    return res.status(500).json({ ok: false, active: false, url: null, error: error.message });
+  }
+};
+
 

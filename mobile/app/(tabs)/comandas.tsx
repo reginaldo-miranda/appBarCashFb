@@ -116,6 +116,9 @@ export default function ComandasAbertasScreen() {
   const [qrCodeComanda, setQrCodeComanda] = useState<Comanda | null>(null);
   const [qrWhatsappPhone, setQrWhatsappPhone] = useState('');
   const [qrCopied, setQrCopied] = useState(false);
+  const [tunnelActive, setTunnelActive] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [tunnelLoading, setTunnelLoading] = useState(false);
 
   const [ipLan, setIpLan] = useState<string>(obterIpLanCardapio());
 
@@ -203,12 +206,43 @@ export default function ComandasAbertasScreen() {
     obterIpDinamico();
   }, []);
 
-  const abrirQrCodeComanda = (comanda: Comanda) => {
+  const abrirQrCodeComanda = async (comanda: Comanda) => {
     setQrCodeComanda(comanda);
     const foneCliente = (comanda as any)?.cliente?.telefone || (comanda as any)?.cliente?.fone || (comanda as any)?.cliente?.celular || (comanda as any)?.cliente?.whatsapp || '';
     setQrWhatsappPhone(foneCliente ? String(foneCliente) : '');
     setQrCopied(false);
     setQrCodeModalVisible(true);
+    try {
+      const res = await api.get('/config/tunnel/status');
+      if (res?.data) {
+        setTunnelActive(Boolean(res.data.active && res.data.url));
+        setTunnelUrl(res.data.url || null);
+      }
+    } catch {}
+  };
+
+  const handleToggleTunnel = async () => {
+    if (tunnelLoading) return;
+    setTunnelLoading(true);
+    try {
+      if (tunnelActive) {
+        await api.post('/config/tunnel/stop');
+        setTunnelActive(false);
+        setTunnelUrl(null);
+      } else {
+        const res = await api.post('/config/tunnel/start');
+        if (res?.data?.active && res?.data?.url) {
+          setTunnelActive(true);
+          setTunnelUrl(res.data.url);
+        } else {
+          Alert.alert('Aviso', res?.data?.error || 'Não foi possível iniciar o túnel externo.');
+        }
+      }
+    } catch (e: any) {
+      Alert.alert('Erro', 'Falha ao alternar o túnel: ' + (e?.message || ''));
+    } finally {
+      setTunnelLoading(false);
+    }
   };
   
   // Estados para filtros (igual à tela de produtos)
@@ -1081,11 +1115,11 @@ useEffect(() => {
         onRequestClose={() => setQrCodeModalVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 20, padding: 24, width: '85%', maxWidth: 360, alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
-            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FF8C00' }}>QR Code do Cardápio</Text>
+          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 20, padding: 18, width: '88%', maxWidth: 370, alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
+            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#FF8C00' }}>QR Code do Cardápio</Text>
               <TouchableOpacity onPress={() => setQrCodeModalVisible(false)} style={{ padding: 4 }}>
-                <SafeIcon name="close" size={24} color="#FFF" fallbackText="×" />
+                <SafeIcon name="close" size={22} color="#FFF" fallbackText="×" />
               </TouchableOpacity>
             </View>
 
@@ -1093,11 +1127,18 @@ useEffect(() => {
               const porta = obterPortaCardapio();
               const nomeOuNum = qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda || '';
               const hostClean = String(ipLan || '').trim();
-              const linkCardapio = `http://${hostClean}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
-              const linkWhatsapp = `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&comanda=${encodeURIComponent(String(nomeOuNum))}`;
+              const isUsingTunnel = Boolean(tunnelActive && tunnelUrl);
+              const cleanTunnel = isUsingTunnel ? String(tunnelUrl).replace(/\/$/, '') : '';
+              const linkCardapio = isUsingTunnel
+                ? `${cleanTunnel}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`
+                : `http://${hostClean}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
+              const linkWhatsapp = isUsingTunnel
+                ? linkCardapio
+                : `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&comanda=${encodeURIComponent(String(nomeOuNum))}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
-                const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Comanda ${nomeOuNum}* (conectado no Wi-Fi) e faça seus pedidos direto pelo celular:\n${linkWhatsapp}`;
+                const modoTexto = isUsingTunnel ? '' : ' (conectado no Wi-Fi)';
+                const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Comanda ${nomeOuNum}*${modoTexto} e faça seus pedidos direto pelo celular:\n${linkWhatsapp}`;
                 const encodedMsg = encodeURIComponent(msg);
                 const phoneParam = digits.length >= 10 ? (digits.startsWith('55') ? digits : `55${digits}`) : '';
                 const waUrl = phoneParam
@@ -1120,26 +1161,72 @@ useEffect(() => {
               };
               return (
                 <>
-                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFF', marginBottom: 2 }}>
                     Comanda {nomeOuNum}
                   </Text>
-                  <Text style={{ fontSize: 13, color: '#AAA', textAlign: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, color: '#AAA', textAlign: 'center', marginBottom: 10 }}>
                     Aponte a câmera do celular ou envie o link direto para o WhatsApp do cliente.
                   </Text>
 
+                  {/* Botão Ligar / Desligar Túnel Externo (4G / Fora do Wi-Fi) */}
+                  <View style={{
+                    width: '100%',
+                    backgroundColor: isUsingTunnel ? 'rgba(76, 175, 80, 0.15)' : '#242424',
+                    borderWidth: 1,
+                    borderColor: isUsingTunnel ? '#4CAF50' : '#383838',
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: isUsingTunnel ? '#4CAF50' : '#DDD' }}>
+                        {isUsingTunnel ? '🟢 Túnel Externo Ligado (4G/Qualquer Local)' : '⚪ Modo Rede Local (Só Wi-Fi)'}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: '#999', marginTop: 1 }}>
+                        {isUsingTunnel ? 'Abre em qualquer lugar (4G/5G ou Wi-Fi)' : 'Ligue o túnel para abrir fora do Wi-Fi'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleToggleTunnel}
+                      disabled={tunnelLoading}
+                      style={{
+                        backgroundColor: isUsingTunnel ? '#D32F2F' : '#2196F3',
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        minWidth: 78,
+                        alignItems: 'center',
+                      }}
+                    >
+                      {tunnelLoading ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFF' }}>
+                          {isUsingTunnel ? 'Desligar' : 'Ligar Túnel'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
                   {/* QR Code Container */}
-                  <View style={{ backgroundColor: '#FFF', padding: 14, borderRadius: 12, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
+                  <View style={{ backgroundColor: '#FFF', padding: 12, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
                     <QRCode
                       value={linkCardapio}
-                      size={180}
+                      size={155}
                       logoBackgroundColor='transparent'
                     />
                   </View>
 
                   {/* URL informativa para copiar/acessar manual */}
-                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 10, width: '100%', marginBottom: 14, borderWidth: 1, borderColor: '#333' }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 11, color: '#888' }}>Link de Acesso:</Text>
+                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 8, width: '100%', marginBottom: 10, borderWidth: 1, borderColor: '#333' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                      <Text style={{ fontSize: 11, color: '#888' }}>
+                        {isUsingTunnel ? 'Link Público (Túnel HTTPS):' : 'Link de Acesso (Wi-Fi Local):'}
+                      </Text>
                       {Platform.OS === 'web' && (
                         <TouchableOpacity onPress={handleCopyLink} style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: '#333', borderRadius: 4 }}>
                           <Text style={{ fontSize: 11, color: qrCopied ? '#4CAF50' : '#FF8C00', fontWeight: 'bold' }}>
@@ -1148,7 +1235,7 @@ useEffect(() => {
                         </TouchableOpacity>
                       )}
                     </View>
-                    <Text style={{ fontSize: 12, color: '#FF8C00', fontWeight: 'bold', textAlign: 'center' }} selectable>
+                    <Text style={{ fontSize: 11, color: isUsingTunnel ? '#4CAF50' : '#FF8C00', fontWeight: 'bold', textAlign: 'center' }} selectable>
                       {linkCardapio}
                     </Text>
                   </View>

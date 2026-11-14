@@ -66,6 +66,7 @@ import idleTimeConfigRoutes from "./routes/idleTimeConfig.js";
 import roleRoutes from "./routes/roles.js";
 import configRoutes from "./routes/config.js";
 import stockRoutes from "./routes/stock.js";
+import { stopTunnel } from "./services/TunnelService.js";
 
 // dotenv configured at top
 
@@ -409,6 +410,9 @@ prisma.$connect()
 // Tratamento de encerramento gracioso
 const gracefulShutdown = async () => {
   console.log('\n🛑 Encerrando servidor...');
+  try {
+    stopTunnel();
+  } catch {}
   try {
     await prisma.$disconnect();
     console.log('✅ Conexão com o Banco de Dados fechada.');

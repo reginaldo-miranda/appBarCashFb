@@ -27,5 +27,17 @@ export const configService = {
 
     saveCardapioIpConfig: async (ip: string) => {
         return api.post('/config/cardapio-ip', { ip });
+    },
+
+    getTunnelStatus: async () => {
+        return api.get('/config/tunnel/status');
+    },
+
+    startTunnel: async () => {
+        return api.post('/config/tunnel/start');
+    },
+
+    stopTunnel: async () => {
+        return api.post('/config/tunnel/stop');
     }
 };

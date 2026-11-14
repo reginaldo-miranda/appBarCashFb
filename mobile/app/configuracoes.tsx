@@ -39,6 +39,9 @@ export default function ConfiguracoesScreen() {
   const [cardapioIpFixo, setCardapioIpFixo] = useState('');
   const [cardapioIpDetectado, setCardapioIpDetectado] = useState('');
   const [salvandoCardapioIp, setSalvandoCardapioIp] = useState(false);
+  const [tunnelActive, setTunnelActive] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [tunnelLoading, setTunnelLoading] = useState(false);
 
   // Printers
   const [printers, setPrinters] = useState<any[]>([]);
@@ -148,8 +151,40 @@ export default function ConfiguracoesScreen() {
       if (resHealth?.data?.lanIp) {
         setCardapioIpDetectado(resHealth.data.lanIp);
       }
+
+      try {
+        const resTunnel = await configService.getTunnelStatus();
+        if (resTunnel?.data) {
+          setTunnelActive(Boolean(resTunnel.data.active && resTunnel.data.url));
+          setTunnelUrl(resTunnel.data.url || null);
+        }
+      } catch {}
     } catch (e) {
       console.log('Erro ao carregar configurações do cardápio:', e);
+    }
+  };
+
+  const handleToggleTunnel = async () => {
+    if (tunnelLoading) return;
+    setTunnelLoading(true);
+    try {
+      if (tunnelActive) {
+        await configService.stopTunnel();
+        setTunnelActive(false);
+        setTunnelUrl(null);
+      } else {
+        const res = await configService.startTunnel();
+        if (res?.data?.active && res?.data?.url) {
+          setTunnelActive(true);
+          setTunnelUrl(res.data.url);
+        } else {
+          Alert.alert('Aviso', res?.data?.error || 'Não foi possível iniciar o túnel externo.');
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Erro', 'Falha ao alternar túnel: ' + (error?.message || ''));
+    } finally {
+      setTunnelLoading(false);
     }
   };
 
@@ -695,6 +730,49 @@ const getEnvApiUrl = (): string | undefined => {
               </>
             )}
           </TouchableOpacity>
+        </View>
+
+        {/* Controle de Túnel Externo (4G / Qualquer Local) */}
+        <View style={{
+          marginTop: 14,
+          padding: 12,
+          borderRadius: 10,
+          backgroundColor: tunnelActive ? '#e8f5e9' : '#f5f5f5',
+          borderWidth: 1,
+          borderColor: tunnelActive ? '#4CAF50' : '#ddd',
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: tunnelActive ? '#2e7d32' : '#333' }}>
+                {tunnelActive ? '🟢 Túnel Externo Ligado (4G / Fora do Wi-Fi)' : '⚪ Túnel Externo Desligado (Apenas Wi-Fi Local)'}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                {tunnelActive && tunnelUrl
+                  ? `Link Público Ativo: ${tunnelUrl}`
+                  : 'Quando desligado, o cardápio funciona apenas na rede Wi-Fi local. Ligue para permitir acesso via 4G/5G ou de outro local.'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleToggleTunnel}
+              disabled={tunnelLoading}
+              style={{
+                backgroundColor: tunnelActive ? '#d32f2f' : '#2196F3',
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 8,
+                minWidth: 110,
+                alignItems: 'center',
+              }}
+            >
+              {tunnelLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>
+                  {tunnelActive ? 'Desligar Túnel' : 'Ligar Túnel'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
