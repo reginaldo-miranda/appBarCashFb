@@ -2837,7 +2837,11 @@ useEffect(() => {
             {qrCodeMesa && (() => {
               const porta = obterPortaCardapio();
               const numMesa = String(qrCodeMesa.numero).padStart(2, '0');
-              const linkCardapio = `http://${ipLan}:${porta}/cardapio/${qrCodeMesa._id}`;
+              const hostClean = String(ipLan || '').trim();
+              const hostClicavel = /^\d+\.\d+\.\d+\.\d+$/.test(hostClean) && hostClean !== '127.0.0.1'
+                ? `${hostClean.replace(/\./g, '-')}.nip.io`
+                : hostClean;
+              const linkCardapio = `http://${hostClicavel}:${porta}/cardapio/${qrCodeMesa._id}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Mesa ${numMesa}* e faça seus pedidos direto pelo celular:\n${linkCardapio}`;

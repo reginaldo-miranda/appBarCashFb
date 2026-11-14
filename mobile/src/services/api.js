@@ -21,7 +21,7 @@ const getEnvBaseUrl = () => {
         // Se a pessoa abriu o site via localhost, 127.0.0.1 ou IP de rede (192.168., 10.0.), 
         // e a variável de ambiente aponta para a nuvem (railway), DEVEMOS IGNORAR A VARIÁVEL DE AMBIENTE
         // e forçar a detecção inteligente do resolveApiBaseUrl para buscar a API local!
-        const isCurrentHostLocalNetwork = LOCAL_HOSTNAMES.has(currentHost) || currentHost.startsWith('192.168.') || currentHost.startsWith('10.') || currentHost.startsWith('172.');
+        const isCurrentHostLocalNetwork = LOCAL_HOSTNAMES.has(currentHost) || currentHost.startsWith('192.168.') || currentHost.startsWith('10.') || currentHost.startsWith('172.') || currentHost.endsWith('.nip.io') || currentHost.endsWith('.sslip.io');
         
         if (isCurrentHostLocalNetwork) {
            return undefined; 
