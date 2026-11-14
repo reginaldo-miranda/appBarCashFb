@@ -1389,31 +1389,18 @@ useEffect(() => {
         Alert.alert('Erro', 'Para fechar a mesa é necessário ter itens na venda.');
         return;
       }
-      const total = (activeSale.itens || []).reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
-      const totalPago = (activeSale.caixaVendas || []).reduce((acc: number, cv: any) => acc + (Number(cv.valor) || 0), 0);
-      
-      setFecharTotal(total);
-      setFecharValorPago(totalPago);
-      setFecharSaleId(activeSale._id);
 
-      // Check for Cashback
-      let clientBalance = 0;
-      if (activeSale.clienteId) {
-          try {
-             // Fetch client updated data
-             const clientRes = await api.get(`/customer/${activeSale.clienteId}`);
-             clientBalance = Number(clientRes.data.saldoCashback || 0);
-          } catch {}
-      }
-      
-      const remaining = total - totalPago;
-
-      if (clientBalance > 0 && remaining > 0) {
-          setCashbackBalance(clientBalance);
-          setCashbackPromptVisible(true);
-      } else {
-          setFecharMesaModalVisible(true);
-      }
+      // Redirecionar para a tela unificada de Finalizar Venda (/sale) com modal aberto
+      router.push({
+        pathname: '/sale',
+        params: {
+          mesaId: String(mesa._id || (mesa as any).id),
+          numeroMesa: String(mesa.numero),
+          autoFinalize: '1',
+          payMethod: autoMethod,
+        },
+      });
+      return;
 
     } catch (error: any) {
       console.error('Erro ao carregar venda da mesa:', error);

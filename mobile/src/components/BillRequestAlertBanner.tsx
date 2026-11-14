@@ -83,22 +83,25 @@ export default function BillRequestAlertBanner() {
       : 'dinheiro';
 
     if (alerta.tipoVenda === 'mesa') {
-      router.push('/(tabs)/mesas' as any);
-      const payload = {
-        saleId: alerta.saleId,
-        mesaId: alerta.mesaId,
-        mesaNumero: alerta.mesaNumero,
-        method,
-      };
-      setTimeout(() => events.emit('mesas:open-fechar', payload), 180);
+      router.push({
+        pathname: '/sale',
+        params: {
+          mesaId: String(alerta.mesaId || ''),
+          numeroMesa: String(alerta.mesaNumero || ''),
+          autoFinalize: '1',
+          payMethod: method,
+        },
+      } as any);
     } else {
-      router.push('/(tabs)/comandas' as any);
-      const payload = {
-        saleId: alerta.saleId,
-        comandaNome: alerta.comandaNome,
-        method,
-      };
-      setTimeout(() => events.emit('comandas:open-fechar', payload), 180);
+      router.push({
+        pathname: '/sale',
+        params: {
+          tipo: 'comanda',
+          vendaId: String(alerta.saleId),
+          autoFinalize: '1',
+          payMethod: method,
+        },
+      } as any);
     }
   };
 

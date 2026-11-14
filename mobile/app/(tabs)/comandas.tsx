@@ -564,63 +564,27 @@ useEffect(() => {
   //   }
   // };
 
-  // Função para abrir modal de fechamento de comanda (idêntico às mesas)
+  // Função para abrir a tela unificada de Finalizar Venda (/sale) para fechar comanda
   const fecharModalFecharComanda = async (comanda: any, preferredMethod?: 'dinheiro' | 'cartao' | 'pix') => {
-    try {
-      setFecharComandaSelecionada(comanda);
-      const obsStr = String(comanda?.observacoes || '').toLowerCase();
-      const autoMethod: 'dinheiro' | 'cartao' | 'pix' = preferredMethod
-        ? preferredMethod
-        : obsStr.includes('pix')
-        ? 'pix'
-        : obsStr.includes('cart')
-        ? 'cartao'
-        : 'dinheiro';
-      setFecharPaymentMethod(autoMethod);
-      setFecharTotal(0);
-      setFecharValorPago(0);
-      setFecharSaleId(null);
-
-      // Buscar a venda ativa da comanda (igual às mesas)
-      const response = await comandaService.getById(comanda._id);
-      const comandaData = response.data;
-
-      if (!comandaData) {
-        Alert.alert('Erro', 'Nenhuma venda encontrada para esta comanda.');
-        return;
-      }
-
-      const total = (comandaData.itens || []).reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
-      const totalPago = (comandaData.caixaVendas || []).reduce((acc: number, cv: any) => acc + (Number(cv.valor) || 0), 0);
-      setFecharTotal(total);
-      setFecharValorPago(totalPago);
-      setFecharSaleId(comandaData._id);
-      setFecharComandaSelecionada(comandaData);
-      
-      // Check for Cashback
-      let clientBalance = 0;
-      if (comandaData.clienteId || (comandaData.cliente && (comandaData.cliente.id || comandaData.cliente._id))) {
-          try {
-             const cid = comandaData.clienteId || comandaData.cliente.id || comandaData.cliente._id;
-             // Fetch client updated data
-             const clientRes = await api.get(`/customer/${cid}`);
-             clientBalance = Number(clientRes.data.saldoCashback || 0);
-          } catch {}
-      }
-      
-      const remaining = total - totalPago;
-
-      if (clientBalance > 0 && remaining > 0) {
-          setCashbackBalance(clientBalance);
-          setCashbackPromptVisible(true);
-      } else {
-          setFecharComandaModalVisible(true);
-      }
-
-    } catch (error) {
-      console.error('Erro ao carregar venda da comanda:', error);
-      Alert.alert('Erro', 'Não foi possível buscar a venda da comanda.');
-    }
+    const id = String(comanda?._id || comanda?.id || '');
+    if (!id) return;
+    const obsStr = String(comanda?.observacoes || '').toLowerCase();
+    const autoMethod: 'dinheiro' | 'cartao' | 'pix' = preferredMethod
+      ? preferredMethod
+      : obsStr.includes('pix')
+      ? 'pix'
+      : obsStr.includes('cart')
+      ? 'cartao'
+      : 'dinheiro';
+    router.push({
+      pathname: '/sale',
+      params: {
+        tipo: 'comanda',
+        vendaId: id,
+        autoFinalize: '1',
+        payMethod: autoMethod,
+      },
+    });
   };
 
   // Funções para cancelamento com senha

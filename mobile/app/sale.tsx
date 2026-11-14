@@ -52,7 +52,7 @@ import { printHtmlContent } from '../src/utils/printHtml';
 
 export default function SaleScreen() {
   const params = useLocalSearchParams();
-  const { mesaId, vendaId, viewMode } = params;
+  const { mesaId, vendaId, viewMode, autoFinalize, payMethod } = params;
   // Inferir tipo se não vier explícito, mas tiver mesaId
   const tipo = params.tipo || (mesaId ? 'mesa' : undefined);
   
@@ -66,6 +66,7 @@ export default function SaleScreen() {
   const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('dinheiro');
+  const autoFinalizeDoneRef = useRef<string>('');
   const [isViewMode, setIsViewMode] = useState(false);
   const [nomeResponsavel, setNomeResponsavel] = useState('');
   const [mesa, setMesa] = useState<any>(null);
@@ -86,6 +87,27 @@ export default function SaleScreen() {
       .then(s => setContingenciaModoAtivo(s.modoAtivo))
       .catch(() => {});
   }, []);
+
+  // Abre automaticamente o modal "Finalizar Venda" quando vem de Fechar Mesa / Fechar Comanda / Alerta
+  useEffect(() => {
+    if (loading || !sale) return;
+    const saleKey = `${(sale as any)?._id || (sale as any)?.id || ''}:${autoFinalize || ''}:${payMethod || ''}`;
+    if (String(autoFinalize) === '1' && autoFinalizeDoneRef.current !== saleKey) {
+      autoFinalizeDoneRef.current = saleKey;
+      const obsStr = String((sale as any)?.observacoes || '').toLowerCase();
+      const paramMethod = String(payMethod || '').toLowerCase();
+      const resolved =
+        paramMethod === 'pix' || paramMethod === 'cartao' || paramMethod === 'dinheiro'
+          ? paramMethod
+          : obsStr.includes('pix')
+          ? 'pix'
+          : obsStr.includes('cart')
+          ? 'cartao'
+          : 'dinheiro';
+      setPaymentMethod(resolved);
+      setModalVisible(true);
+    }
+  }, [loading, sale, autoFinalize, payMethod]);
 
   const handleEmitNfce = async (saleIdToEmit: string, itemsOverlay?: any[]) => {
     console.log('[DEBUG] handleEmitNfce CALLED. ID:', saleIdToEmit);
@@ -2182,8 +2204,24 @@ export default function SaleScreen() {
               </>
             )}
 
-            {/* Seleção de Cliente no Modal de Finalização - Ocultar se for Mesa */ }
-            <ScrollView style={{ maxHeight: '60%' }} contentContainerStyle={{ paddingVertical: 5 }}>
+            {(() => {
+              const obsVenda = String((sale as any)?.observacoes || '');
+              const matchPediu = obsVenda.match(/\[🔔 PEDIU A CONTA:\s*([^\]]+)\]/);
+              const matchFechando = obsVenda.match(/\[✅ CONTA EM FECHAMENTO:\s*([^\]]+)\]/);
+              const info = matchPediu ? matchPediu[1] : (matchFechando ? matchFechando[1] : '');
+              if (info) {
+                return (
+                  <View style={{ width: '100%', backgroundColor: '#FFF3E0', borderWidth: 1, borderColor: '#FF8C00', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#E65100', textAlign: 'center' }}>
+                      🔔 Solicitado no Cardápio: {info}
+                    </Text>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+
+            <View style={{ width: '100%', paddingVertical: 4 }}>
             {/* Seleção de Cliente no Modal de Finalização - Agora para todos os tipos (incluindo Mesa) */ }
             <Text style={[styles.modalLabel, { marginBottom: 6 }]}>Cliente:</Text>
             <TouchableOpacity
@@ -2215,7 +2253,7 @@ export default function SaleScreen() {
             </TouchableOpacity>
 
             {selectedCliente && (
-               <View style={{ marginBottom: 12, backgroundColor: '#E8F5E9', padding: 8, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+               <View style={{ marginBottom: 10, backgroundColor: '#E8F5E9', padding: 8, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
                   <Text style={{ color: '#2E7D32', fontSize: 13, textAlign: 'center' }}>
                      Saldo Cashback: <Text style={{ fontWeight: 'bold' }}>R$ {Number(selectedCliente.saldoCashback || 0).toFixed(2)}</Text>
                   </Text>
@@ -2223,8 +2261,7 @@ export default function SaleScreen() {
                       <TouchableOpacity 
                         style={{ backgroundColor: '#2E7D32', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}
                         onPress={() => {
-                            setModalVisible(false); // Fecha o pai para evitar sobreposicao visual ruim (opcional) ou mantem.
-                            // Melhor fechar o pai temporariamente para o prompt ficar limpo, e o prompt reabre ele no onClose.
+                            setModalVisible(false);
                             setAfterCashbackAction('modal');
                             setCashbackPromptVisible(true);
                         }}
@@ -2237,18 +2274,17 @@ export default function SaleScreen() {
 
             {/* Exibir também o nome do responsável se for mesa, apenas informativo */ }
             { tipo === 'mesa' && nomeResponsavel ? (
-                <View style={{ marginBottom: 12 }}>
-                    <Text style={[styles.modalLabel, { fontSize: 12, color: '#666', marginBottom: 4 }]}>Responsável pela Mesa (Info):</Text>
-                    <View style={[styles.paymentOption, { backgroundColor: '#f9f9f9', borderColor: '#eee', paddingVertical: 8 }]}>
+                <View style={{ marginBottom: 8 }}>
+                    <Text style={[styles.modalLabel, { fontSize: 12, color: '#666', marginBottom: 3 }]}>Responsável pela Mesa:</Text>
+                    <View style={[styles.paymentOption, { backgroundColor: '#f9f9f9', borderColor: '#eee', paddingVertical: 6 }]}>
                         <Ionicons name="pricetag" size={16} color="#888" />
-                        <Text style={[styles.paymentOptionText, { color: '#666', fontSize: 14 }]}>
+                        <Text style={[styles.paymentOptionText, { color: '#666', fontSize: 13 }]}>
                             {nomeResponsavel}
                         </Text>
                     </View>
                 </View>
             ) : null }
 
-            
             <TouchableOpacity 
               style={[styles.modalButton, { backgroundColor: '#FF9800', marginBottom: 10, paddingVertical: 10, width: '100%', flexDirection: 'row', justifyContent: 'center', gap: 8 }]}
               onPress={() => {
@@ -2260,9 +2296,9 @@ export default function SaleScreen() {
               <Text style={styles.confirmButtonText}>Dividir / Parcial</Text>
             </TouchableOpacity>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#f0f8ff', padding: 10, borderRadius: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: '#f0f8ff', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 }}>
                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                 <Ionicons name="receipt-outline" size={24} color="#2196F3" />
+                 <Ionicons name="receipt-outline" size={22} color="#2196F3" />
                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333' }}>Emitir NFC-e (Cupom Fiscal)?</Text>
                </View>
                <Switch
@@ -2274,30 +2310,33 @@ export default function SaleScreen() {
             </View>
 
             <Text style={[styles.modalLabel, { marginBottom: 6 }]}>Método de Pagamento (Restante):</Text>
-            {paymentMethods.map(method => (
-              <TouchableOpacity
-                key={method.key}
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === method.key && styles.paymentOptionSelected,
-                  { paddingVertical: 8, marginBottom: 4 }
-                ]}
-                onPress={() => setPaymentMethod(method.key)}
-              >
-                <Ionicons 
-                  name={method.icon} 
-                  size={20} 
-                  color={paymentMethod === method.key ? '#2196F3' : '#666'} 
-                />
-                <Text style={[
-                  styles.paymentOptionText,
-                  paymentMethod === method.key && styles.paymentOptionTextSelected
-                ]}>
-                  {method.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            </ScrollView>
+            <View style={{ flexDirection: 'row', gap: 8, width: '100%', marginBottom: 8 }}>
+              {paymentMethods.map(method => (
+                <TouchableOpacity
+                  key={method.key}
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === method.key && styles.paymentOptionSelected,
+                    { flex: 1, paddingVertical: 10, paddingHorizontal: 6, marginBottom: 0, justifyContent: 'center' }
+                  ]}
+                  onPress={() => setPaymentMethod(method.key)}
+                >
+                  <Ionicons 
+                    name={method.icon} 
+                    size={18} 
+                    color={paymentMethod === method.key ? '#2196F3' : '#666'} 
+                  />
+                  <Text style={[
+                    styles.paymentOptionText,
+                    paymentMethod === method.key && styles.paymentOptionTextSelected,
+                    { marginLeft: 5, fontSize: 13 }
+                  ]}>
+                    {method.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            </View>
             
             {totalRemaining > 0.05 && (
                 <Text style={{ textAlign: 'center', color: '#F44336', marginBottom: 10, width: '100%' }}>
