@@ -2838,11 +2838,8 @@ useEffect(() => {
               const porta = obterPortaCardapio();
               const numMesa = String(qrCodeMesa.numero).padStart(2, '0');
               const hostClean = String(ipLan || '').trim();
-              const hostClicavel = /^\d+\.\d+\.\d+\.\d+$/.test(hostClean) && hostClean !== '127.0.0.1'
-                ? `${hostClean.replace(/\./g, '-')}.nip.io`
-                : hostClean;
               const mesaIdParam = qrCodeMesa._id || (qrCodeMesa as any).id || qrCodeMesa.numero;
-              const linkCardapio = `http://${hostClicavel}:${porta}/cardapio/${mesaIdParam}`;
+              const linkCardapio = `http://${hostClean}:${porta}/cardapio/${mesaIdParam}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Mesa ${numMesa}* e faça seus pedidos direto pelo celular:\n${linkCardapio}`;

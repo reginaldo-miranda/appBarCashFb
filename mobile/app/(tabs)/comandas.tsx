@@ -1093,10 +1093,7 @@ useEffect(() => {
               const porta = obterPortaCardapio();
               const nomeOuNum = qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda || '';
               const hostClean = String(ipLan || '').trim();
-              const hostClicavel = /^\d+\.\d+\.\d+\.\d+$/.test(hostClean) && hostClean !== '127.0.0.1'
-                ? `${hostClean.replace(/\./g, '-')}.nip.io`
-                : hostClean;
-              const linkCardapio = `http://${hostClicavel}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
+              const linkCardapio = `http://${hostClean}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const msg = `Olá! 🍻 Acesse o Cardápio Digital da *Comanda ${nomeOuNum}* e faça seus pedidos direto pelo celular:\n${linkCardapio}`;
