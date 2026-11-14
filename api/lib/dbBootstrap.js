@@ -827,6 +827,24 @@ export async function runDbBootstrap(prisma) {
     ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
   `, 'stockmovement');
 
+  // ============================================================
+  // ETAPA 13: Movimentações de Caixa (Sangria e Suprimento)
+  // ============================================================
+  await run(`
+    CREATE TABLE IF NOT EXISTS \`caixamovimentacao\` (
+      \`id\`              INT NOT NULL AUTO_INCREMENT,
+      \`caixaId\`         INT NOT NULL,
+      \`tipo\`            VARCHAR(32) NOT NULL DEFAULT 'sangria',
+      \`valor\`           DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      \`motivo\`          VARCHAR(255) DEFAULT NULL,
+      \`funcionarioNome\` VARCHAR(191) DEFAULT NULL,
+      \`createdAt\`       DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (\`id\`),
+      KEY \`CaixaMovimentacao_caixaId_idx\` (\`caixaId\`),
+      CONSTRAINT \`CaixaMovimentacao_caixaId_fkey\` FOREIGN KEY (\`caixaId\`) REFERENCES \`caixa\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+    ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  `, 'caixamovimentacao');
+
   console.log('✅ [dbBootstrap] Verificação de tabelas concluída com sucesso!');
 
   // Executar sementes (seeds) de dados padrões

@@ -632,6 +632,7 @@ export const comandaService = {
 };
 
 export const caixaService = {
+  listar: () => api.get('/caixa'),
   statusAberto: () => api.get('/caixa/status/aberto'),
   abrir: (funcionarioId, valorAbertura = 0, observacoes = '') => 
     api.post('/caixa/abrir', { funcionarioId, valorAbertura, observacoes }),
@@ -639,6 +640,10 @@ export const caixaService = {
     api.put(`/caixa/${id}/fechar`, { funcionarioId, valorFechamento, observacoes }),
   registrarVenda: (vendaId, valor, formaPagamento) => 
     api.post('/caixa/registrar-venda', { vendaId, valor, formaPagamento }),
+  adicionarMovimentacao: (data) =>
+    api.post('/caixa/movimentacao', data),
+  removerMovimentacao: (movId) =>
+    api.delete(`/caixa/movimentacao/${movId}`),
 };
 
 export const companyService = {

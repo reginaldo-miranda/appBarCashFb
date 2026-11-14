@@ -9,13 +9,14 @@ import {
   RefreshControl,
   Alert,
   Modal,
-  Platform
+  Platform,
+  TextInput
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { saleService, API_URL, caixaService, getWsUrl } from '../../src/services/api';
+import { saleService, API_URL, caixaService, getWsUrl, mesaService } from '../../src/services/api';
+import { useAuth } from '../../src/contexts/AuthContext';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { events } from '../../src/utils/eventBus';
-import { mesaService } from '../../src/services/api';
 import { SafeIcon } from '../../components/SafeIcon';
 
 interface Sale {
@@ -62,6 +63,7 @@ interface CaixaVenda {
 }
 
 export default function CaixaScreen() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [vendas, setVendas] = useState<Sale[]>([]);
@@ -80,11 +82,91 @@ export default function CaixaScreen() {
   const [markFilter, setMarkFilter] = useState<'all' | 'marked' | 'unmarked'>('all');
   const [paymentFilterWeb, setPaymentFilterWeb] = useState<'all' | 'dinheiro' | 'cartao' | 'pix'>('all');
   
-  // Novo estado para filtro de exibição (Abertas vs Registradas)
-  const [displayFilter, setDisplayFilter] = useState<'all' | 'open' | 'registered'>('all');
+  // Novo estado para filtro de exibição (Abertas vs Registradas vs Movimentações)
+  const [displayFilter, setDisplayFilter] = useState<'all' | 'open' | 'registered' | 'movimentacoes'>('all');
   
   // Estado para armazenar informações do caixa (nome, id, etc)
   const [caixaInfo, setCaixaInfo] = useState<any>(null);
+
+  // Estados das melhorias do Caixa (Opções 1, 2 e 3)
+  const [mostrarValores, setMostrarValores] = useState<boolean>(true);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+
+  // Modal Abrir Caixa
+  const [abrirCaixaModalVisible, setAbrirCaixaModalVisible] = useState<boolean>(false);
+  const [valorAberturaInput, setValorAberturaInput] = useState<string>('100,00');
+  const [obsAberturaInput, setObsAberturaInput] = useState<string>('');
+
+  // Modal Sangria / Suprimento
+  const [movModalVisible, setMovModalVisible] = useState<boolean>(false);
+  const [movTipo, setMovTipo] = useState<'sangria' | 'suprimento'>('sangria');
+  const [movValorInput, setMovValorInput] = useState<string>('');
+  const [movMotivoInput, setMovMotivoInput] = useState<string>('');
+
+  // Modal Conferência e Fechamento de Caixa
+  const [fecharCaixaModalVisible, setFecharCaixaModalVisible] = useState<boolean>(false);
+  const [valorContadoInput, setValorContadoInput] = useState<string>('');
+  const [obsFechamentoInput, setObsFechamentoInput] = useState<string>('');
+
+  const showNotice = (title: string, msg: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(`${title}: ${msg}`);
+    } else {
+      Alert.alert(title, msg);
+    }
+  };
+
+  const parseCurrencyInput = (raw: string): number => {
+    if (!raw) return 0;
+    const cleaned = String(raw).replace(/\s/g, '').replace('R$', '').replace(/\./g, '').replace(',', '.');
+    const val = parseFloat(cleaned);
+    return Number.isFinite(val) ? val : 0;
+  };
+
+  const formatMoney = (val: number) => {
+    const n = Number(val) || 0;
+    if (!mostrarValores) return 'R$ ••••';
+    return `R$ ${n.toFixed(2).replace('.', ',')}`;
+  };
+
+  const formatMoneyPlain = (val: number) => {
+    const n = Number(val) || 0;
+    return `R$ ${n.toFixed(2).replace('.', ',')}`;
+  };
+
+  // Totais do Caixa Aberto (Turno Atual)
+  const valorAberturaTurno = Number(caixaInfo?.valorAbertura || 0);
+  const movimentacoesTurno: any[] = Array.isArray(caixaInfo?.movimentacoes) ? caixaInfo.movimentacoes : [];
+  const totalSuprimentosTurno = movimentacoesTurno
+    .filter((m) => m.tipo === 'suprimento')
+    .reduce((acc, m) => acc + Number(m.valor || 0), 0);
+  const totalSangriasTurno = movimentacoesTurno
+    .filter((m) => m.tipo === 'sangria')
+    .reduce((acc, m) => acc + Number(m.valor || 0), 0);
+
+  const turnoTotalsByMethod = caixaVendas.reduce(
+    (acc, cv) => {
+      const m = String(cv.formaPagamento || '').toLowerCase();
+      const v = Number(cv.valor ?? cv.venda?.total ?? 0) || 0;
+      acc.total += v;
+      if (m === 'dinheiro') acc.dinheiro += v;
+      else if (m === 'cartao' || m === 'cartão') acc.cartao += v;
+      else if (m === 'pix') acc.pix += v;
+      else acc.outros += v;
+      return acc;
+    },
+    { total: 0, dinheiro: 0, cartao: 0, pix: 0, outros: 0 }
+  );
+
+  const totalDinheiroTurno = caixaVendas.length > 0 ? turnoTotalsByMethod.dinheiro : Number(caixaInfo?.totalDinheiro || 0);
+  const totalCartaoTurno = caixaVendas.length > 0 ? turnoTotalsByMethod.cartao : Number(caixaInfo?.totalCartao || 0);
+  const totalPixTurno = caixaVendas.length > 0 ? turnoTotalsByMethod.pix : Number(caixaInfo?.totalPix || 0);
+  const totalVendasTurno = caixaVendas.length > 0 ? turnoTotalsByMethod.total : Number(caixaInfo?.totalVendas || 0);
+  const saldoEsperadoGaveta = Number(
+    (valorAberturaTurno + totalDinheiroTurno + totalSuprimentosTurno - totalSangriasTurno).toFixed(2)
+  );
+  const valorContadoNum = parseCurrencyInput(valorContadoInput);
+  const diferencaFechamento = Number((valorContadoNum - saldoEsperadoGaveta).toFixed(2));
 
   // Helpers e cálculos para filtro por data e subtotais
   const formatSelectedDate = selectedDate.toLocaleDateString('pt-BR');
@@ -210,6 +292,7 @@ export default function CaixaScreen() {
       const resp = await caixaService.statusAberto();
       const caixaData = resp.data;
       setHasCaixaAberto(true);
+      setCaixaInfo(caixaData);
       const vendasRegistradas: CaixaVenda[] = (caixaData?.vendas || []).map((v: any) => ({
         venda: v.venda,
         valor: v.valor,
@@ -218,6 +301,210 @@ export default function CaixaScreen() {
       }));
       setCaixaVendas(vendasRegistradas);
     } catch {}
+  };
+
+  const handleAbrirCaixa = async () => {
+    try {
+      setActionLoading(true);
+      const valorInicial = parseCurrencyInput(valorAberturaInput);
+      const funcId = (user as any)?.funcionarioId || (user as any)?.id || 1;
+      await caixaService.abrir(funcId, valorInicial, obsAberturaInput.trim());
+      setAbrirCaixaModalVisible(false);
+      setObsAberturaInput('');
+      await loadCaixaAberto();
+      events.emit('caixa:refresh');
+      showNotice('Caixa Aberto', `Caixa iniciado com troco de ${formatMoneyPlain(valorInicial)}.`);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || 'Erro ao abrir caixa';
+      showNotice('Erro', msg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const abrirModalMovimentacao = (tipo: 'sangria' | 'suprimento') => {
+    setMovTipo(tipo);
+    setMovValorInput('');
+    setMovMotivoInput('');
+    setMovModalVisible(true);
+  };
+
+  const handleConfirmarMovimentacao = async () => {
+    const val = parseCurrencyInput(movValorInput);
+    if (val <= 0) {
+      showNotice('Valor inválido', 'Informe um valor maior que R$ 0,00.');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const operadorNome = (user as any)?.nome || (user as any)?.name || caixaInfo?.funcionarioAbertura?.nome || 'Administrador';
+      await caixaService.adicionarMovimentacao({
+        caixaId: caixaInfo?.id,
+        tipo: movTipo,
+        valor: val,
+        motivo: movMotivoInput.trim() || (movTipo === 'sangria' ? 'Sangria de caixa' : 'Suprimento de troco'),
+        funcionarioNome: operadorNome,
+      });
+      setMovModalVisible(false);
+      setMovValorInput('');
+      setMovMotivoInput('');
+      await loadCaixaAberto();
+      showNotice(
+        movTipo === 'sangria' ? 'Sangria Registrada' : 'Suprimento Registrado',
+        `${movTipo === 'sangria' ? 'Retirada' : 'Entrada'} de ${formatMoneyPlain(val)} lançada com sucesso!`
+      );
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || 'Erro ao registrar movimentação';
+      showNotice('Erro', msg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRemoverMovimentacao = async (mov: any) => {
+    const confirmar = async () => {
+      try {
+        await caixaService.removerMovimentacao(mov.id);
+        await loadCaixaAberto();
+      } catch (error: any) {
+        showNotice('Erro', error?.response?.data?.message || 'Não foi possível excluir a movimentação');
+      }
+    };
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm(`Deseja remover este lançamento de ${mov.tipo} (${formatMoneyPlain(mov.valor)})?`)) {
+        await confirmar();
+      }
+    } else {
+      Alert.alert(
+        'Remover Lançamento',
+        `Deseja remover este lançamento de ${mov.tipo} (${formatMoneyPlain(mov.valor)})?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Remover', style: 'destructive', onPress: confirmar },
+        ]
+      );
+    }
+  };
+
+  const abrirModalFecharCaixa = () => {
+    setValorContadoInput(saldoEsperadoGaveta.toFixed(2).replace('.', ','));
+    setObsFechamentoInput('');
+    setFecharCaixaModalVisible(true);
+  };
+
+  const handleImprimirResumoCaixa = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const dataAbr = caixaInfo?.dataAbertura ? new Date(caixaInfo.dataAbertura).toLocaleString('pt-BR') : '--';
+      const agoraStr = new Date().toLocaleString('pt-BR');
+      const opNome = caixaInfo?.funcionarioAbertura?.nome || (user as any)?.nome || 'Administrador';
+      const diffTxt =
+        diferencaFechamento === 0
+          ? 'BATEU EXATO (R$ 0,00)'
+          : diferencaFechamento > 0
+          ? `SOBRA (+${formatMoneyPlain(diferencaFechamento)})`
+          : `FALTA (${formatMoneyPlain(diferencaFechamento)})`;
+
+      const movRowsHtml =
+        movimentacoesTurno.length === 0
+          ? '<tr><td colspan="3" style="text-align:center;color:#666;">Nenhuma sangria/suprimento</td></tr>'
+          : movimentacoesTurno
+              .map((m) => {
+                const hr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                const sinal = m.tipo === 'suprimento' ? '+' : '-';
+                return `<tr>
+                  <td>${hr} - ${m.tipo.toUpperCase()}</td>
+                  <td>${m.motivo || ''}</td>
+                  <td style="text-align:right;font-weight:bold;">${sinal} ${formatMoneyPlain(m.valor)}</td>
+                </tr>`;
+              })
+              .join('');
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Resumo de Caixa #${caixaInfo?.id || ''}</title>
+  <style>
+    body { font-family: 'Courier New', monospace; width: 300px; margin: 0 auto; padding: 12px; color: #000; font-size: 12px; }
+    h2, h3 { text-align: center; margin: 4px 0; }
+    .line { border-top: 1px dashed #000; margin: 8px 0; }
+    .row { display: flex; justify-content: space-between; margin: 4px 0; }
+    .bold { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    td { padding: 2px 0; vertical-align: top; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <h2>FECHAMENTO / RESUMO DE CAIXA</h2>
+  <h3>Caixa #${caixaInfo?.id || ''}</h3>
+  <div class="line"></div>
+  <div class="row"><span>Abertura:</span><span>${dataAbr}</span></div>
+  <div class="row"><span>Emissão:</span><span>${agoraStr}</span></div>
+  <div class="row"><span>Operador:</span><span>${opNome}</span></div>
+  <div class="line"></div>
+  <div class="bold" style="margin-bottom:4px;">CONFERENCIA DA GAVETA (ESPECIE)</div>
+  <div class="row"><span>(+) Troco Inicial:</span><span>${formatMoneyPlain(valorAberturaTurno)}</span></div>
+  <div class="row"><span>(+) Vendas Dinheiro:</span><span>${formatMoneyPlain(totalDinheiroTurno)}</span></div>
+  <div class="row"><span>(+) Suprimentos:</span><span>${formatMoneyPlain(totalSuprimentosTurno)}</span></div>
+  <div class="row"><span>(-) Sangrias:</span><span>${formatMoneyPlain(totalSangriasTurno)}</span></div>
+  <div class="line"></div>
+  <div class="row bold" style="font-size:13px;"><span>(=) SALDO ESPERADO:</span><span>${formatMoneyPlain(saldoEsperadoGaveta)}</span></div>
+  <div class="row"><span>Valor Contado:</span><span>${formatMoneyPlain(valorContadoNum)}</span></div>
+  <div class="row bold"><span>Diferenca:</span><span>${diffTxt}</span></div>
+  <div class="line"></div>
+  <div class="bold" style="margin-bottom:4px;">FATURAMENTO POR FORMA DE PAGTO</div>
+  <div class="row"><span>Dinheiro:</span><span>${formatMoneyPlain(totalDinheiroTurno)}</span></div>
+  <div class="row"><span>Cartao:</span><span>${formatMoneyPlain(totalCartaoTurno)}</span></div>
+  <div class="row"><span>PIX:</span><span>${formatMoneyPlain(totalPixTurno)}</span></div>
+  <div class="row bold" style="font-size:13px;"><span>TOTAL VENDAS (${caixaVendas.length}):</span><span>${formatMoneyPlain(totalVendasTurno)}</span></div>
+  <div class="line"></div>
+  <div class="bold" style="margin-bottom:4px;">SANGRIAS E SUPRIMENTOS</div>
+  <table>${movRowsHtml}</table>
+  <div class="line"></div>
+  <p style="text-align:center;margin-top:24px;">_______________________________<br/>Assinatura Responsável</p>
+  <script>window.onload = function() { window.print(); };</script>
+</body>
+</html>`;
+      const win = window.open('', '_blank', 'width=420,height=680');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      } else {
+        showNotice('Aviso', 'Permita pop-ups no navegador para imprimir o resumo.');
+      }
+    } else {
+      showNotice(
+        'Resumo do Turno',
+        `Troco Inicial: ${formatMoneyPlain(valorAberturaTurno)}\nVendas Dinheiro: ${formatMoneyPlain(totalDinheiroTurno)}\nSuprimentos: ${formatMoneyPlain(totalSuprimentosTurno)}\nSangrias: ${formatMoneyPlain(totalSangriasTurno)}\nSaldo na Gaveta: ${formatMoneyPlain(saldoEsperadoGaveta)}\nTotal Vendas: ${formatMoneyPlain(totalVendasTurno)}`
+      );
+    }
+  };
+
+  const handleConfirmarFechamentoCaixa = async () => {
+    if (!caixaInfo?.id) return;
+    try {
+      setActionLoading(true);
+      const funcId = (user as any)?.funcionarioId || (user as any)?.id || 1;
+      const resumoObs = [
+        obsFechamentoInput.trim(),
+        `[Conferência: Esperado ${formatMoneyPlain(saldoEsperadoGaveta)} | Contado ${formatMoneyPlain(valorContadoNum)} | Dif: ${formatMoneyPlain(diferencaFechamento)}]`,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      await caixaService.fechar(caixaInfo.id, funcId, valorContadoNum, resumoObs);
+      setFecharCaixaModalVisible(false);
+      setObsFechamentoInput('');
+      await loadCaixaAberto();
+      events.emit('caixa:refresh');
+      showNotice('Caixa Fechado', 'O turno do caixa foi encerrado e salvo com sucesso!');
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || 'Erro ao fechar caixa';
+      showNotice('Erro', msg);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const calcularTotal = (venda: Sale) => {
@@ -463,11 +750,138 @@ export default function CaixaScreen() {
       <ScreenIdentifier screenName="Caixa" />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Sistema de Caixa</Text>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <SafeIcon name="refresh" size={20} color="#2196F3" fallbackText="↻" />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Sistema de Caixa</Text>
+          <View style={[styles.statusBadge, hasCaixaAberto ? styles.statusBadgeOpen : styles.statusBadgeClosed]}>
+            <View style={[styles.statusDot, { backgroundColor: hasCaixaAberto ? '#10B981' : '#EF4444' }]} />
+            <Text style={[styles.statusBadgeText, { color: hasCaixaAberto ? '#065F46' : '#991B1B' }]}>
+              {hasCaixaAberto
+                ? `Caixa #${caixaInfo?.id || ''} Aberto${caixaInfo?.dataAbertura ? ' • ' + new Date(caixaInfo.dataAbertura).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}`
+                : 'Caixa Fechado'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => setMostrarValores((v) => !v)}
+            style={styles.iconBtn}
+            accessibilityLabel={mostrarValores ? 'Ocultar valores' : 'Mostrar valores'}
+          >
+            <SafeIcon name={mostrarValores ? 'eye-outline' : 'eye-off-outline'} size={18} color="#475569" fallbackText="👁" />
+          </TouchableOpacity>
+
+          {!hasCaixaAberto ? (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
+              onPress={() => setAbrirCaixaModalVisible(true)}
+            >
+              <SafeIcon name="lock-open-outline" size={15} color="#fff" fallbackText="🔓" />
+              <Text style={styles.actionBtnText}>Abrir Caixa</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#0284C7' }]}
+                onPress={() => abrirModalMovimentacao('suprimento')}
+              >
+                <Text style={styles.actionBtnText}>+ Suprimento</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#EA580C' }]}
+                onPress={() => abrirModalMovimentacao('sangria')}
+              >
+                <Text style={styles.actionBtnText}>- Sangria</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#475569' }]}
+                onPress={handleImprimirResumoCaixa}
+              >
+                <SafeIcon name="print-outline" size={15} color="#fff" fallbackText="🖨" />
+                <Text style={styles.actionBtnText}>Resumo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#DC2626' }]}
+                onPress={abrirModalFecharCaixa}
+              >
+                <SafeIcon name="lock-closed-outline" size={15} color="#fff" fallbackText="🔒" />
+                <Text style={styles.actionBtnText}>Fechar Caixa</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+            <SafeIcon name="refresh" size={18} color="#2196F3" fallbackText="↻" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Opção 3: Painel Compacto no Topo (Saldo na Gaveta vs Faturamento) */}
+      {hasCaixaAberto ? (
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, styles.kpiCardHighlight]}>
+            <View style={styles.kpiHeaderLine}>
+              <Text style={[styles.kpiLabel, { color: '#065F46' }]}>💵 SALDO NA GAVETA (ESPÉCIE)</Text>
+            </View>
+            <Text style={[styles.kpiValue, { color: '#047857', fontSize: 16 }]}>
+              {formatMoney(saldoEsperadoGaveta)}
+            </Text>
+            <Text style={styles.kpiSub}>
+              Troco: {formatMoney(valorAberturaTurno)} | Din: {formatMoney(totalDinheiroTurno)}
+            </Text>
+          </View>
+
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>🟢 DINHEIRO</Text>
+            <Text style={[styles.kpiValue, { color: '#16A34A' }]}>{formatMoney(totalDinheiroTurno)}</Text>
+            <Text style={styles.kpiSub}>Vendas em espécie</Text>
+          </View>
+
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>💳 CARTÃO</Text>
+            <Text style={[styles.kpiValue, { color: '#2563EB' }]}>{formatMoney(totalCartaoTurno)}</Text>
+            <Text style={styles.kpiSub}>Crédito / Débito</Text>
+          </View>
+
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>💠 PIX</Text>
+            <Text style={[styles.kpiValue, { color: '#0D9488' }]}>{formatMoney(totalPixTurno)}</Text>
+            <Text style={styles.kpiSub}>Transferência instantânea</Text>
+          </View>
+
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>🔺 SUPR. / 🔻 SANGRIA</Text>
+            <Text style={[styles.kpiValue, { color: '#EA580C', fontSize: 12 }]}>
+              +{formatMoney(totalSuprimentosTurno)} / -{formatMoney(totalSangriasTurno)}
+            </Text>
+            <Text style={styles.kpiSub}>{movimentacoesTurno.length} mov. no turno</Text>
+          </View>
+
+          <View style={[styles.kpiCard, { borderColor: '#BFDBFE', backgroundColor: '#EFF6FF' }]}>
+            <Text style={[styles.kpiLabel, { color: '#1E40AF' }]}>💰 TOTAL VENDAS</Text>
+            <Text style={[styles.kpiValue, { color: '#1D4ED8', fontSize: 15 }]}>{formatMoney(totalVendasTurno)}</Text>
+            <Text style={styles.kpiSub}>{caixaVendas.length} vendas registradas</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.closedBanner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.closedBannerTitle}>O Caixa está fechado no momento</Text>
+            <Text style={styles.closedBannerSub}>
+              Abra o caixa informando o fundo de troco inicial para controlar o saldo da gaveta, sangrias e fechamento de turno.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#10B981', paddingHorizontal: 14, paddingVertical: 8 }]}
+            onPress={() => setAbrirCaixaModalVisible(true)}
+          >
+            <Text style={[styles.actionBtnText, { fontSize: 13 }]}>🔓 Abrir Caixa Agora</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Componente de Filtro de Exibição */}
       <View style={styles.viewFilterContainer}>
@@ -481,13 +895,25 @@ export default function CaixaScreen() {
             style={[styles.viewFilterOption, displayFilter === 'open' && styles.viewFilterOptionSelected]}
             onPress={() => setDisplayFilter('open')}
          >
-             <Text style={[styles.viewFilterText, displayFilter === 'open' && styles.viewFilterTextSelected]}>Vendas Abertas</Text>
+             <Text style={[styles.viewFilterText, displayFilter === 'open' && styles.viewFilterTextSelected]}>
+               Vendas Abertas ({vendas.length})
+             </Text>
          </TouchableOpacity>
          <TouchableOpacity 
             style={[styles.viewFilterOption, displayFilter === 'registered' && styles.viewFilterOptionSelected]}
             onPress={() => setDisplayFilter('registered')}
          >
-             <Text style={[styles.viewFilterText, displayFilter === 'registered' && styles.viewFilterTextSelected]}>Vendas Registradas</Text>
+             <Text style={[styles.viewFilterText, displayFilter === 'registered' && styles.viewFilterTextSelected]}>
+               Registradas ({caixaVendas.length})
+             </Text>
+         </TouchableOpacity>
+         <TouchableOpacity 
+            style={[styles.viewFilterOption, displayFilter === 'movimentacoes' && styles.viewFilterOptionSelected]}
+            onPress={() => setDisplayFilter('movimentacoes')}
+         >
+             <Text style={[styles.viewFilterText, displayFilter === 'movimentacoes' && styles.viewFilterTextSelected]}>
+               Sangrias/Supr. ({movimentacoesTurno.length})
+             </Text>
          </TouchableOpacity>
       </View>
 
@@ -741,6 +1167,108 @@ export default function CaixaScreen() {
         </>
         )}
 
+        {/* Opção 2: Sangrias e Suprimentos lançados no turno */}
+        {(displayFilter === 'movimentacoes' || (displayFilter === 'all' && movimentacoesTurno.length > 0)) && (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, marginBottom: 6 }}>
+              <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>
+                Movimentações de Gaveta (Sangrias e Suprimentos)
+              </Text>
+              {hasCaixaAberto && (
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    style={[styles.miniActionPill, { backgroundColor: '#E0F2FE', borderColor: '#7DD3FC' }]}
+                    onPress={() => abrirModalMovimentacao('suprimento')}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#0369A1' }}>+ Suprimento</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.miniActionPill, { backgroundColor: '#FFEDD5', borderColor: '#FDBA74' }]}
+                    onPress={() => abrirModalMovimentacao('sangria')}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#C2410C' }}>- Sangria</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {movimentacoesTurno.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <SafeIcon name="swap-vertical-outline" size={48} color="#ccc" fallbackText="⇅" />
+                <Text style={styles.emptyText}>Nenhuma sangria ou suprimento registrado neste turno</Text>
+              </View>
+            ) : (
+              <View style={styles.tableContainer}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderText, { width: 110 }]}>Tipo</Text>
+                  <Text style={[styles.tableHeaderText, { flex: 1 }]}>Motivo / Descrição</Text>
+                  <Text style={[styles.tableHeaderText, { width: 65 }]}>Hora</Text>
+                  <Text style={[styles.tableHeaderText, { width: 110 }]}>Operador</Text>
+                  <Text style={[styles.tableHeaderText, { width: 100, textAlign: 'right' }]}>Valor</Text>
+                  <Text style={[styles.tableHeaderText, { width: 44, textAlign: 'center' }]}>Ação</Text>
+                </View>
+                {movimentacoesTurno.map((mov: any) => {
+                  const isSupr = mov.tipo === 'suprimento';
+                  const horaMov = mov.createdAt
+                    ? new Date(mov.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                    : '--:--';
+                  return (
+                    <View key={mov.id} style={styles.tableRow}>
+                      <View style={{ width: 110, flexDirection: 'row', alignItems: 'center' }}>
+                        <View
+                          style={[
+                            styles.movTypeBadge,
+                            { backgroundColor: isSupr ? '#DCFCE7' : '#FEE2E2' },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              color: isSupr ? '#15803D' : '#B91C1C',
+                            }}
+                          >
+                            {isSupr ? '🔺 Suprimento' : '🔻 Sangria'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.tableCell, { flex: 1 }]} numberOfLines={1}>
+                        {mov.motivo || (isSupr ? 'Reforço de troco' : 'Sangria de caixa')}
+                      </Text>
+                      <Text style={[styles.tableCell, { width: 65 }]}>{horaMov}</Text>
+                      <Text style={[styles.tableCell, { width: 110 }]} numberOfLines={1}>
+                        {mov.funcionarioNome || 'Administrador'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          {
+                            width: 100,
+                            textAlign: 'right',
+                            fontWeight: '700',
+                            color: isSupr ? '#16A34A' : '#DC2626',
+                          },
+                        ]}
+                      >
+                        {isSupr ? '+' : '-'} R$ {Number(mov.valor || 0).toFixed(2).replace('.', ',')}
+                      </Text>
+                      <View style={{ width: 44, alignItems: 'center' }}>
+                        <TouchableOpacity
+                          onPress={() => handleRemoverMovimentacao(mov)}
+                          style={{ padding: 4 }}
+                          accessibilityLabel="Excluir movimentação"
+                        >
+                          <SafeIcon name="trash-outline" size={16} color="#EF4444" fallbackText="🗑" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        )}
+
       </ScrollView>
 
       {/* Modal de Finalização */}
@@ -805,6 +1333,327 @@ export default function CaixaScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Opção 1: Modal de Abrir Caixa */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={abrirCaixaModalVisible}
+        onRequestClose={() => setAbrirCaixaModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 420 }]}>
+            <Text style={styles.modalTitle}>🔓 Abrir Novo Turno de Caixa</Text>
+
+            <Text style={styles.inputLabel}>Fundo de Troco Inicial na Gaveta (R$):</Text>
+            <TextInput
+              style={styles.textInputField}
+              value={valorAberturaInput}
+              onChangeText={setValorAberturaInput}
+              keyboardType="numeric"
+              placeholder="Ex: 150,00"
+            />
+
+            <View style={styles.presetRow}>
+              {['0,00', '50,00', '100,00', '150,00', '200,00'].map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  style={[
+                    styles.presetChip,
+                    valorAberturaInput === preset && styles.presetChipActive,
+                  ]}
+                  onPress={() => setValorAberturaInput(preset)}
+                >
+                  <Text
+                    style={[
+                      styles.presetChipText,
+                      valorAberturaInput === preset && styles.presetChipTextActive,
+                    ]}
+                  >
+                    R$ {preset}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.inputLabel}>Observação da Abertura (opcional):</Text>
+            <TextInput
+              style={styles.textInputField}
+              value={obsAberturaInput}
+              onChangeText={setObsAberturaInput}
+              placeholder="Ex: Turno da Noite / Operador João"
+            />
+
+            <View style={[styles.modalActions, { marginTop: 14 }]}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setAbrirCaixaModalVisible(false)}
+                disabled={actionLoading}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleAbrirCaixa}
+                disabled={actionLoading}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {actionLoading ? 'Abrindo...' : 'Confirmar Abertura'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Opção 2: Modal de Sangria / Suprimento */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={movModalVisible}
+        onRequestClose={() => setMovModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 440 }]}>
+            <Text style={styles.modalTitle}>
+              {movTipo === 'sangria' ? '🔻 Lançar Sangria (Retirada)' : '🔺 Lançar Suprimento (Reforço)'}
+            </Text>
+
+            <View style={styles.paymentOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentOption,
+                  movTipo === 'suprimento' && { borderColor: '#0284C7', backgroundColor: '#E0F2FE', borderWidth: 2 },
+                ]}
+                onPress={() => setMovTipo('suprimento')}
+              >
+                <Text
+                  style={[
+                    styles.paymentOptionText,
+                    movTipo === 'suprimento' && { color: '#0369A1', fontWeight: '700' },
+                  ]}
+                >
+                  🔺 Suprimento (+ Troco)
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.paymentOption,
+                  movTipo === 'sangria' && { borderColor: '#EA580C', backgroundColor: '#FFEDD5', borderWidth: 2 },
+                ]}
+                onPress={() => setMovTipo('sangria')}
+              >
+                <Text
+                  style={[
+                    styles.paymentOptionText,
+                    movTipo === 'sangria' && { color: '#C2410C', fontWeight: '700' },
+                  ]}
+                >
+                  🔻 Sangria (- Retirada)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Valor em Espécie (R$):</Text>
+            <TextInput
+              style={styles.textInputField}
+              value={movValorInput}
+              onChangeText={setMovValorInput}
+              keyboardType="numeric"
+              placeholder="Ex: 50,00"
+            />
+
+            <Text style={styles.inputLabel}>Sugestões Rápidas de Motivo:</Text>
+            <View style={styles.presetRow}>
+              {(movTipo === 'sangria'
+                ? ['Pagamento Fornecedor', 'Compra Gelo/Insumos', 'Vale Funcionário', 'Retirada Cofre']
+                : ['Reforço de Troco', 'Troca de Moedas', 'Aporte Extra']
+              ).map((sug) => (
+                <TouchableOpacity
+                  key={sug}
+                  style={[styles.presetChip, movMotivoInput === sug && styles.presetChipActive]}
+                  onPress={() => setMovMotivoInput(sug)}
+                >
+                  <Text style={[styles.presetChipText, movMotivoInput === sug && styles.presetChipTextActive]}>
+                    {sug}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.inputLabel}>Motivo / Descrição:</Text>
+            <TextInput
+              style={styles.textInputField}
+              value={movMotivoInput}
+              onChangeText={setMovMotivoInput}
+              placeholder={
+                movTipo === 'sangria'
+                  ? 'Ex: Pagamento entregador / compra de gelo'
+                  : 'Ex: Entrada de moedas para troco'
+              }
+            />
+
+            <View style={[styles.modalActions, { marginTop: 14 }]}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setMovModalVisible(false)}
+                disabled={actionLoading}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  { backgroundColor: movTipo === 'sangria' ? '#EA580C' : '#0284C7' },
+                ]}
+                onPress={handleConfirmarMovimentacao}
+                disabled={actionLoading}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {actionLoading ? 'Salvando...' : 'Confirmar Lançamento'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Opção 1: Modal de Conferência e Fechamento de Caixa */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={fecharCaixaModalVisible}
+        onRequestClose={() => setFecharCaixaModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 480, width: Platform.OS === 'web' ? 460 : '94%' }]}>
+            <Text style={styles.modalTitle}>🔒 Conferência e Fechamento de Caixa</Text>
+
+            <View style={styles.conferenciaBox}>
+              <Text style={styles.conferenciaSectionTitle}>1. CONFERÊNCIA DA GAVETA (EM DINHEIRO)</Text>
+              <View style={styles.conferenciaLine}>
+                <Text style={styles.conferenciaLabel}>(+) Fundo de Troco Inicial:</Text>
+                <Text style={styles.conferenciaVal}>{formatMoneyPlain(valorAberturaTurno)}</Text>
+              </View>
+              <View style={styles.conferenciaLine}>
+                <Text style={styles.conferenciaLabel}>(+) Vendas em Dinheiro:</Text>
+                <Text style={[styles.conferenciaVal, { color: '#16A34A' }]}>
+                  +{formatMoneyPlain(totalDinheiroTurno)}
+                </Text>
+              </View>
+              <View style={styles.conferenciaLine}>
+                <Text style={styles.conferenciaLabel}>(+) Suprimentos (Entradas):</Text>
+                <Text style={[styles.conferenciaVal, { color: '#0284C7' }]}>
+                  +{formatMoneyPlain(totalSuprimentosTurno)}
+                </Text>
+              </View>
+              <View style={styles.conferenciaLine}>
+                <Text style={styles.conferenciaLabel}>(-) Sangrias (Retiradas):</Text>
+                <Text style={[styles.conferenciaVal, { color: '#DC2626' }]}>
+                  -{formatMoneyPlain(totalSangriasTurno)}
+                </Text>
+              </View>
+              <View style={[styles.conferenciaLine, styles.conferenciaTotalLine]}>
+                <Text style={styles.conferenciaTotalLabel}>(=) Saldo Esperado na Gaveta:</Text>
+                <Text style={styles.conferenciaTotalVal}>{formatMoneyPlain(saldoEsperadoGaveta)}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.conferenciaBox, { marginTop: 8, backgroundColor: '#F8FAFC' }]}>
+              <Text style={styles.conferenciaSectionTitle}>2. FATURAMENTO GERAL DO TURNO ({caixaVendas.length} VENDAS)</Text>
+              <View style={styles.conferenciaLine}>
+                <Text style={styles.conferenciaLabel}>💳 Cartão:</Text>
+                <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalCartaoTurno)}</Text>
+              </View>
+              <View style={styles.conferenciaLine}>
+                <Text style={styles.conferenciaLabel}>💠 PIX:</Text>
+                <Text style={styles.conferenciaVal}>{formatMoneyPlain(totalPixTurno)}</Text>
+              </View>
+              <View style={styles.conferenciaLine}>
+                <Text style={[styles.conferenciaLabel, { fontWeight: '700', color: '#1E293B' }]}>
+                  💰 Total Faturado (Vendas):
+                </Text>
+                <Text style={[styles.conferenciaVal, { fontWeight: '700', color: '#1D4ED8' }]}>
+                  {formatMoneyPlain(totalVendasTurno)}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.inputLabel, { marginTop: 10 }]}>
+              Valor Físico Contado na Gaveta (em Dinheiro R$):
+            </Text>
+            <TextInput
+              style={styles.textInputField}
+              value={valorContadoInput}
+              onChangeText={setValorContadoInput}
+              keyboardType="numeric"
+              placeholder="0,00"
+            />
+
+            <View
+              style={[
+                styles.diffBanner,
+                diferencaFechamento === 0
+                  ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }
+                  : diferencaFechamento > 0
+                  ? { backgroundColor: '#E0F2FE', borderColor: '#7DD3FC' }
+                  : { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' },
+              ]}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color:
+                    diferencaFechamento === 0
+                      ? '#166534'
+                      : diferencaFechamento > 0
+                      ? '#075985'
+                      : '#991B1B',
+                }}
+              >
+                {diferencaFechamento === 0
+                  ? '✅ Gaveta bateu exato! (Diferença: R$ 0,00)'
+                  : diferencaFechamento > 0
+                  ? `🟢 Sobra de Caixa: +${formatMoneyPlain(diferencaFechamento)}`
+                  : `⚠️ Falta no Caixa (Quebra): ${formatMoneyPlain(diferencaFechamento)}`}
+              </Text>
+            </View>
+
+            <Text style={styles.inputLabel}>Observações do Fechamento (opcional):</Text>
+            <TextInput
+              style={styles.textInputField}
+              value={obsFechamentoInput}
+              onChangeText={setObsFechamentoInput}
+              placeholder="Ex: Conferido e assinado pelo gerente"
+            />
+
+            <TouchableOpacity style={styles.printReportBtn} onPress={handleImprimirResumoCaixa}>
+              <SafeIcon name="print-outline" size={16} color="#1E293B" fallbackText="🖨" />
+              <Text style={styles.printReportBtnText}>Imprimir Resumo do Turno (80mm)</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.modalActions, { marginTop: 10 }]}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setFecharCaixaModalVisible(false)}
+                disabled={actionLoading}
+              >
+                <Text style={styles.cancelButtonText}>Voltar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, { backgroundColor: '#DC2626' }]}
+                onPress={handleConfirmarFechamentoCaixa}
+                disabled={actionLoading}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {actionLoading ? 'Fechando...' : '🔒 Confirmar Fechamento'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -832,29 +1681,285 @@ const styles: any = StyleSheet.create({
   // Header Compacto
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 36 : 12,
-    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingTop: Platform.OS === 'android' ? 36 : 8,
+    paddingBottom: 8,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
     elevation: 2,
     zIndex: 10,
+    gap: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#1E293B',
     letterSpacing: -0.5,
   },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 5,
+  },
+  statusBadgeOpen: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  statusBadgeClosed: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  iconBtn: {
+    padding: 6,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 7,
+  },
+  actionBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   refreshButton: {
     padding: 6,
     backgroundColor: '#F8FAFC',
-    borderRadius: 8,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+
+  // Opção 3: KPI Cards Compactos no Topo
+  kpiRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 2,
+  },
+  kpiCard: {
+    flex: 1,
+    minWidth: 135,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  kpiCardHighlight: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#6EE7B7',
+    borderWidth: 1.5,
+    minWidth: 175,
+  },
+  kpiHeaderLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  kpiLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  kpiValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  kpiSub: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginHorizontal: 12,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  closedBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  closedBannerSub: {
+    fontSize: 11,
+    color: '#B45309',
+  },
+  miniActionPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  movTypeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 4,
+    marginTop: 6,
+  },
+  textInputField: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+    marginBottom: 6,
+  },
+  presetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  presetChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  presetChipActive: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#0284C7',
+  },
+  presetChipText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  presetChipTextActive: {
+    color: '#0369A1',
+    fontWeight: '700',
+  },
+  conferenciaBox: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  conferenciaSectionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#065F46',
+    marginBottom: 6,
+    letterSpacing: 0.4,
+  },
+  conferenciaLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  conferenciaLabel: {
+    fontSize: 12,
+    color: '#334155',
+  },
+  conferenciaVal: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  conferenciaTotalLine: {
+    borderTopWidth: 1,
+    borderTopColor: '#6EE7B7',
+    marginTop: 4,
+    paddingTop: 5,
+  },
+  conferenciaTotalLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  conferenciaTotalVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  diffBanner: {
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 2,
+    marginBottom: 4,
+    alignItems: 'center',
+  },
+  printReportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    marginTop: 6,
+  },
+  printReportBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
   },
 
   content: {
