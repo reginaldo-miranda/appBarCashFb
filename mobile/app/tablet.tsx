@@ -6,6 +6,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import TabletCozinhaScreen from '../src/screens/TabletCozinhaScreen';
 import TabletBarScreen from '../src/screens/TabletBarScreen';
+import BillRequestAlertBanner from '../src/components/BillRequestAlertBanner';
 import { apiService, authService, setApiBaseUrl } from '../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../src/services/storage';
@@ -304,6 +305,7 @@ export default function TabletMode() {
 
   return (
     <View style={[styles.container, Platform.OS !== 'web' && isMobile && { paddingTop: 28 }]}>
+      <BillRequestAlertBanner />
       <View style={[styles.navbar, isMobile && styles.navbarMobile]}>
         <View style={[styles.navTopRow, isMobile && { width: '100%' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

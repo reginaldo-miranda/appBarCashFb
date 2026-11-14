@@ -658,6 +658,13 @@ export default function MesasScreen() {
   }, []);
 
   useEffect(() => {
+    const unsub = events.on('mesas:refresh', () => {
+      softRefreshMesas();
+    });
+    return () => { try { unsub && unsub(); } catch {} };
+  }, []);
+
+  useEffect(() => {
     const lastFetchRef = { ts: 0 } as any;
     let ws: any = null;
     let sse: any = null;
@@ -704,7 +711,7 @@ export default function MesasScreen() {
                     setMesas((prev) => prev.map((m) => {
                       const mid = Number((m as any)?.id || 0);
                       if (mid === mesaId) {
-                        return { ...m, status: aberta ? 'ocupada' : 'livre' } as any;
+                        return { ...m, status: aberta ? 'ocupada' : 'livre', vendaAtual: aberta ? v : null } as any;
                       }
                       return m;
                     }));
@@ -1639,6 +1646,33 @@ useEffect(() => {
                         </Text>
                       </>
                     )}
+                  </View>
+                );
+              }
+              return null;
+            })()}
+
+            {(() => {
+              const obsVenda = String((item?.vendaAtual as any)?.observacoes || '');
+              const matchPediu = obsVenda.match(/\[🔔 PEDIU A CONTA:\s*([^\]]+)\]/);
+              const matchFechando = obsVenda.match(/\[✅ CONTA EM FECHAMENTO:\s*([^\]]+)\]/);
+              if (item.status === 'ocupada' && (matchPediu || matchFechando)) {
+                const isNovo = Boolean(matchPediu);
+                const info = matchPediu ? matchPediu[1] : (matchFechando ? matchFechando[1] : '');
+                return (
+                  <View style={{
+                    width: '100%',
+                    backgroundColor: isNovo ? '#FFF3E0' : '#E8F5E9',
+                    borderWidth: 1,
+                    borderColor: isNovo ? '#FF8C00' : '#4CAF50',
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    marginTop: 4,
+                  }}>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: isNovo ? '#E65100' : '#2E7D32' }}>
+                      {isNovo ? `🔔 PEDIU A CONTA: ${info}` : `✅ CONTA EM FECHAMENTO: ${info}`}
+                    </Text>
                   </View>
                 );
               }

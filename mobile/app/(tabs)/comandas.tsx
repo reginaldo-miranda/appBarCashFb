@@ -448,6 +448,13 @@ export default function ComandasAbertasScreen() {
   );
 
 useEffect(() => {
+  const unsub = events.on('comandas:refresh', () => {
+    softRefreshComandas();
+  });
+  return () => { try { unsub && unsub(); } catch {} };
+}, []);
+
+useEffect(() => {
   if (realtimeConnected) return;
   let since = Date.now();
   const t = setInterval(async () => {
@@ -848,6 +855,31 @@ useEffect(() => {
                       <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
                     </View>
                   </View>
+                  {(() => {
+                    const obsVenda = String(item.observacoes || '');
+                    const matchPediu = obsVenda.match(/\[🔔 PEDIU A CONTA:\s*([^\]]+)\]/);
+                    const matchFechando = obsVenda.match(/\[✅ CONTA EM FECHAMENTO:\s*([^\]]+)\]/);
+                    if (item.status === 'aberta' && (matchPediu || matchFechando)) {
+                      const isNovo = Boolean(matchPediu);
+                      const info = matchPediu ? matchPediu[1] : (matchFechando ? matchFechando[1] : '');
+                      return (
+                        <View style={{
+                          backgroundColor: isNovo ? '#FFF3E0' : '#E8F5E9',
+                          borderWidth: 1,
+                          borderColor: isNovo ? '#FF8C00' : '#4CAF50',
+                          borderRadius: 6,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          marginBottom: 4,
+                        }}>
+                          <Text style={{ fontSize: 11, fontWeight: 'bold', color: isNovo ? '#E65100' : '#2E7D32' }}>
+                            {isNovo ? `🔔 PEDIU A CONTA: ${info}` : `✅ CONTA EM FECHAMENTO: ${info}`}
+                          </Text>
+                        </View>
+                      );
+                    }
+                    return null;
+                  })()}
                   <Text style={styles.comandaFuncionario}>Funcionário: {item.funcionario?.nome || 'Não definido'}</Text>
                   {item.cliente?.nome && (
                     <Text style={styles.comandaCliente}>Cliente: {item.cliente.nome}</Text>

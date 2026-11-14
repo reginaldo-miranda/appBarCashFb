@@ -79,6 +79,34 @@ router.get('/mesas', async (req, res) => {
   }
 });
 
+const formatVendaPublica = (venda) => {
+  if (!venda) return null;
+  const obs = String(venda.observacoes || '');
+  const matchAtivo = obs.match(/\[🔔 PEDIU A CONTA:\s*([^\]]+)\]/);
+  const matchCiente = obs.match(/\[✅ CONTA EM FECHAMENTO:\s*([^\]]+)\]/);
+  const pediuConta = Boolean(matchAtivo || matchCiente);
+  const resumoPedidoConta = matchAtivo ? matchAtivo[1] : (matchCiente ? matchCiente[1] : null);
+  return {
+    ...venda,
+    subtotal: Number(venda.subtotal || 0),
+    desconto: Number(venda.desconto || 0),
+    total: Number(venda.total || 0),
+    pediuConta,
+    resumoPedidoConta,
+    itens: Array.isArray(venda.itens)
+      ? venda.itens.map((it) => ({
+          id: it.id,
+          nomeProduto: it.nomeProduto,
+          quantidade: Number(it.quantidade || 1),
+          precoUnitario: Number(it.precoUnitario || 0),
+          subtotal: Number(it.subtotal || 0),
+          observacoes: it.observacoes || null,
+          status: it.status || 'pendente',
+        }))
+      : [],
+  };
+};
+
 // Rota 2: GET /api/public/mesa/:id - Validar mesa por ID (ou número) e retornar status
 router.get('/mesa/:id', async (req, res) => {
   try {
@@ -96,7 +124,21 @@ router.get('/mesa/:id', async (req, res) => {
           status: true,
           tipoVenda: true,
           subtotal: true,
+          desconto: true,
           total: true,
+          observacoes: true,
+          itens: {
+            select: {
+              id: true,
+              nomeProduto: true,
+              quantidade: true,
+              precoUnitario: true,
+              subtotal: true,
+              observacoes: true,
+              status: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          },
         }
       }
     };
@@ -125,7 +167,7 @@ router.get('/mesa/:id', async (req, res) => {
         nome: mesa.nome,
         status: mesa.status,
         vendaAtualId: mesa.vendaAtualId,
-        vendaAtual: mesa.vendaAtual
+        vendaAtual: formatVendaPublica(mesa.vendaAtual)
       }
     });
   } catch (error) {
@@ -155,7 +197,21 @@ router.get('/comanda/:nome', async (req, res) => {
         status: true,
         tipoVenda: true,
         subtotal: true,
-        total: true
+        desconto: true,
+        total: true,
+        observacoes: true,
+        itens: {
+          select: {
+            id: true,
+            nomeProduto: true,
+            quantidade: true,
+            precoUnitario: true,
+            subtotal: true,
+            observacoes: true,
+            status: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       }
     });
 
@@ -163,7 +219,7 @@ router.get('/comanda/:nome', async (req, res) => {
       success: true,
       comanda: {
         nome: nome,
-        vendaAtual: vendaAtiva || null
+        vendaAtual: formatVendaPublica(vendaAtiva)
       }
     });
   } catch (error) {
@@ -554,6 +610,175 @@ router.post('/pedido', async (req, res) => {
   } catch (error) {
     console.error('Erro ao processar pedido público:', error);
     res.status(500).json({ success: false, error: error.message || 'Erro ao processar o seu pedido' });
+  }
+});
+
+// Rota 4: POST /api/public/pedir-conta - Cliente solicita fechamento da conta pelo Cardápio Digital
+router.post('/pedir-conta', async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const {
+      mesaId,
+      comandaNome,
+      formaPagamento = 'Cartão',
+      trocoPara = '',
+      dividirPessoas = 1,
+    } = req.body || {};
+
+    if (!mesaId && !comandaNome) {
+      return res.status(400).json({ success: false, error: 'Identificação da mesa ou comanda é obrigatória' });
+    }
+
+    let venda = null;
+    let mesaObj = null;
+
+    if (mesaId) {
+      const idNum = Number(mesaId);
+      mesaObj = await prisma.mesa.findUnique({
+        where: { id: idNum },
+        include: { vendaAtual: true }
+      });
+      if (!mesaObj || !mesaObj.ativo) {
+        mesaObj = await prisma.mesa.findFirst({
+          where: { numero: idNum, ativo: true },
+          include: { vendaAtual: true }
+        });
+      }
+      if (!mesaObj || !mesaObj.vendaAtual || mesaObj.vendaAtual.status !== 'aberta') {
+        return res.status(400).json({ success: false, error: 'Não há conta em aberto nesta mesa.' });
+      }
+      venda = mesaObj.vendaAtual;
+    } else if (comandaNome) {
+      const nomeStr = String(comandaNome).trim();
+      venda = await prisma.sale.findFirst({
+        where: {
+          nomeComanda: nomeStr,
+          tipoVenda: 'comanda',
+          status: 'aberta'
+        }
+      });
+      if (!venda) {
+        return res.status(400).json({ success: false, error: 'Não há conta em aberto nesta comanda.' });
+      }
+    }
+
+    const partes = [String(formaPagamento || 'Cartão').trim()];
+    if (String(formaPagamento).toLowerCase().includes('dinheiro') && String(trocoPara || '').trim()) {
+      partes.push(`Troco p/ R$ ${String(trocoPara).trim()}`);
+    }
+    const numPessoas = Number(dividirPessoas || 1);
+    if (numPessoas > 1) {
+      partes.push(`Dividir: ${numPessoas} pessoas`);
+    }
+    const agora = new Date();
+    const horaStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const resumo = `${partes.join(' • ')} (${horaStr})`;
+    const novaTag = `[🔔 PEDIU A CONTA: ${resumo}]`;
+
+    const obsAntiga = String(venda.observacoes || '')
+      .replace(/\[🔔 PEDIU A CONTA:[^\]]*\]\s*/g, '')
+      .replace(/\[✅ CONTA EM FECHAMENTO:[^\]]*\]\s*/g, '')
+      .trim();
+
+    const novaObs = obsAntiga ? `${novaTag} ${obsAntiga}` : novaTag;
+
+    const vendaAtualizada = await prisma.sale.update({
+      where: { id: venda.id },
+      data: { observacoes: novaObs }
+    });
+
+    recordSaleUpdate(venda.id, 'bill_requested', {
+      saleId: venda.id,
+      tipoVenda: venda.tipoVenda,
+      mesaId: mesaObj?.id || venda.mesaId || null,
+      mesaNumero: mesaObj?.numero || null,
+      comandaNome: venda.nomeComanda || venda.numeroComanda || null,
+      total: Number(venda.total || 0),
+      detalhes: resumo,
+    });
+
+    res.json({
+      success: true,
+      message: 'Solicitação de fechamento enviada! Um atendente já foi avisado.',
+      resumoPedidoConta: resumo,
+      saleId: vendaAtualizada.id,
+    });
+  } catch (error) {
+    console.error('Erro ao solicitar fechamento de conta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao solicitar fechamento da conta' });
+  }
+});
+
+// Rota 5: GET /api/public/conta-alertas - Listar solicitações ativas de fechamento de conta para o Caixa/Garçom
+router.get('/conta-alertas', async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const vendas = await prisma.sale.findMany({
+      where: {
+        status: 'aberta',
+        observacoes: {
+          contains: '[🔔 PEDIU A CONTA:'
+        }
+      },
+      include: {
+        mesa: true
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    });
+
+    const alertas = vendas.map((v) => {
+      const obs = String(v.observacoes || '');
+      const match = obs.match(/\[🔔 PEDIU A CONTA:\s*([^\]]+)\]/);
+      const detalhes = match ? match[1] : 'Solicitou fechamento';
+      const numMesa = v.mesa?.numero || null;
+      const ident = v.tipoVenda === 'mesa' && numMesa
+        ? `Mesa ${String(numMesa).padStart(2, '0')}`
+        : `Comanda ${v.nomeComanda || v.numeroComanda || v.id}`;
+      return {
+        saleId: v.id,
+        tipoVenda: v.tipoVenda,
+        identificacao: ident,
+        mesaId: v.mesaId || v.mesa?.id || null,
+        mesaNumero: numMesa,
+        comandaNome: v.nomeComanda || v.numeroComanda || null,
+        total: Number(v.total || 0),
+        detalhes,
+        updatedAt: v.updatedAt,
+      };
+    });
+
+    res.json({ success: true, alertas });
+  } catch (error) {
+    console.error('Erro ao buscar alertas de conta:', error);
+    res.status(500).json({ success: false, alertas: [] });
+  }
+});
+
+// Rota 6: POST /api/public/conta-alertas/:saleId/ack - Marcar alerta de fechamento de conta como ciente/atendido
+router.post('/conta-alertas/:saleId/ack', async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const saleId = Number(req.params.saleId);
+    if (Number.isNaN(saleId)) {
+      return res.status(400).json({ success: false, error: 'ID inválido' });
+    }
+    const venda = await prisma.sale.findUnique({ where: { id: saleId } });
+    if (!venda) {
+      return res.status(404).json({ success: false, error: 'Venda não encontrada' });
+    }
+    const obsAtual = String(venda.observacoes || '');
+    const novaObs = obsAtual.replace(/\[🔔 PEDIU A CONTA:/g, '[✅ CONTA EM FECHAMENTO:');
+    await prisma.sale.update({
+      where: { id: saleId },
+      data: { observacoes: novaObs }
+    });
+    recordSaleUpdate(saleId, 'bill_ack');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao confirmar alerta de conta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao confirmar alerta' });
   }
 });
 

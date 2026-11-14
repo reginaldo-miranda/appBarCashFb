@@ -76,7 +76,19 @@ export default function CardapioCliente() {
       status: string;
       tipoVenda: string;
       subtotal: number;
+      desconto?: number;
       total: number;
+      pediuConta?: boolean;
+      resumoPedidoConta?: string | null;
+      itens?: Array<{
+        id: number;
+        nomeProduto: string;
+        quantidade: number;
+        precoUnitario: number;
+        subtotal: number;
+        observacoes?: string | null;
+        status?: string;
+      }>;
     } | null;
   } | null>(null);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -92,6 +104,11 @@ export default function CardapioCliente() {
   const [modalObservacao, setModalObservacao] = useState<string>("");
   const [mostrarCarrinho, setMostrarCarrinho] = useState<boolean>(false);
   const [pedidoSucesso, setPedidoSucesso] = useState<boolean>(false);
+  const [mostrarContaModal, setMostrarContaModal] = useState<boolean>(false);
+  const [formaPagamentoConta, setFormaPagamentoConta] = useState<string>("Cartão");
+  const [trocoParaConta, setTrocoParaConta] = useState<string>("");
+  const [dividirPessoasConta, setDividirPessoasConta] = useState<number>(1);
+  const [loadingPedirConta, setLoadingPedirConta] = useState<boolean>(false);
   const [debugError, setDebugError] = useState<string>("");
   const flatListRef = useRef<FlatList>(null);
 
@@ -284,6 +301,34 @@ export default function CardapioCliente() {
     }
   };
 
+  // Solicitar fechamento da conta pelo cardápio
+  const solicitarFechamentoConta = async () => {
+    if (!comandaInfo) return;
+    setLoadingPedirConta(true);
+    try {
+      const baseUrl = getCurrentBaseUrl();
+      const cleanUrl = baseUrl.replace(/\/$/, "");
+      const res = await axios.post(`${cleanUrl}/public/pedir-conta`, {
+        comandaNome: comandaInfo.nome,
+        formaPagamento: formaPagamentoConta,
+        trocoPara: formaPagamentoConta === "Dinheiro" ? trocoParaConta : "",
+        dividirPessoas: dividirPessoasConta,
+      });
+      if (res.data && res.data.success) {
+        await carregarDados();
+      } else {
+        throw new Error(res.data?.error || "Não foi possível solicitar a conta.");
+      }
+    } catch (err: any) {
+      Alert.alert(
+        "Aviso",
+        err?.response?.data?.error || err?.message || "Erro ao solicitar fechamento da conta."
+      );
+    } finally {
+      setLoadingPedirConta(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -313,19 +358,49 @@ export default function CardapioCliente() {
             <Text style={styles.headerTitle}>appBarCash 🍻</Text>
           </View>
           <View style={styles.mesaCol}>
-            <View style={styles.mesaBadge}>
-              <Ionicons name="receipt" size={14} color="#FFF" style={{ marginRight: 4 }} />
-              <Text style={styles.mesaBadgeText}>
-                {comandaInfo ? `COMANDA ${String(comandaInfo.nome).toUpperCase()}` : "COMANDA DIGITAL"}
-              </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={styles.mesaBadge}>
+                <Ionicons name="receipt" size={14} color="#FFF" style={{ marginRight: 4 }} />
+                <Text style={styles.mesaBadgeText}>
+                  {comandaInfo ? `COMANDA ${String(comandaInfo.nome).toUpperCase()}` : "COMANDA DIGITAL"}
+                </Text>
+              </View>
+              {(() => {
+                const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
+                if (totalVal > 0) {
+                  const jaPediu = Boolean(comandaInfo?.vendaAtual?.pediuConta);
+                  return (
+                    <TouchableOpacity
+                      onPress={() => setMostrarContaModal(true)}
+                      style={{
+                        backgroundColor: jaPediu ? "#F57C00" : "#2E7D32",
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Ionicons name={jaPediu ? "notifications" : "receipt-outline"} size={13} color="#FFF" />
+                      <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 11 }}>
+                        {jaPediu ? "Conta Solicitada" : "Pedir a Conta"}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }
+                return null;
+              })()}
             </View>
             {(() => {
               const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
               if (totalVal > 0) {
                 return (
-                  <Text style={styles.mesaTotalText}>
-                    Total: R$ {totalVal.toFixed(2).replace('.', ',')}
-                  </Text>
+                  <TouchableOpacity onPress={() => setMostrarContaModal(true)}>
+                    <Text style={styles.mesaTotalText}>
+                      Total: R$ {totalVal.toFixed(2).replace('.', ',')} (Ver Extrato)
+                    </Text>
+                  </TouchableOpacity>
                 );
               }
               return null;
@@ -460,7 +535,7 @@ export default function CardapioCliente() {
       />
 
       {/* SACOLA DE COMPRAS FLUTUANTE (Vem debaixo) */}
-      {totalItens > 0 && (
+      {totalItens > 0 ? (
         <TouchableOpacity
           style={styles.sacolaFlutuante}
           onPress={() => setMostrarCarrinho(true)}
@@ -473,6 +548,40 @@ export default function CardapioCliente() {
           </View>
           <Text style={styles.sacolaValor}>R$ {valorTotal.toFixed(2)}</Text>
         </TouchableOpacity>
+      ) : (
+        comandaInfo?.vendaAtual && Number(comandaInfo.vendaAtual.total || 0) > 0 && (
+          <TouchableOpacity
+            style={[
+              styles.sacolaFlutuante,
+              {
+                backgroundColor: comandaInfo.vendaAtual.pediuConta ? "#E65100" : "#1E293B",
+                borderWidth: 1,
+                borderColor: comandaInfo.vendaAtual.pediuConta ? "#FFB74D" : "#38BDF8",
+              },
+            ]}
+            onPress={() => setMostrarContaModal(true)}
+          >
+            <View style={styles.sacolaInfo}>
+              <Ionicons
+                name={comandaInfo.vendaAtual.pediuConta ? "notifications" : "receipt-outline"}
+                size={20}
+                color="#FFF"
+                style={{ marginRight: 8 }}
+              />
+              <View>
+                <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 14 }}>
+                  {comandaInfo.vendaAtual.pediuConta ? "Conta Solicitada ao Caixa" : "Ver Conta / Pedir para Fechar"}
+                </Text>
+                <Text style={{ color: "#CBD5E1", fontSize: 11 }}>
+                  Toque para conferir seus pedidos ou chamar o atendente
+                </Text>
+              </View>
+            </View>
+            <Text style={{ color: "#4ADE80", fontWeight: "bold", fontSize: 15 }}>
+              R$ {Number(comandaInfo.vendaAtual.total).toFixed(2).replace(".", ",")}
+            </Text>
+          </TouchableOpacity>
+        )
       )}
 
       {/* MODAL: DETALHES DO PRODUTO (Customizar tamanho, quantidade e obs) */}
@@ -747,6 +856,227 @@ export default function CardapioCliente() {
             >
               <Text style={styles.sucessoBtnText}>Pedir Mais Coisas</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL: MINHA CONTA / PEDIR PARA FECHAR A CONTA */}
+      <Modal
+        visible={mostrarContaModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setMostrarContaModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { height: "86%" }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="receipt-outline" size={22} color="#FF8C00" style={{ marginRight: 8 }} />
+                <Text style={styles.modalTitle}>
+                  Minha Conta — {comandaInfo ? `Comanda ${comandaInfo.nome}` : "Comanda"}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setMostrarContaModal(false)} style={styles.closeModalBtn}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
+              {comandaInfo?.vendaAtual?.pediuConta && (
+                <View style={{
+                  backgroundColor: "rgba(76, 175, 80, 0.16)",
+                  borderWidth: 1,
+                  borderColor: "#4CAF50",
+                  borderRadius: 10,
+                  padding: 12,
+                  marginBottom: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                }}>
+                  <Ionicons name="checkmark-circle" size={26} color="#4CAF50" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#4CAF50", fontWeight: "bold", fontSize: 14 }}>
+                      Fechamento de conta solicitado!
+                    </Text>
+                    <Text style={{ color: "#DDD", fontSize: 12, marginTop: 2 }}>
+                      O caixa e o garçom já receberam o alerta ({comandaInfo.vendaAtual.resumoPedidoConta || "aguarde atendimento"}).
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <Text style={{ color: "#AAA", fontSize: 12, fontWeight: "bold", marginBottom: 8, textTransform: "uppercase" }}>
+                Itens Consumidos
+              </Text>
+
+              {(comandaInfo?.vendaAtual?.itens || []).length === 0 ? (
+                <Text style={{ color: "#777", fontSize: 13, marginBottom: 12 }}>
+                  Nenhum item lançado ainda.
+                </Text>
+              ) : (
+                (comandaInfo?.vendaAtual?.itens || []).map((it, idx) => (
+                  <View
+                    key={`${it.id}-${idx}`}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      backgroundColor: "#222",
+                      paddingHorizontal: 12,
+                      paddingVertical: 9,
+                      borderRadius: 8,
+                      marginBottom: 6,
+                      borderWidth: 1,
+                      borderColor: "#2E2E2E",
+                    }}
+                  >
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 13 }}>
+                        {it.quantidade}x {it.nomeProduto}
+                      </Text>
+                      {it.observacoes ? (
+                        <Text style={{ color: "#FF8C00", fontSize: 11, marginTop: 2 }}>
+                          Obs: {it.observacoes}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ color: "#4CAF50", fontWeight: "bold", fontSize: 13 }}>
+                      R$ {Number(it.subtotal || 0).toFixed(2).replace(".", ",")}
+                    </Text>
+                  </View>
+                ))
+              )}
+
+              {/* Resumo Total + Divisão por pessoa */}
+              <View style={{
+                backgroundColor: "#222",
+                borderRadius: 10,
+                padding: 12,
+                marginTop: 6,
+                marginBottom: 14,
+                borderWidth: 1,
+                borderColor: "#333",
+              }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "bold" }}>Total da Conta:</Text>
+                  <Text style={{ color: "#4CAF50", fontSize: 20, fontWeight: "bold" }}>
+                    R$ {Number(comandaInfo?.vendaAtual?.total || 0).toFixed(2).replace(".", ",")}
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: "#333", paddingTop: 10 }}>
+                  <View>
+                    <Text style={{ color: "#DDD", fontSize: 13, fontWeight: "600" }}>Dividir entre pessoas:</Text>
+                    <Text style={{ color: "#FF8C00", fontSize: 12, fontWeight: "bold", marginTop: 2 }}>
+                      R$ {(Number(comandaInfo?.vendaAtual?.total || 0) / Math.max(1, dividirPessoasConta)).toFixed(2).replace(".", ",")} por pessoa
+                    </Text>
+                  </View>
+                  <View style={styles.quantidadeContainer}>
+                    <TouchableOpacity
+                      style={[styles.qtdBtn, { width: 28, height: 28 }]}
+                      onPress={() => setDividirPessoasConta(Math.max(1, dividirPessoasConta - 1))}
+                    >
+                      <Ionicons name="remove" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                    <Text style={[styles.qtdText, { fontSize: 14, marginHorizontal: 10 }]}>{dividirPessoasConta}</Text>
+                    <TouchableOpacity
+                      style={[styles.qtdBtn, { width: 28, height: 28 }]}
+                      onPress={() => setDividirPessoasConta(dividirPessoasConta + 1)}
+                    >
+                      <Ionicons name="add" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Escolha da Forma de Pagamento */}
+              <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "bold", marginBottom: 8 }}>
+                Como prefere pagar? (avisa o atendente)
+              </Text>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                {[
+                  { id: "Cartão", label: "💳 Cartão" },
+                  { id: "PIX", label: "💠 PIX" },
+                  { id: "Dinheiro", label: "💵 Dinheiro" },
+                ].map((op) => {
+                  const ativo = formaPagamentoConta === op.id;
+                  return (
+                    <TouchableOpacity
+                      key={op.id}
+                      onPress={() => setFormaPagamentoConta(op.id)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: ativo ? "#FF8C00" : "#383838",
+                        backgroundColor: ativo ? "rgba(255, 140, 0, 0.2)" : "#242424",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: ativo ? "#FF8C00" : "#CCC", fontWeight: "bold", fontSize: 13 }}>
+                        {op.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {formaPagamentoConta === "Dinheiro" && (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={{ color: "#CCC", fontSize: 12, marginBottom: 4 }}>
+                    Precisa de troco para quanto? (opcional)
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: "#242424",
+                      borderWidth: 1,
+                      borderColor: "#444",
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      color: "#FFF",
+                      fontSize: 14,
+                    }}
+                    placeholder="Ex: 100,00"
+                    placeholderTextColor="#666"
+                    keyboardType="numeric"
+                    value={trocoParaConta}
+                    onChangeText={setTrocoParaConta}
+                  />
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={{ paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#2A2A2A" }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: comandaInfo?.vendaAtual?.pediuConta ? "#F57C00" : "#2E7D32",
+                  paddingVertical: 13,
+                  borderRadius: 25,
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onPress={solicitarFechamentoConta}
+                disabled={loadingPedirConta}
+              >
+                {loadingPedirConta ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="notifications" size={18} color="#FFF" />
+                    <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 15 }}>
+                      {comandaInfo?.vendaAtual?.pediuConta
+                        ? "Chamar Novamente para Fechar Conta"
+                        : "Pedir para Fechar a Conta"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
