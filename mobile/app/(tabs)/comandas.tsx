@@ -1114,15 +1114,8 @@ useEffect(() => {
         animationType="fade"
         onRequestClose={() => setQrCodeModalVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 20, padding: 18, width: '88%', maxWidth: 370, alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
-            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#FF8C00' }}>QR Code do Cardápio</Text>
-              <TouchableOpacity onPress={() => setQrCodeModalVisible(false)} style={{ padding: 4 }}>
-                <SafeIcon name="close" size={22} color="#FFF" fallbackText="×" />
-              </TouchableOpacity>
-            </View>
-
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
+          <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 14, width: '94%', maxWidth: 460, alignItems: 'center', borderWidth: 1, borderColor: '#333' }}>
             {qrCodeComanda && (() => {
               const porta = obterPortaCardapio();
               const nomeOuNum = qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda || '';
@@ -1161,132 +1154,138 @@ useEffect(() => {
               };
               return (
                 <>
-                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFF', marginBottom: 2 }}>
-                    Comanda {nomeOuNum}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#AAA', textAlign: 'center', marginBottom: 10 }}>
-                    Aponte a câmera do celular ou envie o link direto para o WhatsApp do cliente.
-                  </Text>
-
-                  {/* Botão Ligar / Desligar Túnel Externo (4G / Fora do Wi-Fi) */}
-                  <View style={{
-                    width: '100%',
-                    backgroundColor: isUsingTunnel ? 'rgba(76, 175, 80, 0.15)' : '#242424',
-                    borderWidth: 1,
-                    borderColor: isUsingTunnel ? '#4CAF50' : '#383838',
-                    borderRadius: 10,
-                    paddingHorizontal: 10,
-                    paddingVertical: 8,
-                    marginBottom: 10,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <View style={{ flex: 1, paddingRight: 8 }}>
-                      <Text style={{ fontSize: 12, fontWeight: 'bold', color: isUsingTunnel ? '#4CAF50' : '#DDD' }}>
-                        {isUsingTunnel ? '🟢 Túnel Externo Ligado (4G/Qualquer Local)' : '⚪ Modo Rede Local (Só Wi-Fi)'}
-                      </Text>
-                      <Text style={{ fontSize: 10, color: '#999', marginTop: 1 }}>
-                        {isUsingTunnel ? 'Abre em qualquer lugar (4G/5G ou Wi-Fi)' : 'Ligue o túnel para abrir fora do Wi-Fi'}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={handleToggleTunnel}
-                      disabled={tunnelLoading}
-                      style={{
-                        backgroundColor: isUsingTunnel ? '#D32F2F' : '#2196F3',
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderRadius: 8,
-                        minWidth: 78,
-                        alignItems: 'center',
-                      }}
-                    >
-                      {tunnelLoading ? (
-                        <ActivityIndicator size="small" color="#FFF" />
-                      ) : (
-                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFF' }}>
-                          {isUsingTunnel ? 'Desligar' : 'Ligar Túnel'}
-                        </Text>
-                      )}
+                  {/* Cabeçalho Compacto em 1 Linha */}
+                  <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FF8C00' }} numberOfLines={1}>
+                      📱 Cardápio — <Text style={{ color: '#FFF' }}>Comanda {nomeOuNum}</Text>
+                    </Text>
+                    <TouchableOpacity onPress={() => setQrCodeModalVisible(false)} style={{ padding: 2 }}>
+                      <SafeIcon name="close" size={20} color="#FFF" fallbackText="×" />
                     </TouchableOpacity>
                   </View>
 
-                  {/* QR Code Container */}
-                  <View style={{ backgroundColor: '#FFF', padding: 12, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
-                    <QRCode
-                      value={linkCardapio}
-                      size={155}
-                      logoBackgroundColor='transparent'
-                    />
-                  </View>
-
-                  {/* URL informativa para copiar/acessar manual */}
-                  <View style={{ backgroundColor: '#222', borderRadius: 8, padding: 8, width: '100%', marginBottom: 10, borderWidth: 1, borderColor: '#333' }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                      <Text style={{ fontSize: 11, color: '#888' }}>
-                        {isUsingTunnel ? 'Link Público (Túnel HTTPS):' : 'Link de Acesso (Wi-Fi Local):'}
-                      </Text>
-                      {Platform.OS === 'web' && (
-                        <TouchableOpacity onPress={handleCopyLink} style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: '#333', borderRadius: 4 }}>
-                          <Text style={{ fontSize: 11, color: qrCopied ? '#4CAF50' : '#FF8C00', fontWeight: 'bold' }}>
-                            {qrCopied ? '✓ Copiado!' : '📋 Copiar'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                  {/* Bloco Central Lado a Lado: QR Code à esquerda + Túnel e Link à direita */}
+                  <View style={{ width: '100%', flexDirection: 'row', gap: 10, alignItems: 'stretch', marginBottom: 10 }}>
+                    <View style={{ backgroundColor: '#FFF', padding: 8, borderRadius: 10, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 4 }}>
+                      <QRCode
+                        value={linkCardapio}
+                        size={112}
+                        logoBackgroundColor='transparent'
+                      />
                     </View>
-                    <Text style={{ fontSize: 11, color: isUsingTunnel ? '#4CAF50' : '#FF8C00', fontWeight: 'bold', textAlign: 'center' }} selectable>
-                      {linkCardapio}
-                    </Text>
+
+                    <View style={{ flex: 1, justifyContent: 'space-between', gap: 8 }}>
+                      {/* Controle Ligar / Desligar Túnel */}
+                      <View style={{
+                        backgroundColor: isUsingTunnel ? 'rgba(76, 175, 80, 0.15)' : '#242424',
+                        borderWidth: 1,
+                        borderColor: isUsingTunnel ? '#4CAF50' : '#383838',
+                        borderRadius: 8,
+                        paddingHorizontal: 9,
+                        paddingVertical: 7,
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}>
+                        <View style={{ flex: 1, paddingRight: 6 }}>
+                          <Text style={{ fontSize: 11, fontWeight: 'bold', color: isUsingTunnel ? '#4CAF50' : '#DDD' }} numberOfLines={1}>
+                            {isUsingTunnel ? '🟢 Túnel 4G Ligado' : '⚪ Só Wi-Fi Local'}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: '#999', marginTop: 1 }} numberOfLines={1}>
+                            {isUsingTunnel ? 'Abre em qualquer local' : 'Ligue p/ abrir no 4G'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={handleToggleTunnel}
+                          disabled={tunnelLoading}
+                          style={{
+                            backgroundColor: isUsingTunnel ? '#D32F2F' : '#2196F3',
+                            paddingHorizontal: 9,
+                            paddingVertical: 5,
+                            borderRadius: 6,
+                            minWidth: 66,
+                            alignItems: 'center',
+                          }}
+                        >
+                          {tunnelLoading ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                          ) : (
+                            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFF' }}>
+                              {isUsingTunnel ? 'Desligar' : 'Ligar'}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Link + Botão Copiar */}
+                      <View style={{ backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6, borderWidth: 1, borderColor: '#333', flex: 1, justifyContent: 'center' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                          <Text style={{ fontSize: 10, color: '#888' }}>
+                            {isUsingTunnel ? 'Link Público (HTTPS):' : 'Link Local (Wi-Fi):'}
+                          </Text>
+                          {Platform.OS === 'web' && (
+                            <TouchableOpacity onPress={handleCopyLink} style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#333', borderRadius: 4 }}>
+                              <Text style={{ fontSize: 10, color: qrCopied ? '#4CAF50' : '#FF8C00', fontWeight: 'bold' }}>
+                                {qrCopied ? '✓ Copiado!' : '📋 Copiar'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <Text numberOfLines={2} style={{ fontSize: 10, color: isUsingTunnel ? '#4CAF50' : '#FF8C00', fontWeight: 'bold' }} selectable>
+                          {linkCardapio}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
 
-                  {/* Envio via WhatsApp */}
-                  <View style={{ width: '100%', marginBottom: 14 }}>
-                    <Text style={{ fontSize: 12, color: '#CCC', marginBottom: 6 }}>
+                  {/* Rodapé Compacto: WhatsApp + Enviar + Fechar na mesma linha */}
+                  <View style={{ width: '100%' }}>
+                    <Text style={{ fontSize: 11, color: '#CCC', marginBottom: 4 }}>
                       WhatsApp do Cliente (opcional):
                     </Text>
-                    <TextInput
-                      style={{
-                        backgroundColor: '#262626',
-                        borderWidth: 1,
-                        borderColor: '#444',
-                        borderRadius: 8,
-                        paddingHorizontal: 12,
-                        paddingVertical: 9,
-                        color: '#FFF',
-                        fontSize: 14,
-                        marginBottom: 10,
-                      }}
-                      placeholder="Ex: (11) 99999-9999"
-                      placeholderTextColor="#777"
-                      keyboardType="phone-pad"
-                      value={qrWhatsappPhone}
-                      onChangeText={setQrWhatsappPhone}
-                    />
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#25D366',
-                        paddingVertical: 11,
-                        borderRadius: 25,
-                        width: '100%',
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}
-                      onPress={handleSendWhatsapp}
-                    >
-                      <SafeIcon name="logo-whatsapp" size={18} color="#FFF" fallbackText="📲" />
-                      <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Enviar Link no WhatsApp</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', width: '100%', gap: 8, alignItems: 'center' }}>
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#262626',
+                          borderWidth: 1,
+                          borderColor: '#444',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          color: '#FFF',
+                          fontSize: 13,
+                        }}
+                        placeholder="Ex: (11) 99999-9999"
+                        placeholderTextColor="#777"
+                        keyboardType="phone-pad"
+                        value={qrWhatsappPhone}
+                        onChangeText={setQrWhatsappPhone}
+                      />
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#25D366',
+                          paddingHorizontal: 12,
+                          paddingVertical: 9,
+                          borderRadius: 8,
+                          flexDirection: 'row',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                        onPress={handleSendWhatsapp}
+                      >
+                        <SafeIcon name="logo-whatsapp" size={16} color="#FFF" fallbackText="📲" />
+                        <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Enviar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#333', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8, alignItems: 'center' }}
+                        onPress={() => setQrCodeModalVisible(false)}
+                      >
+                        <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Fechar</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-
-                  <TouchableOpacity
-                    style={{ backgroundColor: '#333', paddingVertical: 10, borderRadius: 25, width: '100%', alignItems: 'center' }}
-                    onPress={() => setQrCodeModalVisible(false)}
-                  >
-                    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Fechar</Text>
-                  </TouchableOpacity>
                 </>
               );
             })()}
