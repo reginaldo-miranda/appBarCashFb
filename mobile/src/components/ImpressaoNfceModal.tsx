@@ -119,67 +119,91 @@ export default function ImpressaoNfceModal({ visible, onClose, status, message, 
 
             {status === 'success' && (
               <View style={styles.center}>
-                <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-                <Text style={styles.successTitle}>Nota Autorizada!</Text>
-                
-                {nfceData?.qrCode?.base64 && (
-                  <View style={styles.qrCodeContainer}>
-                    <Image 
-                      source={{ uri: nfceData.qrCode.base64 }} 
-                      style={styles.qrCodeImage}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.qrCodeLabel}>Aponte a câmera do celular</Text>
-                  </View>
-                )}
-
-                {(nfceData?.nfce?.numero || nfceData?.nfce?.serie) ? (
-                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#E8F5E9', borderRadius: 8, width: '100%', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#2E7D32', textAlign: 'center' }}>✅ NFC-e emitida com sucesso</Text>
-                        <Text style={{ fontSize: 13, color: '#1B5E20', marginTop: 4, textAlign: 'center' }}>Documento fiscal autorizado pela SEFAZ.</Text>
-                        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333', marginTop: 8 }}>
-                            Nº: {String(nfceData.nfce.numero).padStart(9, '0')} – Série: {nfceData.nfce.serie}
-                        </Text>
+                {/* Bloco único compacto: QR Code à esquerda + Dados da Nota à direita */}
+                <View style={styles.successCardCompact}>
+                  {nfceData?.qrCode?.base64 && (
+                    <View style={styles.qrCodeCompactBox}>
+                      <Image
+                        source={{ uri: nfceData.qrCode.base64 }}
+                        style={styles.qrCodeImage}
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.qrCodeLabel}>Aponte a câmera</Text>
                     </View>
-                ) : (
-                    <Text style={styles.message}>{message || 'NFC-e emitida com sucesso.'}</Text>
-                )}
-                
-                <View style={styles.actions}>
-                  {nfceData?.pdfUrl && (
-                      <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FF9800' }]} onPress={() => {
+                  )}
+
+                  <View style={styles.successInfoCol}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+                      <Text style={styles.successTitle}>Nota Autorizada!</Text>
+                    </View>
+
+                    <Text style={styles.successSubText}>
+                      {message || 'Documento fiscal autorizado pela SEFAZ.'}
+                    </Text>
+
+                    {(nfceData?.nfce?.numero || nfceData?.nfce?.serie) && (
+                      <View style={styles.nfceNumBadge}>
+                        <Text style={styles.nfceNumText}>
+                          Nº: {String(nfceData.nfce.numero).padStart(9, '0')} • Série: {nfceData.nfce.serie}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Grade de Botões em 2 Colunas */}
+                <View style={styles.actionsGrid}>
+                  <View style={styles.actionsRow}>
+                    {nfceData?.pdfUrl && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#FF9800', flex: 1 }]}
+                        onPress={() => {
                           if (Platform.OS === 'web') {
-                              window.open(nfceData.pdfUrl, '_blank');
+                            window.open(nfceData.pdfUrl, '_blank');
                           } else {
-                              Linking.openURL(nfceData.pdfUrl);
+                            Linking.openURL(nfceData.pdfUrl);
                           }
-                      }}>
-                      <Ionicons name="print" size={20} color="#fff" />
-                      <Text style={styles.actionText}>Imprimir Cupom (PDF)</Text>
+                        }}
+                      >
+                        <Ionicons name="print" size={18} color="#fff" />
+                        <Text style={styles.actionText}>Imprimir (PDF)</Text>
                       </TouchableOpacity>
-                  )}
+                    )}
 
-                  {nfceData?.pdfUrl && (
-                      <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#009688' }]} onPress={() => setShowEmailModal(true)}>
-                          <Ionicons name="mail" size={20} color="#fff" />
-                          <Text style={styles.actionText}>Enviar por E-mail (PDF + XML)</Text>
+                    {nfceData?.pdfUrl && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#009688', flex: 1 }]}
+                        onPress={() => setShowEmailModal(true)}
+                      >
+                        <Ionicons name="mail" size={18} color="#fff" />
+                        <Text style={styles.actionText}>E-mail (PDF+XML)</Text>
                       </TouchableOpacity>
-                  )}
+                    )}
+                  </View>
 
-                  {(nfceData?.urlConsulta || nfceData?.nfce?.qrCode || nfceData?.qrCode?.url) ? (
-                    <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#2196F3' }]} onPress={() => {
-                       const url = nfceData?.qrCode?.url || nfceData?.nfce?.qrCode || nfceData?.urlConsulta;
-                       if(url) Linking.openURL(url);
-                    }}>
-                      <Ionicons name="qr-code" size={20} color="#fff" />
-                      <Text style={styles.actionText}>Visualizar QR Code</Text>
+                  <View style={styles.actionsRow}>
+                    {(nfceData?.urlConsulta || nfceData?.nfce?.qrCode || nfceData?.qrCode?.url) ? (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#2196F3', flex: 1 }]}
+                        onPress={() => {
+                          const url = nfceData?.qrCode?.url || nfceData?.nfce?.qrCode || nfceData?.urlConsulta;
+                          if (url) Linking.openURL(url);
+                        }}
+                      >
+                        <Ionicons name="qr-code" size={18} color="#fff" />
+                        <Text style={styles.actionText}>Ver QR Code</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: '#4CAF50', flex: 1 }]}
+                      onPress={onClose}
+                    >
+                      <Ionicons name="checkmark" size={18} color="#fff" />
+                      <Text style={styles.actionText}>Concluir / Fechar</Text>
                     </TouchableOpacity>
-                  ) : null}
-
-                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#4CAF50', marginTop: 8 }]} onPress={onClose}>
-                    <Ionicons name="checkmark" size={20} color="#fff" />
-                    <Text style={styles.actionText}>Concluir / Fechar</Text>
-                  </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
@@ -280,29 +304,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center'
   },
   container: {
-    width: '90%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', elevation: 5
+    width: '92%', maxWidth: 440, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', elevation: 5
   },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: 12, borderBottomWidth: 1, borderColor: '#eee'
+    paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderColor: '#eee'
   },
-  title: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  content: { padding: 16, minHeight: 150 },
-  center: { alignItems: 'center', justifyContent: 'center' },
-  loadingText: { marginTop: 16, fontSize: 16, fontWeight: '600', color: '#333' },
-  subText: { marginTop: 8, color: '#666' },
-  successTitle: { marginTop: 8, fontSize: 18, fontWeight: 'bold', color: '#4CAF50' },
-  errorTitle: { marginTop: 8, fontSize: 18, fontWeight: 'bold', color: '#F44336' },
-  message: { marginTop: 4, textAlign: 'center', color: '#555', fontSize: 14 },
-  actions: { marginTop: 12, width: '100%', gap: 8 },
+  title: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  content: { padding: 12, minHeight: 120 },
+  center: { alignItems: 'center', justifyContent: 'center', width: '100%' },
+  loadingText: { marginTop: 14, fontSize: 15, fontWeight: '600', color: '#333' },
+  subText: { marginTop: 6, color: '#666' },
+  successCardCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#C8E6C9',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    width: '100%',
+    gap: 12,
+  },
+  qrCodeCompactBox: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  qrCodeImage: { width: 92, height: 92 },
+  qrCodeLabel: { fontSize: 10, color: '#64748B', marginTop: 2 },
+  successInfoCol: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  successTitle: { fontSize: 16, fontWeight: 'bold', color: '#2E7D32' },
+  successSubText: { fontSize: 12, color: '#1B5E20', lineHeight: 16 },
+  nfceNumBadge: {
+    marginTop: 4,
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#A5D6A7',
+  },
+  nfceNumText: { fontSize: 12, fontWeight: 'bold', color: '#1E293B' },
+  errorTitle: { marginTop: 8, fontSize: 17, fontWeight: 'bold', color: '#F44336' },
+  message: { marginTop: 4, textAlign: 'center', color: '#555', fontSize: 13 },
+  actions: { marginTop: 10, width: '100%', gap: 8 },
+  actionsGrid: { marginTop: 10, width: '100%', gap: 8 },
+  actionsRow: { flexDirection: 'row', width: '100%', gap: 8 },
   actionButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#2196F3', padding: 10, borderRadius: 8, gap: 8
+    backgroundColor: '#2196F3', paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8, gap: 6
   },
-  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  qrCodeContainer: { alignItems: 'center', marginVertical: 8 },
-  qrCodeImage: { width: 120, height: 120 },
-  qrCodeLabel: { fontSize: 12, color: '#888', marginTop: 4 },
+  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  qrCodeContainer: { alignItems: 'center', marginVertical: 6 },
   emailContainer: {
     width: '90%', maxWidth: 350, backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', elevation: 10
   },
