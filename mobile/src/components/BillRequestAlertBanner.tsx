@@ -67,12 +67,38 @@ export default function BillRequestAlertBanner() {
     } catch {}
   };
 
-  const handleOpenScreen = (alerta: AlertaConta) => {
+  const handleOpenScreen = async (alerta: AlertaConta) => {
     stopOrderAlertSound();
+    // Recolhe o alerta imediatamente e marca como ciente no servidor
+    setAlertas((prev) => prev.filter((a) => a.saleId !== alerta.saleId));
+    try {
+      api.post(`/public/conta-alertas/${alerta.saleId}/ack`).catch(() => {});
+    } catch {}
+
+    const detLower = String(alerta.detalhes || '').toLowerCase();
+    const method: 'dinheiro' | 'cartao' | 'pix' = detLower.includes('pix')
+      ? 'pix'
+      : detLower.includes('cart')
+      ? 'cartao'
+      : 'dinheiro';
+
     if (alerta.tipoVenda === 'mesa') {
       router.push('/(tabs)/mesas' as any);
+      const payload = {
+        saleId: alerta.saleId,
+        mesaId: alerta.mesaId,
+        mesaNumero: alerta.mesaNumero,
+        method,
+      };
+      setTimeout(() => events.emit('mesas:open-fechar', payload), 180);
     } else {
       router.push('/(tabs)/comandas' as any);
+      const payload = {
+        saleId: alerta.saleId,
+        comandaNome: alerta.comandaNome,
+        method,
+      };
+      setTimeout(() => events.emit('comandas:open-fechar', payload), 180);
     }
   };
 
@@ -100,8 +126,8 @@ export default function BillRequestAlertBanner() {
               style={styles.openBtn}
               onPress={() => handleOpenScreen(alerta)}
             >
-              <SafeIcon name="open-outline" size={14} color="#FFF" fallbackText="↗" />
-              <Text style={styles.btnText}>Ver {alerta.tipoVenda === 'mesa' ? 'Mesa' : 'Comanda'}</Text>
+              <SafeIcon name="cash-outline" size={14} color="#FFF" fallbackText="💰" />
+              <Text style={styles.btnText}>Fechar {alerta.tipoVenda === 'mesa' ? 'Mesa' : 'Comanda'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

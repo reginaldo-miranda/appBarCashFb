@@ -661,7 +661,25 @@ export default function MesasScreen() {
     const unsub = events.on('mesas:refresh', () => {
       softRefreshMesas();
     });
-    return () => { try { unsub && unsub(); } catch {} };
+    const unsubOpenFechar = events.on('mesas:open-fechar', async (payload: any) => {
+      if (!payload?.mesaId && !payload?.mesaNumero) return;
+      try {
+        const res = await mesaService.list();
+        const lista = Array.isArray(res?.data) ? res.data : [];
+        const target = lista.find(
+          (m: any) =>
+            (payload.mesaId && Number(m.id || m._id) === Number(payload.mesaId)) ||
+            (payload.mesaNumero && Number(m.numero) === Number(payload.mesaNumero))
+        );
+        if (target) {
+          fecharModalFecharMesa(target, payload.method);
+        }
+      } catch {}
+    });
+    return () => {
+      try { unsub && unsub(); } catch {}
+      try { unsubOpenFechar && unsubOpenFechar(); } catch {}
+    };
   }, []);
 
   useEffect(() => {
@@ -1334,13 +1352,21 @@ useEffect(() => {
   };
 
   // Abrir modal de pagamento para fechar mesa
-  const fecharModalFecharMesa = async (mesa: Mesa) => {
+  const fecharModalFecharMesa = async (mesa: Mesa, preferredMethod?: 'dinheiro' | 'cartao' | 'pix') => {
     console.log('🔥🔥🔥 FUNÇÃO fecharModalFecharMesa INICIADA! 🔥🔥🔥');
     console.log('Mesa recebida:', mesa);
     try {
       console.log('🔄 Configurando estados iniciais...');
       setFecharMesaSelecionada(mesa);
-      setFecharPaymentMethod('dinheiro');
+      const obsStr = String((mesa?.vendaAtual as any)?.observacoes || '').toLowerCase();
+      const autoMethod: 'dinheiro' | 'cartao' | 'pix' = preferredMethod
+        ? preferredMethod
+        : obsStr.includes('pix')
+        ? 'pix'
+        : obsStr.includes('cart')
+        ? 'cartao'
+        : 'dinheiro';
+      setFecharPaymentMethod(autoMethod);
       setFecharTotal(0);
       setFecharValorPago(0);
       setFecharSaleId(null);

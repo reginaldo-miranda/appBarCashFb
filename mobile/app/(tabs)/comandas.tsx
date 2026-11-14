@@ -451,7 +451,17 @@ useEffect(() => {
   const unsub = events.on('comandas:refresh', () => {
     softRefreshComandas();
   });
-  return () => { try { unsub && unsub(); } catch {} };
+  const unsubOpenFechar = events.on('comandas:open-fechar', (payload: any) => {
+    if (!payload?.saleId) return;
+    fecharModalFecharComanda(
+      { _id: String(payload.saleId), id: payload.saleId, nomeComanda: payload.comandaNome },
+      payload.method
+    );
+  });
+  return () => {
+    try { unsub && unsub(); } catch {}
+    try { unsubOpenFechar && unsubOpenFechar(); } catch {}
+  };
 }, []);
 
 useEffect(() => {
@@ -555,10 +565,18 @@ useEffect(() => {
   // };
 
   // Função para abrir modal de fechamento de comanda (idêntico às mesas)
-  const fecharModalFecharComanda = async (comanda: any) => {
+  const fecharModalFecharComanda = async (comanda: any, preferredMethod?: 'dinheiro' | 'cartao' | 'pix') => {
     try {
       setFecharComandaSelecionada(comanda);
-      setFecharPaymentMethod('dinheiro');
+      const obsStr = String(comanda?.observacoes || '').toLowerCase();
+      const autoMethod: 'dinheiro' | 'cartao' | 'pix' = preferredMethod
+        ? preferredMethod
+        : obsStr.includes('pix')
+        ? 'pix'
+        : obsStr.includes('cart')
+        ? 'cartao'
+        : 'dinheiro';
+      setFecharPaymentMethod(autoMethod);
       setFecharTotal(0);
       setFecharValorPago(0);
       setFecharSaleId(null);
