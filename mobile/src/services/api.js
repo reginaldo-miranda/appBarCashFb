@@ -68,7 +68,7 @@ function resolveApiBaseUrl() {
         if (envUrl && !isLocalUrl(envUrl)) return envUrl;
         return `http://localhost:${DEFAULT_PORT}/api`;
       }
-      if (protocol === 'https:' && window.location.origin) {
+      if ((protocol === 'https:' || hostname.endsWith('.trycloudflare.com') || hostname.endsWith('.loca.lt')) && window.location.origin) {
         return `${window.location.origin}/api`;
       }
       // O navegador está acessando um IP da rede (ex: 192.168.0.x). Usar ESSE ip!

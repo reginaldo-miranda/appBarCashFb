@@ -79,12 +79,32 @@ export default function LoginScreen() {
           (typeof process !== "undefined"
             ? (process.env?.EXPO_PUBLIC_WEB_API_URL || process.env?.EXPO_PUBLIC_API_URL)
             : "") || "";
-        let initial = stored || envUrl || "";
+        let initial = stored || "";
+
+        // No ambiente Web, a origem que serviu a página é a fonte mais confiável da API
+        if (Platform.OS === "web" && typeof window !== "undefined") {
+          const host = String(window.location.hostname || "");
+          const protocol = String(window.location.protocol || "");
+          const port = String(window.location.port || "");
+          const isTunnelOrRemote = protocol === "https:" || host.endsWith(".trycloudflare.com") || host.endsWith(".loca.lt") || host.includes("railway.app");
+          
+          if (isTunnelOrRemote) {
+            initial = `${window.location.origin}/api`;
+          } else if (port !== "8082" && host && !["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(host)) {
+            const effectivePort = port ? `:${port}` : ":4000";
+            initial = `${protocol || "http:"}//${host}${effectivePort}/api`;
+          }
+        }
+
+        if (!initial) {
+          initial = envUrl || "";
+        }
         if (initial && isLocalHost(initial)) {
           initial = "";
         }
         if (initial) {
           setApiUrl(initial);
+          await setApiBaseUrl(initial);
           const fromStored = Boolean(stored);
           setDbOption(
             initial.includes("railway.app")
@@ -98,6 +118,7 @@ export default function LoginScreen() {
           const res = await retryTestApi(initial, 8, 1500);
           if (res.ok) {
             setBaseStatus("ok");
+            await setApiBaseUrl(initial);
             const dbTarget =
               res?.data?.dbTarget ||
               (initial.includes("railway") ? "railway" : "local");
@@ -149,14 +170,22 @@ export default function LoginScreen() {
       if (Platform.OS === "web" && typeof window !== "undefined") {
         const host = String(window.location.hostname || "");
         const protocol = String(window.location.protocol || "");
-        
+        const port = String(window.location.port || "");
+        const isTunnelOrRemote = protocol === "https:" || host.endsWith(".trycloudflare.com") || host.endsWith(".loca.lt") || host.includes("railway.app");
+
+        // Se acessado via HTTPS ou Túnel, usa a origem do próprio túnel
+        if (isTunnelOrRemote) {
+          return `${window.location.origin}/api`;
+        }
+
         // Correção para Electron (Desktop)
         if (host === '-' || protocol === 'app:' || ["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(host)) {
            return `http://localhost:${DEFAULT_PORT}/api`;
         }
         
         if (host) {
-          return `http://${host}:${DEFAULT_PORT}/api`;
+          const effectivePort = (port && port !== "8082") ? `:${port}` : `:${DEFAULT_PORT}`;
+          return `${protocol || "http:"}//${host}${effectivePort}/api`;
         }
       }
       // Host do bundle JS (mais confiável)
@@ -207,7 +236,7 @@ export default function LoginScreen() {
       try {
         const base = getLanBaseUrl();
         try {
-          if (base) {
+          if (base && !base.startsWith("https:") && !base.includes("trycloudflare.com")) {
             await startLocalApi('local', base);
           }
         } catch {}
@@ -215,6 +244,7 @@ export default function LoginScreen() {
         const res = await retryTestApi(base, 2, 800);
         if (res.ok) {
           setApiUrl(base);
+          await setApiBaseUrl(base);
           setBaseStatus("ok");
           const host = new URL(base).hostname;
           const dbTarget = String(res?.data?.dbTarget || "local").toUpperCase();
@@ -299,21 +329,19 @@ export default function LoginScreen() {
       await setApiBaseUrl(autoUrl);
 
       try {
-        await startLocalApi('local', autoUrl);
-        await new Promise((r) => setTimeout(r, 600));
+        if (!autoUrl.startsWith("https:") && !autoUrl.includes("trycloudflare.com")) {
+          await startLocalApi('local', autoUrl);
+          await new Promise((r) => setTimeout(r, 600));
+        }
       } catch {}
 
-      // Alternar explicitamente o servidor para DB_TARGET=local antes de validar
-      setBaseMessage("Alternando servidor para DB • LOCAL...");
-      const switched = await switchServerDbTarget(autoUrl, "local");
-      if (!switched.ok) {
-        setBaseStatus("error");
-        const reason = String(
-          switched.reason || "Falha ao alternar DB para LOCAL"
-        );
-        setBaseMessage(reason);
-        Alert.alert("Erro", reason);
-        return;
+      // Alternar explicitamente o servidor para DB_TARGET=local antes de validar (apenas se for LAN/local)
+      if (!autoUrl.startsWith("https:") && !autoUrl.includes("trycloudflare.com")) {
+        setBaseMessage("Alternando servidor para DB • LOCAL...");
+        const switched = await switchServerDbTarget(autoUrl, "local");
+        if (!switched.ok) {
+          console.warn("Aviso ao alternar DB:", switched.reason);
+        }
       }
 
       // Validar saúde com tentativas/backoff
