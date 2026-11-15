@@ -88,27 +88,6 @@ export default function SaleScreen() {
       .catch(() => {});
   }, []);
 
-  // Abre automaticamente o modal "Finalizar Venda" quando vem de Fechar Mesa / Fechar Comanda / Alerta
-  useEffect(() => {
-    if (loading || !sale) return;
-    const saleKey = `${(sale as any)?._id || (sale as any)?.id || ''}:${autoFinalize || ''}:${payMethod || ''}`;
-    if (String(autoFinalize) === '1' && autoFinalizeDoneRef.current !== saleKey) {
-      autoFinalizeDoneRef.current = saleKey;
-      const obsStr = String((sale as any)?.observacoes || '').toLowerCase();
-      const paramMethod = String(payMethod || '').toLowerCase();
-      const resolved =
-        paramMethod === 'pix' || paramMethod === 'cartao' || paramMethod === 'dinheiro'
-          ? paramMethod
-          : obsStr.includes('pix')
-          ? 'pix'
-          : obsStr.includes('cart')
-          ? 'cartao'
-          : 'dinheiro';
-      setPaymentMethod(resolved);
-      setModalVisible(true);
-    }
-  }, [loading, sale, autoFinalize, payMethod]);
-
   const handleEmitNfce = async (saleIdToEmit: string, itemsOverlay?: any[]) => {
     console.log('[DEBUG] handleEmitNfce CALLED. ID:', saleIdToEmit);
     setNfceModalVisible(true);
@@ -401,6 +380,64 @@ export default function SaleScreen() {
   const [cashbackPromptVisible, setCashbackPromptVisible] = useState(false);
   const [afterCashbackAction, setAfterCashbackAction] = useState<'modal' | 'split'>('modal');
   const [pixModalVisible, setPixModalVisible] = useState(false);
+
+  // Helper para calcular o saldo restante da venda
+  const calcSaleRemaining = (s: any, c: any[]): number => {
+    const totalIt = (c && c.length > 0)
+      ? c.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+      : (s?.itens || []).reduce((sum: number, it: any) => sum + Number(it.subtotal || 0), 0);
+    const totalPd = (s?.caixaVendas || []).reduce((sum: number, cv: any) => sum + Number(cv.valor || 0), 0);
+    return Math.max(0, totalIt - totalPd);
+  };
+
+  // Abre automaticamente o fechamento ao vir de Fechar Mesa / Fechar Comanda / Alerta
+  // Se o cliente possuir saldo de Cashback > 0, exibe a tela do Cashback primeiro!
+  // Caso contrário, abre diretamente o modal padrão de pagamento (Dinheiro, Cartão, PIX).
+  useEffect(() => {
+    if (loading || !sale) return;
+    const saleKey = `${(sale as any)?._id || (sale as any)?.id || ''}:${autoFinalize || ''}:${payMethod || ''}`;
+    if (String(autoFinalize) === '1' && autoFinalizeDoneRef.current !== saleKey) {
+      autoFinalizeDoneRef.current = saleKey;
+      const obsStr = String((sale as any)?.observacoes || '').toLowerCase();
+      const paramMethod = String(payMethod || '').toLowerCase();
+      const resolved =
+        paramMethod === 'pix' || paramMethod === 'cartao' || paramMethod === 'dinheiro'
+          ? paramMethod
+          : obsStr.includes('pix')
+          ? 'pix'
+          : obsStr.includes('cart')
+          ? 'cartao'
+          : 'dinheiro';
+      setPaymentMethod(resolved);
+
+      (async () => {
+        try {
+          const cid = (sale as any)?.clienteId || (sale as any)?.cliente?.id || (sale as any)?.cliente?._id || selectedCliente?.id || selectedCliente?._id;
+          const remaining = calcSaleRemaining(sale, cart);
+          let currentBalance = 0;
+          if (cid) {
+            try {
+              const cRes = await api.get(`/customer/${cid}`);
+              if (cRes?.data) {
+                setSelectedCliente(cRes.data);
+                currentBalance = Number(cRes.data.saldoCashback || 0);
+              }
+            } catch {
+              currentBalance = Number((sale as any)?.cliente?.saldoCashback || selectedCliente?.saldoCashback || 0);
+            }
+          }
+          if (currentBalance > 0 && remaining > 0.05) {
+            setAfterCashbackAction('modal');
+            setCashbackPromptVisible(true);
+            return;
+          }
+        } catch (e) {
+          console.warn('Erro ao checar saldo de cashback no autoFinalize:', e);
+        }
+        setModalVisible(true);
+      })();
+    }
+  }, [loading, sale, autoFinalize, payMethod, cart]);
 
   // Fiscal Validation Modal State
   const [fiscalModalVisible, setFiscalModalVisible] = useState(false);
@@ -767,9 +804,23 @@ export default function SaleScreen() {
   const handleSelectClient = async (client: any) => {
       setSelectedCliente(client);
       setShowClientModal(false);
-      if (clientModalSource === 'checkout') setModalVisible(true);
-      if (clientModalSource === 'delivery') setDeliveryModalVisible(true);
+      const isCheckout = clientModalSource === 'checkout';
+      const isDelivery = clientModalSource === 'delivery';
       setClientModalSource(null);
+
+      // Se a seleção veio da tela de finalização da venda:
+      // Se o cliente possuir saldo de Cashback > 0 e a conta estiver aberta, abre a tela do Cashback primeiro!
+      if (isCheckout) {
+        const clientBalance = Number(client?.saldoCashback || 0);
+        const rem = calcSaleRemaining(sale, cart);
+        if (clientBalance > 0 && rem > 0.05) {
+          setAfterCashbackAction('modal');
+          setCashbackPromptVisible(true);
+        } else {
+          setModalVisible(true);
+        }
+      }
+      if (isDelivery) setDeliveryModalVisible(true);
       let newAddress = deliveryAddress;
       // Auto-fill delivery address if empty and client has address
       // Also if IS delivery mode or we want to prompt?
@@ -1730,18 +1781,9 @@ export default function SaleScreen() {
                            const cRes = await api.get(`/customer/${selectedCliente.id || selectedCliente._id}`);
                            const currentBalance = Number(cRes.data.saldoCashback || 0);
                            
-                           // Update selected client in view if needed (optional)
-                           // setSelectedCliente(prev => ({...prev, saldoCashback: currentBalance}));
-                           
-                           if (currentBalance > 0 && totalRemaining > 0) {
-                               // Passar o saldo atualizado para o prompt via prop ou state temporário
-                               // Como o componente CashbackPromptModal usa 'balance' prop, precisamos garantir que ele receba estático ou via state.
-                               // O jeito mais limpo é atualizar o selectedCliente ou criar um state local 'promptBalance'.
-                               // Vamos atualizar o selectedCliente silentemente ou usar um state novo.
-                               
-                               // OPÇÃO: Disparar o modal e passar o valor. Mas o modal le do selectedCliente no render.
-                               // Vamos forçar update do selectedCliente
+                           if (currentBalance > 0 && totalRemaining > 0.05) {
                                setSelectedCliente({...selectedCliente, saldoCashback: currentBalance});
+                               setAfterCashbackAction('modal');
                                setCashbackPromptVisible(true);
                                return;
                            }
@@ -2142,6 +2184,14 @@ export default function SaleScreen() {
                     const res = await saleService.getById(saleId);
                     // ... (rest of logic will be handled by existing code or reload)
                     setSale(res.data);
+
+                    const cid = res.data?.clienteId || res.data?.cliente?.id || (res.data?.cliente as any)?._id || selectedCliente?.id || selectedCliente?._id;
+                    if (cid) {
+                        try {
+                            const cRes = await api.get(`/customer/${cid}`);
+                            if (cRes?.data) setSelectedCliente(cRes.data);
+                        } catch {}
+                    }
                     
                     // Success feedback
                     Alert.alert('Sucesso', 'Cashback aplicado com sucesso! Finalize o restante da venda.');
