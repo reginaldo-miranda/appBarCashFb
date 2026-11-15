@@ -7,54 +7,58 @@ import {
   Platform,
   Modal,
   Animated,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 
-// QRCode SVG só funciona em native; na web usamos canvas via a lib 'qrcode'
-let QRCodeCanvas: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    QRCodeCanvas = require('react-native-qrcode-svg').default;
-  } catch {}
-}
-
 import { events } from '../utils/eventBus';
+import api from '../services/api';
 
 /**
  * Componente QR Code para acesso mobile via navegador.
  * Exibido APENAS na versão web (desktop).
- * Gera um QR Code com a URL do sistema para o operador escanear com o celular.
+ * Gera um QR Code com a URL do sistema (/login) para o funcionário escanear com o celular.
+ * Suporta alternância entre Wi-Fi Local e Túnel Cloudflare (4G/remoto).
  */
 export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?: boolean }) {
   const [visible, setVisible] = useState(false);
-  const [url, setUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
+  // Estados do Túnel Cloudflare
+  const [tunnelActive, setTunnelActive] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [tunnelLoading, setTunnelLoading] = useState(false);
+
+  // Estados de Rede Local
+  const [lanIp, setLanIp] = useState('');
+  const [webPort, setWebPort] = useState('4000');
+
   // Só renderiza na web
   if (Platform.OS !== 'web') return null;
 
-  // Detecta o IP da LAN para gerar o QR Code (nunca usa localhost)
+  // Detecta o IP da LAN para gerar o QR Code local
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
-    const { protocol, hostname, port } = window.location;
-    const webPort = port || '8082';
+    const { hostname, port } = window.location;
+    const currentPort = port || '4000';
+    setWebPort(currentPort);
 
     // Se já está acessando via IP da LAN, usa direto
     if (!LOCAL_HOSTS.includes(hostname)) {
-      setUrl(`${protocol}//${hostname}:${webPort}`);
+      setLanIp(hostname);
       return;
     }
 
-    // Fluxo assíncrono para obter IP dinâmico
+    // Fluxo assíncrono para obter IP dinâmico da máquina host
     (async () => {
       const isVirtualIp = (ip: string) => {
         if (!ip) return true;
         if (LOCAL_HOSTS.includes(ip)) return true;
         if (ip.startsWith('169.254.')) return true;
-        // Ignorar faixa virtual interna do Windows/Hyper-V/WSL (172.x.x.x)
         if (ip.startsWith('172.')) return true;
         return false;
       };
@@ -82,26 +86,25 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
         return null;
       };
 
-      // 1. Tentar buscar IP via API de saúde (/health) em tempo real (fonte real do servidor local)
+      // 1. Tentar buscar IP via API de saúde (/health)
       try {
-        const res = await fetch(`http://localhost:4000/api/health`, { signal: AbortSignal.timeout(3000) });
-        const data = await res.json();
-        if (data?.lanIp && !isVirtualIp(data.lanIp)) {
-          setUrl(`http://${data.lanIp}:${webPort}`);
+        const res = await api.get('/health', { timeout: 3000 });
+        if (res?.data?.lanIp && !isVirtualIp(res.data.lanIp)) {
+          setLanIp(res.data.lanIp);
           return;
         }
       } catch (e) {
         console.log('Erro ao consultar /health no acesso mobile:', e);
       }
 
-      // 2. Extrair das variáveis de ambiente/Metro (garantindo que não seja IP virtual)
-      const lanIp = tryExtractLanIp();
-      if (lanIp) {
-        setUrl(`http://${lanIp}:${webPort}`);
+      // 2. Extrair das variáveis de ambiente/Metro
+      const extractedLan = tryExtractLanIp();
+      if (extractedLan) {
+        setLanIp(extractedLan);
         return;
       }
 
-      // 4. Fallback: usar WebRTC para detectar IP local
+      // 3. Fallback: usar WebRTC para detectar IP local
       try {
         const pc = new RTCPeerConnection({ iceServers: [] });
         pc.createDataChannel('');
@@ -112,7 +115,7 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
             if (!e.candidate) { resolve(); return; }
             const match = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
             if (match && !LOCAL_HOSTS.includes(match[1]) && !match[1].startsWith('0.')) {
-              setUrl(`http://${match[1]}:${webPort}`);
+              setLanIp(match[1]);
               pc.close();
               resolve();
             }
@@ -121,22 +124,27 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
         });
       } catch {}
 
-      // 5. Último recurso: usar o fallback fixo (neste caso, mantemos o hostname)
-      if (!url) {
-        setUrl(`http://${hostname}:${webPort}`);
-      }
+      // 4. Último recurso: usar hostname atual
+      setLanIp(hostname);
     })();
   }, []);
 
+  // Determinar a URL final de acesso (Túnel vs Wi-Fi Local)
+  const isUsingTunnel = Boolean(tunnelActive && tunnelUrl);
+  const cleanTunnel = isUsingTunnel ? String(tunnelUrl).replace(/\/$/, '') : '';
+  const hostClean = lanIp || (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+  const activeUrl = isUsingTunnel
+    ? `${cleanTunnel}/login`
+    : `http://${hostClean}:${webPort}/login`;
+
   // Gera QR Code como data URL usando canvas na web
   useEffect(() => {
-    if (!url || Platform.OS !== 'web') return;
+    if (!activeUrl || Platform.OS !== 'web') return;
     (async () => {
       try {
-        // Importar qrcode dinamicamente (dependência de react-native-qrcode-svg)
         const QRCode = await import('qrcode');
-        const dataUrl = await QRCode.toDataURL(url, {
-          width: 220,
+        const dataUrl = await QRCode.toDataURL(activeUrl, {
+          width: 200,
           margin: 2,
           color: {
             dark: '#1E293B',
@@ -149,16 +157,56 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
         console.warn('Erro ao gerar QR Code:', e);
       }
     })();
-  }, [url]);
+  }, [activeUrl]);
 
-  const handleOpen = useCallback(() => {
+  // Abre modal e atualiza status do túnel
+  const handleOpen = useCallback(async () => {
     setVisible(true);
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 250,
       useNativeDriver: true,
     }).start();
+
+    try {
+      const res = await api.get('/config/tunnel/status');
+      if (res?.data) {
+        setTunnelActive(Boolean(res.data.active && res.data.url));
+        setTunnelUrl(res.data.url || null);
+      }
+    } catch (e) {
+      console.warn('Erro ao verificar status do túnel:', e);
+    }
   }, [fadeAnim]);
+
+  // Alterna ligar/desligar túnel Cloudflare
+  const handleToggleTunnel = async () => {
+    if (tunnelLoading) return;
+    setTunnelLoading(true);
+    try {
+      if (tunnelActive) {
+        await api.post('/config/tunnel/stop');
+        setTunnelActive(false);
+        setTunnelUrl(null);
+      } else {
+        const res = await api.post('/config/tunnel/start');
+        if (res?.data?.active && res?.data?.url) {
+          setTunnelActive(true);
+          setTunnelUrl(res.data.url);
+        } else {
+          if (typeof window !== 'undefined') {
+            window.alert(res?.data?.error || 'Não foi possível iniciar o túnel externo.');
+          }
+        }
+      }
+    } catch (e: any) {
+      if (typeof window !== 'undefined') {
+        window.alert('Falha ao alternar o túnel: ' + (e?.message || ''));
+      }
+    } finally {
+      setTunnelLoading(false);
+    }
+  };
 
   const handleClose = useCallback(() => {
     Animated.timing(fadeAnim, {
@@ -171,12 +219,12 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
   const handleCopy = useCallback(async () => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(activeUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }
     } catch {}
-  }, [url]);
+  }, [activeUrl]);
 
   // Escuta o evento global para abrir o modal a partir do menu superior
   useEffect(() => {
@@ -209,62 +257,110 @@ export default function QrCodeAcessoMobile({ hideButton = false }: { hideButton?
       >
         <View style={styles.overlay}>
           <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.headerIcon}>📱</Text>
-                <Text style={styles.headerTitle}>Acesso via Celular</Text>
-              </View>
-              <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-                <Text style={styles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Instruções */}
-            <Text style={styles.instructions}>
-              Escaneie o QR Code abaixo com a câmera do celular para abrir o sistema no navegador.
-              Não precisa instalar nenhum aplicativo!
-            </Text>
-
-            {/* QR Code */}
-            <View style={styles.qrContainer}>
-              {qrDataUrl ? (
-                <img
-                  src={qrDataUrl}
-                  alt="QR Code de acesso"
-                  style={{ width: 220, height: 220, borderRadius: 8 }}
-                />
-              ) : (
-                <View style={styles.qrPlaceholder}>
-                  <Text style={styles.qrPlaceholderText}>Gerando QR Code...</Text>
-                </View>
-              )}
-            </View>
-
-            {/* URL */}
-            <View style={styles.urlBox}>
-              <Text style={styles.urlLabel}>URL de acesso:</Text>
-              <Text style={styles.urlText} selectable>{url}</Text>
-            </View>
-
-            {/* Botão Copiar */}
-            <TouchableOpacity
-              style={[styles.copyBtn, copied && styles.copyBtnSuccess]}
-              onPress={handleCopy}
-              activeOpacity={0.8}
+            <ScrollView
+              contentContainerStyle={{ alignItems: 'center', width: '100%' }}
+              showsVerticalScrollIndicator={false}
+              style={{ width: '100%' }}
             >
-              <Text style={[styles.copyBtnText, copied && styles.copyBtnTextSuccess]}>
-                {copied ? '✓ Copiado!' : '📋 Copiar URL'}
-              </Text>
-            </TouchableOpacity>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <Text style={styles.headerIcon}>📱</Text>
+                  <Text style={styles.headerTitle}>Acesso via Celular</Text>
+                </View>
+                <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
+                  <Text style={styles.closeBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-            {/* Dica PWA */}
-            <View style={styles.tipBox}>
-              <Text style={styles.tipIcon}>💡</Text>
-              <Text style={styles.tipText}>
-                Dica: No celular, toque em "Adicionar à tela inicial" no navegador para usar como um app!
+              {/* Instruções */}
+              <Text style={styles.instructions}>
+                Escaneie o QR Code com a câmera do celular para abrir a tela de Login do sistema no navegador.
               </Text>
-            </View>
+
+              {/* Controle Ligar / Desligar Túnel */}
+              <View style={[
+                styles.tunnelBox,
+                isUsingTunnel ? styles.tunnelBoxActive : styles.tunnelBoxInactive
+              ]}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={[
+                    styles.tunnelTitle,
+                    { color: isUsingTunnel ? '#2E7D32' : '#1E293B' }
+                  ]} numberOfLines={1}>
+                    {isUsingTunnel ? '🟢 Túnel 4G Ligado' : '⚪ Só Wi-Fi Local'}
+                  </Text>
+                  <Text style={[
+                    styles.tunnelSubtitle,
+                    { color: isUsingTunnel ? '#388E3C' : '#64748B' }
+                  ]}>
+                    {isUsingTunnel
+                      ? 'Acesso liberado de qualquer local (Wi-Fi ou 4G)'
+                      : 'Ligue p/ abrir no 4G de qualquer lugar'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleToggleTunnel}
+                  disabled={tunnelLoading}
+                  style={[
+                    styles.tunnelBtn,
+                    { backgroundColor: isUsingTunnel ? '#D32F2F' : '#2196F3' }
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  {tunnelLoading ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.tunnelBtnText}>
+                      {isUsingTunnel ? 'Desligar' : 'Ligar'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* QR Code */}
+              <View style={styles.qrContainer}>
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt="QR Code de acesso"
+                    style={{ width: 190, height: 190, borderRadius: 8 }}
+                  />
+                ) : (
+                  <View style={styles.qrPlaceholder}>
+                    <ActivityIndicator size="large" color="#2196F3" />
+                    <Text style={styles.qrPlaceholderText}>Gerando QR Code...</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* URL */}
+              <View style={styles.urlBox}>
+                <Text style={styles.urlLabel}>
+                  Link de Acesso ({isUsingTunnel ? 'Túnel 4G' : 'Wi-Fi Local'}):
+                </Text>
+                <Text style={styles.urlText} selectable>{activeUrl}</Text>
+              </View>
+
+              {/* Botão Copiar */}
+              <TouchableOpacity
+                style={[styles.copyBtn, copied && styles.copyBtnSuccess]}
+                onPress={handleCopy}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.copyBtnText, copied && styles.copyBtnTextSuccess]}>
+                  {copied ? '✓ Copiado com Sucesso!' : '📋 Copiar Link de Acesso'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Dica PWA */}
+              <View style={styles.tipBox}>
+                <Text style={styles.tipIcon}>💡</Text>
+                <Text style={styles.tipText}>
+                  Dica: No celular, o funcionário faz login com seu usuário ou PIN e tem acesso conforme seu perfil.
+                </Text>
+              </View>
+            </ScrollView>
           </Animated.View>
         </View>
       </Modal>
@@ -301,17 +397,18 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 32,
+    borderRadius: 20,
+    padding: 20,
     width: '100%',
     maxWidth: 420,
+    maxHeight: '92%',
     alignItems: 'center',
     elevation: 20,
     shadowColor: '#000',
@@ -324,48 +421,87 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerIcon: {
-    fontSize: 24,
-    marginRight: 10,
+    fontSize: 22,
+    marginRight: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#1E293B',
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#64748B',
     fontWeight: '700',
   },
   instructions: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  tunnelBox: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  tunnelBoxActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#81C784',
+  },
+  tunnelBoxInactive: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  tunnelTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tunnelSubtitle: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+  tunnelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  tunnelBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
   },
   qrContainer: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 20,
+    marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -373,8 +509,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   qrPlaceholder: {
-    width: 220,
-    height: 220,
+    width: 190,
+    height: 190,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
@@ -382,37 +518,38 @@ const styles = StyleSheet.create({
   },
   qrPlaceholderText: {
     color: '#94A3B8',
-    fontSize: 14,
+    fontSize: 12,
+    marginTop: 8,
   },
   urlBox: {
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 10,
+    padding: 10,
     width: '100%',
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   urlLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94A3B8',
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 3,
     letterSpacing: 0.5,
   },
   urlText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#1E293B',
     fontWeight: '600',
     fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
   },
   copyBtn: {
     backgroundColor: '#E3F2FD',
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 12,
-    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 12,
     width: '100%',
     alignItems: 'center',
   },
@@ -421,7 +558,7 @@ const styles = StyleSheet.create({
   },
   copyBtnText: {
     color: '#1565C0',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   copyBtnTextSuccess: {
@@ -431,21 +568,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: '#FFFBEB',
-    padding: 12,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 8,
     width: '100%',
     borderWidth: 1,
     borderColor: '#FEF3C7',
   },
   tipIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    fontSize: 14,
+    marginRight: 6,
     marginTop: 1,
   },
   tipText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#92400E',
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 16,
   },
 });
