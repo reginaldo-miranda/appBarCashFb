@@ -186,10 +186,13 @@ export default function AdminProdutosScreen() {
     cbsClassTrib: '410031',
     cbsAliquota: '',
     isAliquota: '',
+    temTamanhos: false,
+    temVariacao: false,
   });
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [tamanhos, setTamanhos] = useState<{ id?: number; nome: string; preco: string }[]>([]);
   const [showNcmMenu, setShowNcmMenu] = useState(false);
   const [showReformaTributaria, setShowReformaTributaria] = useState(false);
 
@@ -248,6 +251,9 @@ export default function AdminProdutosScreen() {
       localVendaId: formData.localVendaId || undefined,
       disponivel: formData.disponivel,
       imagem: formData.imagem || null,
+      temVariacao: formData.temVariacao,
+      temTamanhos: formData.temTamanhos,
+      tamanhos: tamanhos,
       ncm: formData.ncm,
       cest: formData.cest,
       cfop: formData.cfop,
@@ -499,6 +505,23 @@ export default function AdminProdutosScreen() {
         isAliquota: formData.isAliquota !== '' ? parseFloat(formData.isAliquota.replace(',', '.')) : null,
       };
 
+      productData.temVariacao = !!formData.temVariacao;
+      productData.temTamanhos = !!formData.temTamanhos;
+      if (formData.temTamanhos) {
+        productData.tamanhos = tamanhos
+          .filter(t => t.nome && t.nome.trim() !== '')
+          .map(t => ({
+            id: t.id,
+            nome: t.nome.trim(),
+            preco: parseValue(t.preco)
+          }));
+        if (productData.tamanhos.length > 0 && (!productData.precoVenda || productData.precoVenda === 0)) {
+          productData.precoVenda = productData.tamanhos[0].preco;
+        }
+      } else {
+        productData.tamanhos = [];
+      }
+
       if (selectedSetores !== null) {
         productData.setoresImpressaoIds = selectedSetores.map((id) => Number(id));
       }
@@ -551,9 +574,20 @@ export default function AdminProdutosScreen() {
       cbsClassTrib: (product as any).cbsClassTrib || '410031',
       cbsAliquota: (product as any).cbsAliquota !== null && (product as any).cbsAliquota !== undefined ? String((product as any).cbsAliquota) : '',
       isAliquota: (product as any).isAliquota !== null && (product as any).isAliquota !== undefined ? String((product as any).isAliquota) : '',
+      temVariacao: !!(product as any).temVariacao,
+      temTamanhos: !!(product as any).temTamanhos,
     });
     setShowNcmMenu(false);
     setShowReformaTributaria(false);
+    if (Array.isArray((product as any).tamanhos) && (product as any).tamanhos.length > 0) {
+      setTamanhos((product as any).tamanhos.map((t: any) => ({
+        id: t.id,
+        nome: t.nome || '',
+        preco: (t.preco !== undefined && t.preco !== null ? t.preco : 0).toString()
+      })));
+    } else {
+      setTamanhos([]);
+    }
     setEditingProduct(product);
     setSelectedSetores(null);
     try {
@@ -2224,6 +2258,66 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 2,
+  },
+  switchesPrecoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderColor: '#F1F5F9',
+    gap: 8,
+  },
+  switchOptionCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  switchOptionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  tamanhosBox: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  tamanhosTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#334155',
+  },
+  addTamanhoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  addTamanhoBtnText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#0284C7',
+  },
+  tamanhoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 5,
+  },
+  removeTamanhoBtn: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subCard: {
     backgroundColor: '#fff',
