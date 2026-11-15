@@ -47,7 +47,7 @@ export default function PaymentSplitModal({
   onPaymentSuccess
 }: PaymentSplitModalProps) {
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768 || Platform.OS === 'web';
+  const isTablet = width >= 720;
 
   const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
@@ -592,54 +592,36 @@ export default function PaymentSplitModal({
             </TouchableOpacity>
           </View>
           
-          <View style={{ flex: 1, flexDirection: isTablet ? 'row' : 'column' }}>
-            {/* Lista de Itens */}
+          <View style={{ flex: 1, flexDirection: isTablet ? 'row' : 'column', overflow: 'hidden' }}>
+            {/* Coluna Esquerda: Lista de Itens (Altura Total) */}
             <View style={{ 
-              flex: isTablet ? 0.65 : 1, 
+              flex: isTablet ? 0.58 : 1, 
               borderRightWidth: isTablet ? 1 : 0, 
               borderBottomWidth: isTablet ? 0 : 1,
-              borderColor: '#eee', 
+              borderColor: '#e0e0e0', 
               display: 'flex', 
-              flexDirection: 'column' 
+              flexDirection: 'column',
+              backgroundColor: '#fff'
             }}>
-                {/* Context Info Header */}
-                <View style={{ padding: 12, backgroundColor: '#f8f9fa', borderBottomWidth: 1, borderColor: '#eee' }}>
-                    {sale && (
-                        <View>
-                             {(sale as any).mesa && (
-                                 <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#4CAF50' }}>
-                                     Mesa {(sale as any).mesa.numero} {(sale as any).mesa.nomeResponsavel ? `- ${(sale as any).mesa.nomeResponsavel}` : ''}
-                                 </Text>
-                             )}
-                             {(sale as any).tipoVenda === 'comanda' && (
-                                 <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#FF9800' }}>
-                                     Comanda {(sale as any).numeroComanda || (sale as any).codigo || ''} {(sale as any).nomeComanda ? `- ${(sale as any).nomeComanda}` : ''}
-                                 </Text>
-                             )}
-                             {/* Se não for mesa nem comanda, ou se tiver cliente vinculado, mostra cliente */}
-                             {sale.cliente && (
-                                 <Text style={{ fontSize: 14, color: '#555', marginTop: 4 }}>
-                                     Cliente: <Text style={{ fontWeight: 'bold' }}>{sale.cliente.nome}</Text>
-                                 </Text>
-                             )}
-                        </View>
-                    )}
-                </View>
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', paddingRight: 12, borderBottomWidth: 1, borderColor: '#f0f0f0' }}>
+                <View style={styles.leftColHeader}>
                     <Text style={styles.sectionTitle}>Selecione os itens a pagar:</Text>
-                    <TouchableOpacity onPress={() => {
-                      const all = new Map();
-                      itemBalances.forEach(i => {
-                        if (!i.fullyPaid) all.set(i.itemId, i.remaining);
-                      });
-                      setSelectedItems(all);
-                    }}>
-                      <Text style={{ color: '#2196F3', fontWeight: 'bold' }}>Selecionar Tudo</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <TouchableOpacity onPress={() => {
+                        const all = new Map();
+                        itemBalances.forEach(i => {
+                          if (!i.fullyPaid) all.set(i.itemId, i.remaining);
+                        });
+                        setSelectedItems(all);
+                      }}>
+                        <Text style={{ color: '#2196F3', fontWeight: 'bold', fontSize: 13 }}>Selecionar Tudo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setSelectedItems(new Map())}>
+                        <Text style={{ color: '#888', fontWeight: '600', fontSize: 13 }}>Limpar</Text>
+                      </TouchableOpacity>
+                    </View>
                 </View>
                 
-                <ScrollView style={styles.list}>
+                <ScrollView style={styles.list} contentContainerStyle={{ padding: 8 }}>
                     {itemBalances.map((item) => {
                       const isSelected = selectedItems.has(item.itemId);
                       const amount = selectedItems.get(item.itemId);
@@ -647,14 +629,13 @@ export default function PaymentSplitModal({
                       if (item.fullyPaid) {
                         return (
                          <View key={item.itemId} style={[styles.itemRow, styles.itemPaid]}>
-                           <Ionicons name="checkmark-circle" size={22} color="#4CAF50" style={{ marginRight: 8 }} />
+                           <Ionicons name="checkmark-circle" size={20} color="#4CAF50" style={{ marginRight: 8 }} />
                            <View style={{ flex: 1 }}>
-                             {/* Removido line-through para melhorar legibilidade conforme solicitado */}
-                             <Text style={[styles.itemName, { color: '#555' }]}>{item.name}</Text>
-                             <Text style={{ fontSize: 12, color: '#4CAF50' }}>Item totalmente quitado</Text>
+                             <Text style={[styles.itemName, { color: '#666' }]}>{item.name}</Text>
+                             <Text style={{ fontSize: 11, color: '#4CAF50' }}>Item totalmente quitado</Text>
                            </View>
-                           <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#E8F5E9', borderRadius: 4 }}>
-                              <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 12 }}>PAGO</Text>
+                           <View style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#E8F5E9', borderRadius: 4 }}>
+                              <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 11 }}>PAGO</Text>
                            </View>
                          </View>
                         );
@@ -668,13 +649,13 @@ export default function PaymentSplitModal({
                           >
                             <Ionicons 
                               name={isSelected ? "checkbox" : "square-outline"} 
-                              size={24} 
+                              size={22} 
                               color={isSelected ? "#2196F3" : "#aaa"} 
                             />
                           </TouchableOpacity>
                           
                           <View style={styles.itemInfo}>
-                            <Text style={styles.itemName}>{item.name}</Text>
+                            <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
                             <Text style={styles.itemSub}>
                               Total: R$ {item.total.toFixed(2)} | Falta: R$ {item.remaining.toFixed(2)}
                             </Text>
@@ -700,13 +681,51 @@ export default function PaymentSplitModal({
                 </ScrollView>
             </View>
 
-            {/* Resumo e Histórico */}
+            {/* Coluna Direita: Resumo, Métodos de Pagamento e Confirmação */}
             <View style={{ 
-              flex: isTablet ? 0.35 : 0, 
-              minHeight: isTablet ? 0 : 180, // Garante altura mínima no mobile
-              maxHeight: isTablet ? '100%' : '40%', // Limita altura no mobile
-              backgroundColor: '#f8f9fa' 
+              flex: isTablet ? 0.42 : 1, 
+              backgroundColor: '#f8f9fa',
+              display: 'flex',
+              flexDirection: 'column'
             }}>
+              <ScrollView 
+                style={{ flex: 1 }} 
+                contentContainerStyle={{ padding: 12, gap: 10 }}
+                showsVerticalScrollIndicator={true}
+              >
+                {/* Identificação de Mesa / Comanda / Cliente */}
+                {sale && (
+                  <View style={styles.contextCard}>
+                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                       {(sale as any).mesa && (
+                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                           <Ionicons name="restaurant-outline" size={15} color="#4CAF50" />
+                           <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#2E7D32' }}>
+                             Mesa {(sale as any).mesa.numero} {(sale as any).mesa.nomeResponsavel ? `- ${(sale as any).mesa.nomeResponsavel}` : ''}
+                           </Text>
+                         </View>
+                       )}
+                       {(sale as any).tipoVenda === 'comanda' && (
+                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                           <Ionicons name="receipt-outline" size={15} color="#FF9800" />
+                           <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#E65100' }}>
+                             Comanda {(sale as any).numeroComanda || (sale as any).codigo || ''} {(sale as any).nomeComanda ? `- ${(sale as any).nomeComanda}` : ''}
+                           </Text>
+                         </View>
+                       )}
+                       {sale.cliente && (
+                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                           <Ionicons name="person-circle-outline" size={15} color="#555" />
+                           <Text style={{ fontSize: 13, color: '#444' }}>
+                             Cliente: <Text style={{ fontWeight: 'bold' }}>{sale.cliente.nome}</Text>
+                           </Text>
+                         </View>
+                       )}
+                     </View>
+                  </View>
+                )}
+
+                {/* Resumo de Totais da Venda */}
                 <View style={styles.summaryBox}>
                     <View style={styles.rowBetween}>
                        <Text style={styles.label}>Total da Venda:</Text>
@@ -716,159 +735,161 @@ export default function PaymentSplitModal({
                        <Text style={styles.label}>Já Pago:</Text>
                        <Text style={[styles.value, { color: '#4CAF50' }]}>R$ {currentPaidDisplay.toFixed(2)}</Text>
                     </View>
-                    <View style={[styles.rowBetween, { marginTop: 8, borderTopWidth: 1, borderColor: '#eee', paddingTop: 8 }]}>
+                    <View style={[styles.rowBetween, { marginTop: 4, borderTopWidth: 1, borderColor: '#eee', paddingTop: 4 }]}>
                        <Text style={[styles.label, { fontWeight: 'bold' }]}>Restante Atual:</Text>
-                       <Text style={[styles.value, { color: '#F44336', fontWeight: 'bold', fontSize: 18 }]}>R$ {currentRemainingDisplay.toFixed(2)}</Text>
+                       <Text style={[styles.value, { color: '#F44336', fontWeight: 'bold', fontSize: 16 }]}>R$ {currentRemainingDisplay.toFixed(2)}</Text>
                     </View>
-                    
-                    {/* Histórico de Pagamentos */}
-                    {(sale as any)?.caixaVendas && (sale as any).caixaVendas.length > 0 && (
-                      <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderColor: '#e0e0e0', flex: 1 }}>
-                        <Text style={{ fontSize: 13, fontWeight: 'bold', color:('#555'), marginBottom: 8 }}>Histórico recente:</Text>
-                        <ScrollView style={{ flex: 1, maxHeight: 100 }} nestedScrollEnabled showsVerticalScrollIndicator={true}>
-                          {(sale as any).caixaVendas.map((cv: any, idx: number) => (
-                            <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6, paddingVertical: 4, paddingHorizontal: 4, backgroundColor: '#fff', borderRadius: 4 }}>
-                               <Text style={{ fontSize: 12, color: '#444' }}>
-                                 {new Date(cv.dataVenda).toLocaleTimeString().substring(0,5)} - {cv.formaPagamento.toUpperCase()}
-                               </Text>
-                               <Text style={{ fontSize: 12, color: '#4CAF50', fontWeight: 'bold' }}>
-                                 R$ {Number(cv.valor).toFixed(2)}
-                               </Text>
-                            </View>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
                 </View>
-            </View>
-          </View>
 
-          <View style={styles.footer}>
-            {/* Seção de Resgate de Pontos */}
-            {redemptionRule && sale?.cliente && (sale.cliente.pontos || 0) >= redemptionRule.points && (
-               <View style={{ marginBottom: 16, padding: 12, backgroundColor: '#FFF3E0', borderRadius: 8, borderWidth: 1, borderColor: '#FFB74D' }}>
-                  <Text style={{ fontWeight: 'bold', color: '#E65100', marginBottom: 8 }}>
-                      Resgate de Pontos 🎁
-                  </Text>
-                  
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <Text style={{ color: '#555' }}>Disponível: {sale.cliente.pontos} pts</Text>
-                      <Text style={{ color: '#555' }}>
-                          Regra: {redemptionRule.points} pts = R$ {redemptionRule.value.toFixed(2)}
+                {/* Total Selecionado */}
+                <View style={styles.totalBlock}>
+                  <Text style={styles.totalLabel}>Total Selecionado:</Text>
+                  <Text style={styles.totalValue}>R$ {totalSelected.toFixed(2)}</Text>
+                </View>
+
+                {/* Seção de Resgate de Pontos */}
+                {redemptionRule && sale?.cliente && (sale.cliente.pontos || 0) >= redemptionRule.points && (
+                   <View style={styles.pointsBox}>
+                      <Text style={{ fontWeight: 'bold', color: '#E65100', marginBottom: 4, fontSize: 12 }}>
+                          Resgate de Pontos 🎁
                       </Text>
-                  </View>
-                  
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <TouchableOpacity 
-                         style={{ padding: 8, backgroundColor: '#FFE0B2', borderRadius: 4 }}
-                         onPress={() => setPointsToUse(Math.max(0, pointsToUse - redemptionRule.points))}
-                      >
-                          <Ionicons name="remove" size={24} color="#E65100" />
-                      </TouchableOpacity>
                       
-                      <View style={{ alignItems: 'center' }}>
-                          <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#E65100' }}>{pointsToUse} pts</Text>
-                          <Text style={{ fontSize: 12, color: '#E65100' }}>
-                            - R$ {((pointsToUse / redemptionRule.points) * redemptionRule.value).toFixed(2)}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <Text style={{ color: '#555', fontSize: 11 }}>Disp: {sale.cliente.pontos} pts</Text>
+                          <Text style={{ color: '#555', fontSize: 11 }}>
+                              {redemptionRule.points} pts = R$ {redemptionRule.value.toFixed(2)}
                           </Text>
                       </View>
+                      
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <TouchableOpacity 
+                             style={{ padding: 6, backgroundColor: '#FFE0B2', borderRadius: 4 }}
+                             onPress={() => setPointsToUse(Math.max(0, pointsToUse - redemptionRule.points))}
+                          >
+                              <Ionicons name="remove" size={18} color="#E65100" />
+                          </TouchableOpacity>
+                          
+                          <View style={{ alignItems: 'center' }}>
+                              <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#E65100' }}>{pointsToUse} pts</Text>
+                              <Text style={{ fontSize: 11, color: '#E65100' }}>
+                                - R$ {((pointsToUse / redemptionRule.points) * redemptionRule.value).toFixed(2)}
+                              </Text>
+                          </View>
 
-                      <TouchableOpacity 
-                         style={{ padding: 8, backgroundColor: '#FFE0B2', borderRadius: 4 }}
-                         onPress={() => {
-                             const nextVal = pointsToUse + redemptionRule.points;
-                             const potentialDiscount = (nextVal / redemptionRule.points) * redemptionRule.value;
-                             
-                             // Não permitir usar mais pontos que o saldo
-                             if (nextVal > (sale.cliente?.pontos || 0)) return;
-                             
-                             // Não permitir desconto maior que o restante
-                             if (potentialDiscount > totalRemainingGlobal + 0.05) return;
-                             
-                             setPointsToUse(nextVal);
-                         }}
+                          <TouchableOpacity 
+                             style={{ padding: 6, backgroundColor: '#FFE0B2', borderRadius: 4 }}
+                             onPress={() => {
+                                 const nextVal = pointsToUse + redemptionRule.points;
+                                 const potentialDiscount = (nextVal / redemptionRule.points) * redemptionRule.value;
+                                 if (nextVal > (sale.cliente?.pontos || 0)) return;
+                                 if (potentialDiscount > totalRemainingGlobal + 0.05) return;
+                                 setPointsToUse(nextVal);
+                             }}
+                          >
+                              <Ionicons name="add" size={18} color="#E65100" />
+                          </TouchableOpacity>
+                      </View>
+                   </View>
+                )}
+
+                {/* Métodos de Pagamento em Grid 2x2 */}
+                <View>
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#555', marginBottom: 6 }}>
+                    Forma de Pagamento:
+                  </Text>
+                  <View style={styles.paymentMethodsGrid}>
+                    {paymentMethods.map(method => (
+                      <TouchableOpacity
+                        key={method.key}
+                        style={[
+                          styles.methodButtonGrid,
+                          paymentMethod === method.key && styles.methodButtonSelected
+                        ]}
+                        onPress={() => setPaymentMethod(method.key)}
                       >
-                          <Ionicons name="add" size={24} color="#E65100" />
+                        <Ionicons 
+                          name={method.icon} 
+                          size={18} 
+                          color={paymentMethod === method.key ? '#fff' : '#555'} 
+                        />
+                        <Text style={[
+                            styles.methodTextGrid, 
+                            paymentMethod === method.key && styles.methodTextSelected
+                        ]}>
+                          {method.label}
+                        </Text>
                       </TouchableOpacity>
+                    ))}
                   </View>
-               </View>
-            )}
+                </View>
 
-            <View style={styles.paymentMethods}>
-              {paymentMethods.map(method => (
+                {/* Cashback informativo se selecionado */}
+                {paymentMethod === 'cashback' && sale?.cliente && (
+                   <View style={styles.cashbackBadge}>
+                      <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 12 }}>Saldo Cashback Disponível:</Text>
+                      <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 14 }}>
+                          R$ {Number(sale.cliente.saldoCashback || 0).toFixed(2)}
+                      </Text>
+                   </View>
+                )}
+                
+                {paymentMethod === 'cashback' && !sale?.cliente && (
+                   <View style={styles.cashbackWarningBadge}>
+                      <Text style={{ color: '#D32F2F', textAlign: 'center', fontSize: 12 }}>Venda sem cliente identificado.</Text>
+                   </View>
+                )}
+
+                {/* NFC-e Switch */}
+                <View style={styles.nfceCard}>
+                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                     <Ionicons name="receipt-outline" size={20} color="#2196F3" />
+                     <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333' }}>Emitir NFC-e (Cupom Fiscal)</Text>
+                   </View>
+                   <Switch
+                     value={emitirNfce}
+                     onValueChange={setEmitirNfce}
+                     trackColor={{ false: "#ccc", true: "#2196F3" }}
+                     thumbColor={"#fff"}
+                     style={{ transform: Platform.OS === 'web' ? [{ scaleX: 0.85 }, { scaleY: 0.85 }] : [] }}
+                   />
+                </View>
+
+                {/* Botão de Confirmação */}
                 <TouchableOpacity
-                  key={method.key}
                   style={[
-                    styles.methodButton,
-                    paymentMethod === method.key && styles.methodButtonSelected
+                    styles.confirmButton, 
+                    ((totalSelected <= 0.01 && totalRemainingGlobal > 0.05) || loading) && styles.confirmButtonDisabled
                   ]}
-                  onPress={() => setPaymentMethod(method.key)}
+                  onPress={handleConfirm}
+                  disabled={((totalSelected <= 0.01 && totalRemainingGlobal > 0.05) || loading)}
                 >
-                  <Ionicons 
-                    name={method.icon} 
-                    size={20} 
-                    color={paymentMethod === method.key ? '#fff' : '#666'} 
-                  />
-                  <Text style={[
-                      styles.methodText, 
-                      paymentMethod === method.key && styles.methodTextSelected
-                  ]}>
-                    {method.label}
-                  </Text>
+                  {loading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>
+                       {totalRemainingGlobal <= 0.05 ? 'Finalizar Venda' : 'Confirmar Pagamento'}
+                    </Text>
+                  )}
                 </TouchableOpacity>
-              ))}
+
+                {/* Histórico de Pagamentos Recentes */}
+                {(sale as any)?.caixaVendas && (sale as any).caixaVendas.length > 0 && (
+                  <View style={styles.historyBox}>
+                    <Text style={styles.historyTitle}>Histórico recente:</Text>
+                    {(sale as any).caixaVendas.map((cv: any, idx: number) => (
+                      <View key={idx} style={styles.historyRow}>
+                         <Text style={styles.historyDesc}>
+                           {new Date(cv.dataVenda).toLocaleTimeString().substring(0,5)} - {cv.formaPagamento.toUpperCase()}
+                         </Text>
+                         <Text style={styles.historyAmount}>
+                           R$ {Number(cv.valor).toFixed(2)}
+                         </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
             </View>
-
-            {paymentMethod === 'cashback' && sale?.cliente && (
-               <View style={{ backgroundColor: '#E8F5E9', padding: 10, borderRadius: 8, marginBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ color: '#2E7D32', fontWeight: 'bold' }}>Saldo Cashback Disponível:</Text>
-                  <Text style={{ color: '#2E7D32', fontWeight: 'bold', fontSize: 16 }}>
-                      R$ {Number(sale.cliente.saldoCashback || 0).toFixed(2)}
-                  </Text>
-               </View>
-            )}
-            
-            {paymentMethod === 'cashback' && !sale?.cliente && (
-               <View style={{ backgroundColor: '#FFEBEE', padding: 10, borderRadius: 8, marginBottom: 16 }}>
-                  <Text style={{ color: '#D32F2F', textAlign: 'center' }}>Venda sem cliente identificado.</Text>
-               </View>
-            )}
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#f0f8ff', padding: 10, borderRadius: 8 }}>
-               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                 <Ionicons name="receipt-outline" size={24} color="#2196F3" />
-                 <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#333' }}>Emitir NFC-e (Cupom Fiscal)</Text>
-               </View>
-               <Switch
-                 value={emitirNfce}
-                 onValueChange={setEmitirNfce}
-                 trackColor={{ false: "#ccc", true: "#2196F3" }}
-                 thumbColor={"#fff"}
-               />
-            </View>
-
-
-            <View style={styles.totalBlock}>
-              <Text style={styles.totalLabel}>Total Selecionado:</Text>
-              <Text style={styles.totalValue}>R$ {totalSelected.toFixed(2)}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.confirmButton, 
-                ((totalSelected <= 0.01 && totalRemainingGlobal > 0.05) || loading) && styles.confirmButtonDisabled
-              ]}
-              onPress={handleConfirm}
-              disabled={((totalSelected <= 0.01 && totalRemainingGlobal > 0.05) || loading)}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.confirmButtonText}>
-                   {totalRemainingGlobal <= 0.05 ? 'Finalizar Venda' : 'Confirmar Pagamento'}
-                </Text>
-              )}
-            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -904,13 +925,15 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-start',
-    paddingTop: 80, // Aproximadamente 2cm do topo
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   container: {
     width: '95%',
+    maxWidth: 980,
     height: '92%',
+    maxHeight: 680,
     backgroundColor: '#fff',
     borderRadius: 12,
     overflow: 'hidden',
@@ -922,49 +945,38 @@ const styles = StyleSheet.create({
   containerMobile: {
     width: '100%',
     height: '100%',
+    maxHeight: '100%',
     borderRadius: 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
-    zIndex: 10
+    zIndex: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
     color: '#333',
   },
-  summaryBox: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-    flex: 1
-  },
-  rowBetween: {
+  leftColHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  label: {
-    color: '#666',
-    fontSize: 14,
-  },
-  value: {
-    color: '#333',
-    fontWeight: '600',
-    fontSize: 14,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
   },
   sectionTitle: {
-    padding: 12,
-    fontSize: 14,
-    color: '#888',
-    backgroundColor: '#fff',
+    fontSize: 13,
+    color: '#666',
     fontWeight: 'bold',
   },
   list: {
@@ -973,10 +985,11 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    minHeight: 50,
+    minHeight: 44,
   },
   itemPaid: {
     backgroundColor: '#f9f9f9',
@@ -985,7 +998,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e3f2fd',
   },
   checkArea: {
-    padding: 4,
+    padding: 2,
     marginRight: 8,
   },
   itemInfo: {
@@ -993,15 +1006,16 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
+    fontWeight: '500',
   },
   itemSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#888',
   },
   itemPrice: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
   },
@@ -1011,75 +1025,141 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2196F3',
     borderRadius: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     backgroundColor: '#fff',
-    width: 100,
+    width: 85,
   },
   currencySymbol: {
     color: '#666',
-    marginRight: 4,
+    marginRight: 2,
+    fontSize: 12,
   },
   input: {
     flex: 1,
-    paddingVertical: 4,
-    fontSize: 14,
+    paddingVertical: 2,
+    fontSize: 13,
     color: '#333',
   },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fafafa',
+  contextCard: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
-  paymentMethods: {
+  summaryBox: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 8,
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  methodButton: {
-    flex: 1,
+  label: {
+    color: '#666',
+    fontSize: 13,
+  },
+  value: {
+    color: '#333',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  totalBlock: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#90CAF9',
+  },
+  totalLabel: {
+    fontSize: 13,
+    color: '#0D47A1',
+    fontWeight: 'bold',
+  },
+  totalValue: {
+    fontSize: 17,
+    color: '#1565C0',
+    fontWeight: 'bold',
+  },
+  pointsBox: {
+    padding: 8,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+  },
+  paymentMethodsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  methodButtonGrid: {
+    width: '48.5%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    gap: 6
+    borderRadius: 6,
+    gap: 6,
   },
   methodButtonSelected: {
     backgroundColor: '#2196F3',
     borderColor: '#2196F3',
   },
-  methodText: {
-    color: '#666',
+  methodTextGrid: {
+    color: '#555',
     fontSize: 12,
     fontWeight: '600',
   },
   methodTextSelected: {
     color: '#fff',
   },
-  totalBlock: {
+  cashbackBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
   },
-  totalLabel: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: 'bold',
+  cashbackWarningBadge: {
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
   },
-  totalValue: {
-    fontSize: 20,
-    color: '#2196F3',
-    fontWeight: 'bold',
+  nfceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f0f8ff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d0e8ff',
   },
   confirmButton: {
     backgroundColor: '#4CAF50',
-    paddingVertical: 14,
+    paddingVertical: 11,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -1088,7 +1168,39 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  historyBox: {
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderColor: '#eee',
+  },
+  historyTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 6,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  historyDesc: {
+    fontSize: 11,
+    color: '#555',
+  },
+  historyAmount: {
+    fontSize: 11,
+    color: '#4CAF50',
     fontWeight: 'bold',
   },
 });
