@@ -1586,45 +1586,25 @@ export default function AdminProdutosScreen() {
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                   <Text style={styles.subCardLabel}>Dados Fiscais (NFC-e)</Text>
                                   
-                                  {/* Botão de Busca de NCM */}
-                                  <View style={{ position: 'relative' }}>
+                                  {/* Botões Diretos de Busca de NCM */}
+                                  <View style={{ flexDirection: "row", gap: 6 }}>
                                     <TouchableOpacity 
-                                      style={styles.ncmSearchBtn}
-                                      onPress={() => setShowNcmMenu(!showNcmMenu)}
+                                      style={styles.ncmDirectBtnCosmos}
+                                      onPress={() => handleSearchNcm("cosmos")}
                                       activeOpacity={0.8}
                                     >
-                                      <Ionicons name="globe-outline" size={13} color="#0284C7" />
-                                      <Text style={styles.ncmSearchBtnText}>Buscar NCM ▾</Text>
+                                      <Ionicons name="search" size={12} color="#0284C7" />
+                                      <Text style={styles.ncmDirectBtnCosmosText}>Cosmos Bluesoft</Text>
                                     </TouchableOpacity>
 
-                                    {/* Dropdown de Busca */}
-                                    {showNcmMenu && (
-                                      <View style={styles.ncmDropdownMenu}>
-                                        <TouchableOpacity 
-                                          style={styles.ncmDropdownItem}
-                                          onPress={() => handleSearchNcm('cosmos')}
-                                        >
-                                          <Ionicons name="search" size={14} color="#0284C7" />
-                                          <View>
-                                            <Text style={styles.ncmDropdownItemTitle}>Cosmos Bluesoft</Text>
-                                            <Text style={styles.ncmDropdownItemSub}>Catálogo oficial de produtos</Text>
-                                          </View>
-                                        </TouchableOpacity>
-
-                                        <View style={styles.ncmDropdownDivider} />
-
-                                        <TouchableOpacity 
-                                          style={styles.ncmDropdownItem}
-                                          onPress={() => handleSearchNcm('google')}
-                                        >
-                                          <Ionicons name="logo-google" size={14} color="#EA4335" />
-                                          <View>
-                                            <Text style={styles.ncmDropdownItemTitle}>Google Busca</Text>
-                                            <Text style={styles.ncmDropdownItemSub}>NCM + Nome no Google</Text>
-                                          </View>
-                                        </TouchableOpacity>
-                                      </View>
-                                    )}
+                                    <TouchableOpacity 
+                                      style={styles.ncmDirectBtnGoogle}
+                                      onPress={() => handleSearchNcm("google")}
+                                      activeOpacity={0.8}
+                                    >
+                                      <Ionicons name="logo-google" size={12} color="#EA4335" />
+                                      <Text style={styles.ncmDirectBtnGoogleText}>Google</Text>
+                                    </TouchableOpacity>
                                   </View>
                                 </View>
 
