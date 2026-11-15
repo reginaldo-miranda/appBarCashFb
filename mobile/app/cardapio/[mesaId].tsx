@@ -63,12 +63,25 @@ interface ItemCarrinho {
 }
 
 export default function CardapioCliente() {
-  const { mesaId } = useLocalSearchParams();
+  const { mesaId, vid } = useLocalSearchParams();
   const router = useRouter();
+
+  const getUrlVid = (): string => {
+    if (vid) return String(Array.isArray(vid) ? vid[0] : vid).trim();
+    try {
+      if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.search) {
+        return String(new URLSearchParams(window.location.search).get("vid") || "").trim();
+      }
+    } catch {}
+    return "";
+  };
 
   // Estados
   const [loading, setLoading] = useState(true);
   const [loadingPedido, setLoadingPedido] = useState(false);
+  const [contaEncerrada, setContaEncerrada] = useState(false);
+  const [motivoEncerramento, setMotivoEncerramento] = useState<string>("");
+  const [sessionVendaId, setSessionVendaId] = useState<string>(getUrlVid());
   const [mesaInfo, setMesaInfo] = useState<{
     id: number;
     numero: number;
@@ -117,19 +130,71 @@ export default function CardapioCliente() {
   // Carregar dados iniciais da API
   useEffect(() => {
     carregarDados();
-  }, [mesaId]);
+  }, [mesaId, vid]);
+
+  // Monitorar se o atendimento da mesa foi encerrado enquanto o cardápio está aberto
+  useEffect(() => {
+    if (!mesaId || contaEncerrada) return;
+    const interval = setInterval(async () => {
+      try {
+        const baseUrl = getCurrentBaseUrl();
+        const cleanUrl = baseUrl.replace(/\/$/, "");
+        const activeVid = getUrlVid() || sessionVendaId;
+        const query = activeVid ? `?vid=${encodeURIComponent(activeVid)}` : "";
+        const resMesa = await axios.get(`${cleanUrl}/public/mesa/${encodeURIComponent(String(mesaId))}${query}`);
+        if (resMesa.data?.encerrada) {
+          setContaEncerrada(true);
+          setMotivoEncerramento(resMesa.data.motivo || "O atendimento desta mesa já foi encerrado.");
+          setCarrinho([]);
+          setMostrarCarrinho(false);
+          setMostrarContaModal(false);
+          setModalProduto(null);
+        } else if (resMesa.data?.success && resMesa.data?.mesa) {
+          setMesaInfo({
+            id: resMesa.data.mesa.id,
+            numero: resMesa.data.mesa.numero,
+            nome: resMesa.data.mesa.nome,
+            vendaAtual: resMesa.data.mesa.vendaAtual
+          });
+        }
+      } catch {}
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [mesaId, sessionVendaId, contaEncerrada]);
 
   const carregarDados = async () => {
     setLoading(true);
     try {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
+      const activeVid = getUrlVid() || sessionVendaId;
 
       // 1. Buscar informações da mesa
       if (mesaId) {
         try {
-          const resMesa = await axios.get(`${cleanUrl}/public/mesa/${mesaId}`);
+          const query = activeVid ? `?vid=${encodeURIComponent(activeVid)}` : "";
+          const resMesa = await axios.get(`${cleanUrl}/public/mesa/${encodeURIComponent(String(mesaId))}${query}`);
           if (resMesa.data && resMesa.data.success) {
+            if (resMesa.data.encerrada) {
+              setContaEncerrada(true);
+              setMotivoEncerramento(resMesa.data.motivo || "O atendimento desta mesa já foi encerrado.");
+              setMesaInfo({
+                id: resMesa.data.mesa?.id || Number(mesaId),
+                numero: resMesa.data.mesa?.numero || Number(mesaId),
+                nome: resMesa.data.mesa?.nome || `Mesa ${mesaId}`,
+                vendaAtual: null
+              });
+              setCarrinho([]);
+              setMostrarCarrinho(false);
+              setMostrarContaModal(false);
+              setLoading(false);
+              return;
+            }
+            setContaEncerrada(false);
+            setMotivoEncerramento("");
+            if (resMesa.data.mesa?.vendaAtual?.id && !sessionVendaId) {
+              setSessionVendaId(String(resMesa.data.mesa.vendaAtual.id));
+            }
             setMesaInfo({
               id: resMesa.data.mesa.id,
               numero: resMesa.data.mesa.numero,
@@ -138,13 +203,17 @@ export default function CardapioCliente() {
             });
           }
         } catch (err) {
-          console.warn("Mesa não encontrada na API, usando ID da rota como fallback:", err);
+          console.warn("Mesa não encontrada na API:", err);
+          setContaEncerrada(true);
+          setMotivoEncerramento("Esta mesa não está aberta ou o atendimento já foi encerrado.");
           setMesaInfo({
             id: Number(mesaId),
             numero: Number(mesaId),
             nome: `Mesa ${mesaId}`,
             vendaAtual: null
           });
+          setLoading(false);
+          return;
         }
       }
 
@@ -273,8 +342,10 @@ export default function CardapioCliente() {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
 
+      const activeVid = getUrlVid() || sessionVendaId || (mesaInfo?.vendaAtual?.id ? String(mesaInfo.vendaAtual.id) : "");
       const payload = {
         mesaId: mesaInfo.id,
+        vid: activeVid || undefined,
         itens: carrinho.map((item) => ({
           produtoId: item.produtoId,
           quantidade: item.quantidade,
@@ -295,9 +366,21 @@ export default function CardapioCliente() {
       }
     } catch (error: any) {
       console.error("Erro ao enviar pedido para o servidor local:", error);
+      if (error?.response?.status === 403 || error?.response?.data?.encerrada) {
+        setCarrinho([]);
+        setMostrarCarrinho(false);
+        setMostrarContaModal(false);
+        setModalProduto(null);
+        setContaEncerrada(true);
+        setMotivoEncerramento(
+          error?.response?.data?.error ||
+            "O atendimento desta mesa já foi encerrado. Solicite um novo link ao atendente para fazer novos pedidos."
+        );
+        return;
+      }
       Alert.alert(
         "Erro ao Lançar Pedido",
-        error.message || "Ocorreu um erro ao enviar o seu pedido. Por favor, avise um garçom se o problema persistir."
+        error?.response?.data?.error || error.message || "Ocorreu um erro ao enviar o seu pedido. Por favor, avise um garçom se o problema persistir."
       );
     } finally {
       setLoadingPedido(false);
@@ -311,8 +394,10 @@ export default function CardapioCliente() {
     try {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
+      const activeVid = getUrlVid() || sessionVendaId || (mesaInfo?.vendaAtual?.id ? String(mesaInfo.vendaAtual.id) : "");
       const res = await axios.post(`${cleanUrl}/public/pedir-conta`, {
         mesaId: mesaInfo.id,
+        vid: activeVid || undefined,
         formaPagamento: formaPagamentoConta,
         trocoPara: formaPagamentoConta === "Dinheiro" ? trocoParaConta : "",
         dividirPessoas: dividirPessoasConta,
@@ -323,6 +408,12 @@ export default function CardapioCliente() {
         throw new Error(res.data?.error || "Não foi possível solicitar a conta.");
       }
     } catch (err: any) {
+      if (err?.response?.status === 403 || err?.response?.data?.encerrada) {
+        setMostrarContaModal(false);
+        setContaEncerrada(true);
+        setMotivoEncerramento(err?.response?.data?.error || "O atendimento desta mesa já foi encerrado.");
+        return;
+      }
       Alert.alert(
         "Aviso",
         err?.response?.data?.error || err?.message || "Erro ao solicitar fechamento da conta."
@@ -338,6 +429,88 @@ export default function CardapioCliente() {
         <ActivityIndicator size="large" color="#FF8C00" />
         <Text style={styles.loadingText}>Carregando cardápio appBarCash...</Text>
       </View>
+    );
+  }
+
+  if (contaEncerrada) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center", padding: 24 }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#121212" />
+        <View style={{
+          backgroundColor: "#1E1E1E",
+          borderRadius: 20,
+          padding: 28,
+          width: "100%",
+          maxWidth: 400,
+          alignItems: "center",
+          borderWidth: 1,
+          borderColor: "#333",
+        }}>
+          <View style={{
+            width: 76,
+            height: 76,
+            borderRadius: 38,
+            backgroundColor: "rgba(239, 68, 68, 0.15)",
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: "rgba(239, 68, 68, 0.4)",
+          }}>
+            <Ionicons name="lock-closed" size={38} color="#EF4444" />
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: "#FFF", textAlign: "center", marginBottom: 8 }}>
+            Atendimento Encerrado
+          </Text>
+          <View style={{
+            backgroundColor: "#262626",
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 20,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: "#383838",
+          }}>
+            <Text style={{ color: "#FF8C00", fontWeight: "bold", fontSize: 13 }}>
+              MESA {String(mesaInfo?.numero || mesaId || "").padStart(2, "0")}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, color: "#CCC", textAlign: "center", lineHeight: 21, marginBottom: 18 }}>
+            {motivoEncerramento || "A conta desta mesa já foi finalizada e encerrada. Este link antigo não permite mais realizar novos pedidos."}
+          </Text>
+          <View style={{
+            backgroundColor: "rgba(255, 140, 0, 0.1)",
+            borderRadius: 12,
+            padding: 14,
+            width: "100%",
+            borderWidth: 1,
+            borderColor: "rgba(255, 140, 0, 0.3)",
+            marginBottom: 20,
+          }}>
+            <Text style={{ color: "#FFB74D", fontSize: 13, textAlign: "center", lineHeight: 19, fontWeight: "600" }}>
+              🍻 Deseja fazer um novo pedido?{"\n"}
+              Solicite ao atendente a abertura de um novo atendimento na mesa e utilize o novo link ou QR Code gerado.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => carregarDados()}
+            style={{
+              backgroundColor: "#2A2A2A",
+              paddingVertical: 12,
+              paddingHorizontal: 22,
+              borderRadius: 25,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: "#444",
+            }}
+          >
+            <Ionicons name="refresh" size={18} color="#FFF" />
+            <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 14 }}>Verificar Novamente</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 

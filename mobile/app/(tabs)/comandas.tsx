@@ -207,6 +207,10 @@ export default function ComandasAbertasScreen() {
   }, []);
 
   const abrirQrCodeComanda = async (comanda: Comanda) => {
+    if (comanda.status !== 'aberta') {
+      Alert.alert('Comanda Encerrada', 'Esta comanda já foi encerrada. Abra uma nova comanda para gerar um novo link.');
+      return;
+    }
     setQrCodeComanda(comanda);
     const foneCliente = (comanda as any)?.cliente?.telefone || (comanda as any)?.cliente?.fone || (comanda as any)?.cliente?.celular || (comanda as any)?.cliente?.whatsapp || '';
     setQrWhatsappPhone(foneCliente ? String(foneCliente) : '');
@@ -1133,15 +1137,18 @@ useEffect(() => {
             {qrCodeComanda && (() => {
               const porta = obterPortaCardapio();
               const nomeOuNum = qrCodeComanda.nomeComanda || qrCodeComanda.numeroComanda || '';
+              const vendaId = qrCodeComanda._id || (qrCodeComanda as any).id || '';
+              const vidQuery = vendaId ? `?vid=${encodeURIComponent(String(vendaId))}` : '';
+              const vidAmp = vendaId ? `&vid=${encodeURIComponent(String(vendaId))}` : '';
               const hostClean = String(ipLan || '').trim();
               const isUsingTunnel = Boolean(tunnelActive && tunnelUrl);
               const cleanTunnel = isUsingTunnel ? String(tunnelUrl).replace(/\/$/, '') : '';
               const linkCardapio = isUsingTunnel
-                ? `${cleanTunnel}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`
-                : `http://${hostClean}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}`;
+                ? `${cleanTunnel}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}${vidQuery}`
+                : `http://${hostClean}:${porta}/cardapio/comanda/${encodeURIComponent(String(nomeOuNum))}${vidQuery}`;
               const linkWhatsapp = isUsingTunnel
                 ? linkCardapio
-                : `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&comanda=${encodeURIComponent(String(nomeOuNum))}`;
+                : `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&comanda=${encodeURIComponent(String(nomeOuNum))}${vidAmp}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const modoTexto = isUsingTunnel ? '' : ' (conectado no Wi-Fi)';

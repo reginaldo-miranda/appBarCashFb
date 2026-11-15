@@ -1312,8 +1312,43 @@ useEffect(() => {
 
   // Função para abrir o QR Code da mesa
   const abrirQrCodeMesa = async (mesa: Mesa) => {
-    setQrCodeMesa(mesa);
-    const vendaAtual = Array.isArray((mesa as any)?.vendaAtual) ? (mesa as any).vendaAtual[0] : (mesa as any)?.vendaAtual;
+    if (mesa.status !== 'ocupada') {
+      const msg = `A Mesa ${mesa.numero} está fechada/livre no momento.\n\nPara gerar um novo link válido do Cardápio Digital, é necessário abrir a mesa primeiro. Deseja abrir a Mesa ${mesa.numero} agora?`;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        if (window.confirm(msg)) {
+          abrirMesa(mesa);
+        }
+      } else {
+        Alert.alert(
+          'Mesa Fechada / Livre',
+          msg,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Abrir Mesa Agora', onPress: () => abrirMesa(mesa) },
+          ]
+        );
+      }
+      return;
+    }
+
+    let mesaComVenda: any = { ...mesa };
+    let vendaAtual = Array.isArray((mesa as any)?.vendaAtual) ? (mesa as any).vendaAtual[0] : (mesa as any)?.vendaAtual;
+    let vendaId = (mesa as any)?.vendaAtualId || vendaAtual?.id || vendaAtual?._id;
+    if (!vendaId) {
+      try {
+        const resp = await saleService.getByMesa(mesa._id);
+        const sales = resp.data || [];
+        const active = sales.find((s: any) => s.status === 'aberta');
+        if (active) {
+          vendaAtual = active;
+          vendaId = active.id || active._id;
+          mesaComVenda.vendaAtual = active;
+          mesaComVenda.vendaAtualId = vendaId;
+        }
+      } catch {}
+    }
+
+    setQrCodeMesa(mesaComVenda);
     const foneCliente = vendaAtual?.cliente?.telefone || vendaAtual?.cliente?.fone || vendaAtual?.cliente?.celular || vendaAtual?.cliente?.whatsapp || '';
     setQrWhatsappPhone(foneCliente ? String(foneCliente) : '');
     setQrCopied(false);
@@ -2913,14 +2948,18 @@ useEffect(() => {
               const numMesa = String(qrCodeMesa.numero).padStart(2, '0');
               const hostClean = String(ipLan || '').trim();
               const mesaIdParam = qrCodeMesa._id || (qrCodeMesa as any).id || qrCodeMesa.numero;
+              const vendaAtualObj = Array.isArray((qrCodeMesa as any)?.vendaAtual) ? (qrCodeMesa as any).vendaAtual[0] : (qrCodeMesa as any)?.vendaAtual;
+              const vendaId = (qrCodeMesa as any)?.vendaAtualId || vendaAtualObj?.id || vendaAtualObj?._id || '';
+              const vidQuery = vendaId ? `?vid=${encodeURIComponent(String(vendaId))}` : '';
+              const vidAmp = vendaId ? `&vid=${encodeURIComponent(String(vendaId))}` : '';
               const isUsingTunnel = Boolean(tunnelActive && tunnelUrl);
               const cleanTunnel = isUsingTunnel ? String(tunnelUrl).replace(/\/$/, '') : '';
               const linkCardapio = isUsingTunnel
-                ? `${cleanTunnel}/cardapio/${mesaIdParam}`
-                : `http://${hostClean}:${porta}/cardapio/${mesaIdParam}`;
+                ? `${cleanTunnel}/cardapio/${mesaIdParam}${vidQuery}`
+                : `http://${hostClean}:${porta}/cardapio/${mesaIdParam}${vidQuery}`;
               const linkWhatsapp = isUsingTunnel
                 ? linkCardapio
-                : `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&mesa=${encodeURIComponent(String(mesaIdParam))}`;
+                : `https://raw.githack.com/reginaldo-miranda/appBarCashFb/main/docs/ir.html?ip=${encodeURIComponent(hostClean)}&p=${encodeURIComponent(porta)}&mesa=${encodeURIComponent(String(mesaIdParam))}${vidAmp}`;
               const handleSendWhatsapp = () => {
                 const digits = String(qrWhatsappPhone || '').replace(/\D/g, '');
                 const modoTexto = isUsingTunnel ? '' : ' (conectado no Wi-Fi)';

@@ -63,12 +63,25 @@ interface ItemCarrinho {
 }
 
 export default function CardapioCliente() {
-  const { comandaNome } = useLocalSearchParams();
+  const { comandaNome, vid } = useLocalSearchParams();
   const router = useRouter();
+
+  const getUrlVid = (): string => {
+    if (vid) return String(Array.isArray(vid) ? vid[0] : vid).trim();
+    try {
+      if (Platform.OS === "web" && typeof window !== "undefined" && window.location?.search) {
+        return String(new URLSearchParams(window.location.search).get("vid") || "").trim();
+      }
+    } catch {}
+    return "";
+  };
 
   // Estados
   const [loading, setLoading] = useState(true);
   const [loadingPedido, setLoadingPedido] = useState(false);
+  const [contaEncerrada, setContaEncerrada] = useState(false);
+  const [motivoEncerramento, setMotivoEncerramento] = useState<string>("");
+  const [sessionVendaId, setSessionVendaId] = useState<string>(getUrlVid());
   const [comandaInfo, setComandaInfo] = useState<{
     nome: string;
     vendaAtual?: {
@@ -115,30 +128,82 @@ export default function CardapioCliente() {
   // Carregar dados iniciais da API
   useEffect(() => {
     carregarDados();
-  }, [comandaNome]);
+  }, [comandaNome, vid]);
+
+  // Monitorar se a comanda foi encerrada enquanto o cardápio está aberto
+  useEffect(() => {
+    if (!comandaNome || contaEncerrada) return;
+    const interval = setInterval(async () => {
+      try {
+        const baseUrl = getCurrentBaseUrl();
+        const cleanUrl = baseUrl.replace(/\/$/, "");
+        const activeVid = getUrlVid() || sessionVendaId;
+        const query = activeVid ? `?vid=${encodeURIComponent(activeVid)}` : "";
+        const resComanda = await axios.get(`${cleanUrl}/public/comanda/${encodeURIComponent(String(comandaNome))}${query}`);
+        if (resComanda.data?.encerrada) {
+          setContaEncerrada(true);
+          setMotivoEncerramento(resComanda.data.motivo || "Esta comanda já foi encerrada.");
+          setCarrinho([]);
+          setMostrarCarrinho(false);
+          setMostrarContaModal(false);
+          setModalProduto(null);
+        } else if (resComanda.data?.success && resComanda.data?.comanda) {
+          setComandaInfo({
+            nome: resComanda.data.comanda.nome,
+            vendaAtual: resComanda.data.comanda.vendaAtual
+          });
+        }
+      } catch {}
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [comandaNome, sessionVendaId, contaEncerrada]);
 
   const carregarDados = async () => {
     setLoading(true);
     try {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
+      const activeVid = getUrlVid() || sessionVendaId;
 
       // 1. Buscar informações da comanda
       if (comandaNome) {
         try {
-          const resComanda = await axios.get(`${cleanUrl}/public/comanda/${comandaNome}`);
+          const query = activeVid ? `?vid=${encodeURIComponent(activeVid)}` : "";
+          const resComanda = await axios.get(`${cleanUrl}/public/comanda/${encodeURIComponent(String(comandaNome))}${query}`);
           if (resComanda.data && resComanda.data.success) {
+            if (resComanda.data.encerrada) {
+              setContaEncerrada(true);
+              setMotivoEncerramento(resComanda.data.motivo || "Esta comanda já foi encerrada.");
+              setComandaInfo({
+                nome: resComanda.data.comanda?.nome || String(comandaNome),
+                vendaAtual: null
+              });
+              setCarrinho([]);
+              setMostrarCarrinho(false);
+              setMostrarContaModal(false);
+              setLoading(false);
+              return;
+            }
+            setContaEncerrada(false);
+            setMotivoEncerramento("");
+            if (resComanda.data.comanda?.vendaAtual?.id && !sessionVendaId) {
+              setSessionVendaId(String(resComanda.data.comanda.vendaAtual.id));
+            }
             setComandaInfo({
               nome: resComanda.data.comanda.nome,
               vendaAtual: resComanda.data.comanda.vendaAtual
             });
           }
         } catch (err) {
-          console.warn("Comanda não encontrada na API, usando nome da rota como fallback:", err);
+          console.warn("Comanda não encontrada na API:", err);
+          setContaEncerrada(true);
+          setMotivoEncerramento("Esta comanda não está aberta ou já foi encerrada.");
           setComandaInfo({
             nome: String(comandaNome),
             vendaAtual: null
           });
+          setLoading(false);
+          return;
         }
       }
 
@@ -270,8 +335,10 @@ export default function CardapioCliente() {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
 
+      const activeVid = getUrlVid() || sessionVendaId || (comandaInfo?.vendaAtual?.id ? String(comandaInfo.vendaAtual.id) : "");
       const payload = {
         comandaNome: comandaInfo.nome,
+        vid: activeVid || undefined,
         itens: carrinho.map((item) => ({
           produtoId: item.produtoId,
           quantidade: item.quantidade,
@@ -292,9 +359,21 @@ export default function CardapioCliente() {
       }
     } catch (error: any) {
       console.error("Erro ao enviar pedido para o servidor local:", error);
+      if (error?.response?.status === 403 || error?.response?.data?.encerrada) {
+        setCarrinho([]);
+        setMostrarCarrinho(false);
+        setMostrarContaModal(false);
+        setModalProduto(null);
+        setContaEncerrada(true);
+        setMotivoEncerramento(
+          error?.response?.data?.error ||
+            "Esta comanda já foi encerrada. Solicite uma nova comanda ao atendente para fazer novos pedidos."
+        );
+        return;
+      }
       Alert.alert(
         "Erro ao Lançar Pedido",
-        error.message || "Ocorreu um erro ao enviar o seu pedido. Por favor, avise um garçom se o problema persistir."
+        error?.response?.data?.error || error.message || "Ocorreu um erro ao enviar o seu pedido. Por favor, avise um garçom se o problema persistir."
       );
     } finally {
       setLoadingPedido(false);
@@ -308,8 +387,10 @@ export default function CardapioCliente() {
     try {
       const baseUrl = getCurrentBaseUrl();
       const cleanUrl = baseUrl.replace(/\/$/, "");
+      const activeVid = getUrlVid() || sessionVendaId || (comandaInfo?.vendaAtual?.id ? String(comandaInfo.vendaAtual.id) : "");
       const res = await axios.post(`${cleanUrl}/public/pedir-conta`, {
         comandaNome: comandaInfo.nome,
+        vid: activeVid || undefined,
         formaPagamento: formaPagamentoConta,
         trocoPara: formaPagamentoConta === "Dinheiro" ? trocoParaConta : "",
         dividirPessoas: dividirPessoasConta,
@@ -320,6 +401,12 @@ export default function CardapioCliente() {
         throw new Error(res.data?.error || "Não foi possível solicitar a conta.");
       }
     } catch (err: any) {
+      if (err?.response?.status === 403 || err?.response?.data?.encerrada) {
+        setMostrarContaModal(false);
+        setContaEncerrada(true);
+        setMotivoEncerramento(err?.response?.data?.error || "Esta comanda já foi encerrada.");
+        return;
+      }
       Alert.alert(
         "Aviso",
         err?.response?.data?.error || err?.message || "Erro ao solicitar fechamento da conta."
@@ -335,6 +422,88 @@ export default function CardapioCliente() {
         <ActivityIndicator size="large" color="#FF8C00" />
         <Text style={styles.loadingText}>Carregando cardápio appBarCash...</Text>
       </View>
+    );
+  }
+
+  if (contaEncerrada) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center", padding: 24 }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#121212" />
+        <View style={{
+          backgroundColor: "#1E1E1E",
+          borderRadius: 20,
+          padding: 28,
+          width: "100%",
+          maxWidth: 400,
+          alignItems: "center",
+          borderWidth: 1,
+          borderColor: "#333",
+        }}>
+          <View style={{
+            width: 76,
+            height: 76,
+            borderRadius: 38,
+            backgroundColor: "rgba(239, 68, 68, 0.15)",
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: "rgba(239, 68, 68, 0.4)",
+          }}>
+            <Ionicons name="lock-closed" size={38} color="#EF4444" />
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: "#FFF", textAlign: "center", marginBottom: 8 }}>
+            Comanda Encerrada
+          </Text>
+          <View style={{
+            backgroundColor: "#262626",
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 20,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: "#383838",
+          }}>
+            <Text style={{ color: "#FF8C00", fontWeight: "bold", fontSize: 13 }}>
+              COMANDA {String(comandaInfo?.nome || comandaNome || "").toUpperCase()}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, color: "#CCC", textAlign: "center", lineHeight: 21, marginBottom: 18 }}>
+            {motivoEncerramento || "Esta comanda já foi finalizada e encerrada no caixa. Este link antigo não permite mais realizar novos pedidos."}
+          </Text>
+          <View style={{
+            backgroundColor: "rgba(255, 140, 0, 0.1)",
+            borderRadius: 12,
+            padding: 14,
+            width: "100%",
+            borderWidth: 1,
+            borderColor: "rgba(255, 140, 0, 0.3)",
+            marginBottom: 20,
+          }}>
+            <Text style={{ color: "#FFB74D", fontSize: 13, textAlign: "center", lineHeight: 19, fontWeight: "600" }}>
+              🍻 Deseja fazer um novo pedido?{"\n"}
+              Solicite ao atendente a abertura de uma nova comanda e utilize o novo link ou QR Code gerado.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => carregarDados()}
+            style={{
+              backgroundColor: "#2A2A2A",
+              paddingVertical: 12,
+              paddingHorizontal: 22,
+              borderRadius: 25,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: "#444",
+            }}
+          >
+            <Ionicons name="refresh" size={18} color="#FFF" />
+            <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 14 }}>Verificar Novamente</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 

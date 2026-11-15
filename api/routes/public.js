@@ -159,8 +159,29 @@ router.get('/mesa/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Mesa não cadastrada ou inativa' });
     }
 
+    const vidParam = req.query.vid ? Number(req.query.vid) : null;
+    const vendaAberta = mesa.status === 'ocupada' && mesa.vendaAtual && mesa.vendaAtual.status === 'aberta';
+    const vidInvalido = Boolean(vidParam && Number.isFinite(vidParam) && (!mesa.vendaAtual || Number(mesa.vendaAtual.id) !== vidParam));
+
+    if (!vendaAberta || vidInvalido) {
+      return res.json({
+        success: true,
+        encerrada: true,
+        motivo: 'O atendimento desta mesa foi encerrado. Para realizar novos pedidos, solicite um novo link ao atendente.',
+        mesa: {
+          id: mesa.id,
+          numero: mesa.numero,
+          nome: mesa.nome,
+          status: mesa.status,
+          vendaAtualId: null,
+          vendaAtual: null
+        }
+      });
+    }
+
     res.json({
       success: true,
+      encerrada: false,
       mesa: {
         id: mesa.id,
         numero: mesa.numero,
@@ -186,37 +207,70 @@ router.get('/comanda/:nome', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Identificação da comanda é obrigatória' });
     }
 
-    const vendaAtiva = await prisma.sale.findFirst({
-      where: {
-        nomeComanda: nome,
-        tipoVenda: 'comanda',
-        status: 'aberta'
-      },
-      select: {
-        id: true,
-        status: true,
-        tipoVenda: true,
-        subtotal: true,
-        desconto: true,
-        total: true,
-        observacoes: true,
-        itens: {
-          select: {
-            id: true,
-            nomeProduto: true,
-            quantidade: true,
-            precoUnitario: true,
-            subtotal: true,
-            observacoes: true,
-            status: true,
-          },
-          orderBy: { createdAt: 'asc' },
+    const vidParam = req.query.vid ? Number(req.query.vid) : null;
+    const selectVenda = {
+      id: true,
+      nomeComanda: true,
+      status: true,
+      tipoVenda: true,
+      subtotal: true,
+      desconto: true,
+      total: true,
+      observacoes: true,
+      itens: {
+        select: {
+          id: true,
+          nomeProduto: true,
+          quantidade: true,
+          precoUnitario: true,
+          subtotal: true,
+          observacoes: true,
+          status: true,
         },
+        orderBy: { createdAt: 'asc' },
+      },
+    };
+
+    let vendaAtiva = null;
+    if (vidParam && Number.isFinite(vidParam) && vidParam > 0) {
+      const vendaPorId = await prisma.sale.findUnique({
+        where: { id: vidParam },
+        select: selectVenda
+      });
+      if (
+        vendaPorId &&
+        vendaPorId.status === 'aberta' &&
+        vendaPorId.tipoVenda === 'comanda' &&
+        String(vendaPorId.nomeComanda || '').trim().toLowerCase() === nome.toLowerCase()
+      ) {
+        vendaAtiva = vendaPorId;
       }
-    });
+    } else {
+      vendaAtiva = await prisma.sale.findFirst({
+        where: {
+          nomeComanda: nome,
+          tipoVenda: 'comanda',
+          status: 'aberta'
+        },
+        select: selectVenda
+      });
+    }
+
+    if (!vendaAtiva) {
+      return res.json({
+        success: true,
+        encerrada: true,
+        motivo: 'Esta comanda foi encerrada. Para realizar novos pedidos, solicite uma nova comanda ao atendente.',
+        comanda: {
+          nome: nome,
+          vendaAtual: null
+        }
+      });
+    }
 
     res.json({
       success: true,
+      encerrada: false,
       comanda: {
         nome: nome,
         vendaAtual: formatVendaPublica(vendaAtiva)
@@ -232,7 +286,8 @@ router.get('/comanda/:nome', async (req, res) => {
 router.post('/pedido', async (req, res) => {
   try {
     const prisma = getActivePrisma();
-    const { mesaId, comandaNome, itens } = req.body;
+    const { mesaId, comandaNome, itens, vid } = req.body;
+    const vidParam = vid ? Number(vid) : null;
 
     if (!mesaId && !comandaNome) {
       return res.status(400).json({ success: false, error: 'Identificação da mesa ou comanda é obrigatória' });
@@ -244,6 +299,8 @@ router.post('/pedido', async (req, res) => {
 
     let mesa = null;
     let mesaIdNum = null;
+    let vendaAtivaValidadaId = null;
+
     if (mesaId) {
       mesaIdNum = Number(mesaId);
       mesa = await prisma.mesa.findUnique({
@@ -262,79 +319,62 @@ router.post('/pedido', async (req, res) => {
         return res.status(404).json({ success: false, error: 'Mesa não encontrada ou desativada' });
       }
       mesaIdNum = mesa.id;
-    }
 
-    // Usando transação para criar a venda/itens com total segurança
-    const result = await prisma.$transaction(async (tx) => {
-      let vendaId = null;
-      let novaVendaCriada = false;
-      const primeiroFunc = await tx.employee.findFirst({ where: { ativo: true } });
+      // Impedir reabertura automática ou lançamento em mesa já encerrada
+      const mesaAbertaValida =
+        mesa.status === 'ocupada' &&
+        mesa.vendaAtualId &&
+        mesa.vendaAtual &&
+        mesa.vendaAtual.status === 'aberta' &&
+        (!vidParam || !Number.isFinite(vidParam) || Number(mesa.vendaAtualId) === vidParam);
 
-      if (mesa) {
-        vendaId = mesa.vendaAtualId;
+      if (!mesaAbertaValida) {
+        return res.status(403).json({
+          success: false,
+          encerrada: true,
+          error: 'O atendimento desta mesa já foi encerrado. Solicite um novo link ao atendente para fazer novos pedidos.'
+        });
+      }
+      vendaAtivaValidadaId = mesa.vendaAtualId;
+    } else if (comandaNome) {
+      const comandaStr = String(comandaNome).trim();
+      let comandaExistente = null;
 
-        // 1. Se a mesa estiver livre ou sem venda em aberto, cria uma nova venda do tipo mesa
-        if (mesa.status !== 'ocupada' || !vendaId || mesa.vendaAtual?.status !== 'aberta') {
-          const novaVenda = await tx.sale.create({
-            data: {
-              mesaId: mesaIdNum,
-              tipoVenda: 'mesa',
-              status: 'aberta',
-              funcionarioId: primeiroFunc ? primeiroFunc.id : null,
-              responsavelFuncionarioId: primeiroFunc ? primeiroFunc.id : null,
-              subtotal: 0,
-              desconto: 0,
-              total: 0,
-              observacoes: 'Pedido feito pelo Cardápio Eletrônico'
-            }
-          });
-
-          vendaId = novaVenda.id;
-          novaVendaCriada = true;
-
-          // Atualizar Mesa para ocupada
-          await tx.mesa.update({
-            where: { id: mesaIdNum },
-            data: {
-              status: 'ocupada',
-              vendaAtualId: vendaId,
-              clientesAtuais: 1,
-              horaAbertura: new Date(),
-              nomeResponsavel: 'Auto-Atendimento'
-            }
-          });
+      if (vidParam && Number.isFinite(vidParam) && vidParam > 0) {
+        const vendaPorId = await prisma.sale.findUnique({ where: { id: vidParam } });
+        if (
+          vendaPorId &&
+          vendaPorId.status === 'aberta' &&
+          vendaPorId.tipoVenda === 'comanda' &&
+          String(vendaPorId.nomeComanda || '').trim().toLowerCase() === comandaStr.toLowerCase()
+        ) {
+          comandaExistente = vendaPorId;
         }
-      } else if (comandaNome) {
-        const comandaStr = String(comandaNome).trim();
-        const comandaExistente = await tx.sale.findFirst({
+      } else {
+        comandaExistente = await prisma.sale.findFirst({
           where: {
             nomeComanda: comandaStr,
             tipoVenda: 'comanda',
             status: 'aberta'
           }
         });
-
-        if (comandaExistente) {
-          vendaId = comandaExistente.id;
-        } else {
-          const novaVenda = await tx.sale.create({
-            data: {
-              nomeComanda: comandaStr,
-              tipoVenda: 'comanda',
-              status: 'aberta',
-              funcionarioId: primeiroFunc ? primeiroFunc.id : null,
-              responsavelFuncionarioId: primeiroFunc ? primeiroFunc.id : null,
-              subtotal: 0,
-              desconto: 0,
-              total: 0,
-              observacoes: 'Pedido feito pelo Cardápio Eletrônico'
-            }
-          });
-
-          vendaId = novaVenda.id;
-          novaVendaCriada = true;
-        }
       }
+
+      // Impedir criação/reabertura automática de comanda já encerrada
+      if (!comandaExistente) {
+        return res.status(403).json({
+          success: false,
+          encerrada: true,
+          error: 'Esta comanda já foi encerrada. Solicite uma nova comanda ao atendente para fazer novos pedidos.'
+        });
+      }
+      vendaAtivaValidadaId = comandaExistente.id;
+    }
+
+    // Usando transação para inserir os itens com total segurança na venda ativa validada
+    const result = await prisma.$transaction(async (tx) => {
+      const vendaId = vendaAtivaValidadaId;
+      const novaVendaCriada = false;
 
       const itensInseridos = [];
 
@@ -620,10 +660,12 @@ router.post('/pedir-conta', async (req, res) => {
     const {
       mesaId,
       comandaNome,
+      vid,
       formaPagamento = 'Cartão',
       trocoPara = '',
       dividirPessoas = 1,
     } = req.body || {};
+    const vidParam = vid ? Number(vid) : null;
 
     if (!mesaId && !comandaNome) {
       return res.status(400).json({ success: false, error: 'Identificação da mesa ou comanda é obrigatória' });
@@ -644,21 +686,47 @@ router.post('/pedir-conta', async (req, res) => {
           include: { vendaAtual: true }
         });
       }
-      if (!mesaObj || !mesaObj.vendaAtual || mesaObj.vendaAtual.status !== 'aberta') {
-        return res.status(400).json({ success: false, error: 'Não há conta em aberto nesta mesa.' });
+      if (
+        !mesaObj ||
+        mesaObj.status !== 'ocupada' ||
+        !mesaObj.vendaAtual ||
+        mesaObj.vendaAtual.status !== 'aberta' ||
+        (vidParam && Number.isFinite(vidParam) && Number(mesaObj.vendaAtual.id) !== vidParam)
+      ) {
+        return res.status(403).json({
+          success: false,
+          encerrada: true,
+          error: 'O atendimento desta mesa já foi encerrado.'
+        });
       }
       venda = mesaObj.vendaAtual;
     } else if (comandaNome) {
       const nomeStr = String(comandaNome).trim();
-      venda = await prisma.sale.findFirst({
-        where: {
-          nomeComanda: nomeStr,
-          tipoVenda: 'comanda',
-          status: 'aberta'
+      if (vidParam && Number.isFinite(vidParam) && vidParam > 0) {
+        const vendaPorId = await prisma.sale.findUnique({ where: { id: vidParam } });
+        if (
+          vendaPorId &&
+          vendaPorId.status === 'aberta' &&
+          vendaPorId.tipoVenda === 'comanda' &&
+          String(vendaPorId.nomeComanda || '').trim().toLowerCase() === nomeStr.toLowerCase()
+        ) {
+          venda = vendaPorId;
         }
-      });
+      } else {
+        venda = await prisma.sale.findFirst({
+          where: {
+            nomeComanda: nomeStr,
+            tipoVenda: 'comanda',
+            status: 'aberta'
+          }
+        });
+      }
       if (!venda) {
-        return res.status(400).json({ success: false, error: 'Não há conta em aberto nesta comanda.' });
+        return res.status(403).json({
+          success: false,
+          encerrada: true,
+          error: 'Esta comanda já foi encerrada.'
+        });
       }
     }
 

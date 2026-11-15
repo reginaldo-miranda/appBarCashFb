@@ -105,6 +105,8 @@
       var port = params.get("p") || "4000";
       var mesa = params.get("mesa");
       var comanda = params.get("comanda");
+      var vid = params.get("vid");
+      var vidSuffix = vid ? ("?vid=" + encodeURIComponent(vid)) : "";
 
       var target = "";
       if (directUrl) {
@@ -112,11 +114,11 @@
       } else {
         var base = "http://" + ip + (port ? ":" + port : "");
         if (mesa) {
-          target = base + "/cardapio/" + encodeURIComponent(mesa);
+          target = base + "/cardapio/" + encodeURIComponent(mesa) + vidSuffix;
           document.getElementById("titulo").textContent = "Cardápio Digital";
           document.getElementById("subtitulo").textContent = "Redirecionando para o cardápio da sua Mesa...";
         } else if (comanda) {
-          target = base + "/cardapio/comanda/" + encodeURIComponent(comanda);
+          target = base + "/cardapio/comanda/" + encodeURIComponent(comanda) + vidSuffix;
           document.getElementById("titulo").textContent = "Cardápio — Comanda " + comanda;
           document.getElementById("subtitulo").textContent = "Redirecionando para o cardápio da sua Comanda...";
         } else {
