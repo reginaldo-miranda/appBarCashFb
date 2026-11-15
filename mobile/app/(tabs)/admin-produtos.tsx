@@ -1243,6 +1243,99 @@ export default function AdminProdutosScreen() {
                                     />
                                   </View>
                                 </View>
+
+                                {/* Linha de Switches: Tamanhos e Variações */}
+                                <View style={styles.switchesPrecoRow}>
+                                  <View style={styles.switchOptionCompact}>
+                                    <Switch
+                                      value={formData.temTamanhos}
+                                      onValueChange={(val) => {
+                                        setFormData(prev => ({ ...prev, temTamanhos: val }));
+                                        if (val && tamanhos.length === 0) {
+                                          setTamanhos([
+                                            { nome: 'P', preco: formData.precoVenda || '' },
+                                            { nome: 'M', preco: '' },
+                                            { nome: 'G', preco: '' },
+                                          ]);
+                                        }
+                                      }}
+                                      trackColor={{ false: '#CBD5E1', true: '#3B82F6' }}
+                                      thumbColor="#fff"
+                                    />
+                                    <Text style={styles.switchOptionLabel}>Com Tamanhos (P, M, G...)</Text>
+                                  </View>
+
+                                  <View style={styles.switchOptionCompact}>
+                                    <Switch
+                                      value={formData.temVariacao}
+                                      onValueChange={(val) => setFormData(prev => ({ ...prev, temVariacao: val }))}
+                                      trackColor={{ false: '#CBD5E1', true: '#8B5CF6' }}
+                                      thumbColor="#fff"
+                                    />
+                                    <Text style={styles.switchOptionLabel}>Com Variação</Text>
+                                  </View>
+                                </View>
+
+                                {/* Lista Dinâmica de Tamanhos */}
+                                {formData.temTamanhos && (
+                                  <View style={styles.tamanhosBox}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                      <Text style={styles.tamanhosTitle}>Tamanhos & Preços</Text>
+                                      <TouchableOpacity
+                                        style={styles.addTamanhoBtn}
+                                        onPress={() => setTamanhos(prev => [...prev, { nome: '', preco: '' }])}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Ionicons name="add" size={13} color="#0284C7" />
+                                        <Text style={styles.addTamanhoBtnText}>+ Tamanho</Text>
+                                      </TouchableOpacity>
+                                    </View>
+
+                                    {tamanhos.map((tam, idx) => (
+                                      <View key={idx} style={styles.tamanhoRow}>
+                                        <TextInput
+                                          style={[styles.inputCompact, { flex: 1.5, height: 28, fontSize: 11 }]}
+                                          placeholder="Tamanho (Ex: P, M, 500ml)"
+                                          placeholderTextColor="#94A3B8"
+                                          value={tam.nome}
+                                          onChangeText={(t) => {
+                                            const updated = [...tamanhos];
+                                            updated[idx].nome = t;
+                                            setTamanhos(updated);
+                                          }}
+                                        />
+                                        <TextInput
+                                          style={[styles.inputCompact, { flex: 1, height: 28, fontSize: 11 }]}
+                                          placeholder="R$ Preço"
+                                          placeholderTextColor="#94A3B8"
+                                          keyboardType="numeric"
+                                          value={tam.preco}
+                                          onChangeText={(t) => {
+                                            const updated = [...tamanhos];
+                                            updated[idx].preco = t;
+                                            setTamanhos(updated);
+                                            // Atualiza precoVenda base com o primeiro tamanho se vazio
+                                            if (idx === 0) {
+                                              setFormData(prev => ({ ...prev, precoVenda: t }));
+                                            }
+                                          }}
+                                        />
+                                        <TouchableOpacity
+                                          style={styles.removeTamanhoBtn}
+                                          onPress={() => setTamanhos(prev => prev.filter((_, i) => i !== idx))}
+                                          activeOpacity={0.7}
+                                        >
+                                          <Ionicons name="trash-outline" size={13} color="#EF4444" />
+                                        </TouchableOpacity>
+                                      </View>
+                                    ))}
+                                    {tamanhos.length === 0 && (
+                                      <Text style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', paddingVertical: 4 }}>
+                                        Nenhum tamanho configurado. Clique em "+ Tamanho" acima.
+                                      </Text>
+                                    )}
+                                  </View>
+                                )}
                               </View>
 
                               {/* 3. Classificação & Impressão */}
