@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import {
   View,
+  Linking,
   Text,
   StyleSheet,
   FlatList,
@@ -189,6 +190,33 @@ export default function AdminProdutosScreen() {
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showNcmMenu, setShowNcmMenu] = useState(false);
+  const [showReformaTributaria, setShowReformaTributaria] = useState(false);
+
+  const handleSearchNcm = (engine: 'cosmos' | 'google') => {
+    setShowNcmMenu(false);
+    const termo = (formData.nome || '').trim();
+    let url = '';
+    if (engine === 'cosmos') {
+      url = termo 
+        ? `https://cosmos.bluesoft.com.br/pesquisa?q=${encodeURIComponent(termo)}`
+        : 'https://cosmos.bluesoft.com.br/';
+    } else {
+      url = termo
+        ? `https://www.google.com/search?q=NCM+${encodeURIComponent(termo)}+tabela+TIPI`
+        : 'https://www.google.com/search?q=tabela+NCM+consulta';
+    }
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
+    } else {
+      Linking.openURL(url).catch(err => {
+        Alert.alert('Erro', 'Não foi possível abrir o navegador.');
+      });
+    }
+  };
 
   const handleBulkSuccess = () => {
     setShowBulkModal(false);
@@ -524,6 +552,8 @@ export default function AdminProdutosScreen() {
       cbsAliquota: (product as any).cbsAliquota !== null && (product as any).cbsAliquota !== undefined ? String((product as any).cbsAliquota) : '',
       isAliquota: (product as any).isAliquota !== null && (product as any).isAliquota !== undefined ? String((product as any).isAliquota) : '',
     });
+    setShowNcmMenu(false);
+    setShowReformaTributaria(false);
     setEditingProduct(product);
     setSelectedSetores(null);
     try {
@@ -560,6 +590,8 @@ export default function AdminProdutosScreen() {
   };
 
   const resetForm = () => {
+    setShowNcmMenu(false);
+    setShowReformaTributaria(false);
     setFormData({
       nome: '',
       descricao: '',
@@ -1047,472 +1079,585 @@ export default function AdminProdutosScreen() {
                 >
                    {/* Layout centralizado para telas grandes */}
                    <View style={styles.formCard}>
-                      
-                      {/* Grupo: Informações Básicas */}
-                      <View style={styles.formSection}>
-                         <Text style={styles.sectionLabel}>Informações Básicas</Text>
-                         
-                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Nome do Produto</Text>
-                            <TextInput
-                              style={styles.input}
-                              value={formData.nome}
-                              onChangeText={(t) => setFormData({...formData, nome: t})}
-                              placeholder="Ex: Coca-Cola Lata"
-                              placeholderTextColor="#94A3B8"
-                            />
-                         </View>
+                      {/* Validações para borda vermelha obrigatória */}
+                      {(() => {
+                        const isNomeMissing = !formData.nome?.trim();
+                        const isPrecoVendaMissing = !formData.precoVenda?.toString().trim();
+                        const isCategoriaMissing = !formData.categoria;
+                        const isNcmMissing = !formData.ncm || formData.ncm.replace(/\D/g, '').length !== 8;
+                        const hasReformaValues = !!(formData.ibsCst || formData.ibsClassTrib || formData.ibsAliquota || formData.cbsCst || formData.cbsClassTrib || formData.cbsAliquota || formData.isAliquota);
 
-                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Descrição</Text>
-                            <TextInput
-                              style={[styles.input, styles.textArea]}
-                              value={formData.descricao}
-                              onChangeText={(t) => setFormData({...formData, descricao: t})}
-                              placeholder="Detalhes do produto (opcional)"
-                              placeholderTextColor="#94A3B8"
-                              multiline
-                            />
-                         </View>
-                      </View>
+                        return (
+                          <View style={{ flexDirection: isLargeScreen ? 'row' : 'column', gap: 14 }}>
+                            {/* ── COLUNA ESQUERDA: Informações do Produto, Preços & Classificação ── */}
+                            <View style={{ flex: isLargeScreen ? 1 : undefined, gap: 10 }}>
+                              {/* 1. Informações Básicas com Foto Integrada */}
+                              <View style={styles.subCard}>
+                                <Text style={styles.subCardLabel}>Informações Gerais</Text>
+                                
+                                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                                  {/* Foto Miniatura 70x70 com upload/remover */}
+                                  <View style={styles.compactPhotoBox}>
+                                    {formData.imagem ? (
+                                      <View style={styles.compactPhotoWrapper}>
+                                        <Image
+                                          source={{ uri: getProductImageUrl(formData.imagem) || '' }}
+                                          style={styles.compactPhoto}
+                                          resizeMode="cover"
+                                        />
+                                        <TouchableOpacity
+                                          style={styles.compactPhotoRemove}
+                                          onPress={() => setFormData({ ...formData, imagem: '' })}
+                                          activeOpacity={0.7}
+                                        >
+                                          <Ionicons name="trash" size={11} color="#fff" />
+                                        </TouchableOpacity>
+                                      </View>
+                                    ) : (
+                                      <TouchableOpacity
+                                        style={[styles.compactPhotoPlaceholder, uploadingImage && { opacity: 0.5 }]}
+                                        onPress={handlePickImage}
+                                        disabled={uploadingImage}
+                                        activeOpacity={0.7}
+                                      >
+                                        {uploadingImage ? (
+                                          <ActivityIndicator size="small" color="#2196F3" />
+                                        ) : (
+                                          <>
+                                            <Ionicons name="camera-outline" size={20} color="#94A3B8" />
+                                            <Text style={styles.compactPhotoText}>Foto</Text>
+                                          </>
+                                        )}
+                                      </TouchableOpacity>
+                                    )}
+                                    {formData.imagem && (
+                                      <TouchableOpacity
+                                        style={styles.compactPhotoChangeBtn}
+                                        onPress={handlePickImage}
+                                        disabled={uploadingImage}
+                                      >
+                                        <Text style={styles.compactPhotoChangeText}>Trocar</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
 
-                      {/* Grupo: Foto do Produto */}
-                      <View style={styles.formSection}>
-                         <Text style={styles.sectionLabel}>Foto do Produto</Text>
-                         <View style={styles.photoContainer}>
-                            {formData.imagem ? (
-                               <View style={styles.photoPreviewWrapper}>
-                                  <Image
-                                     source={{ uri: getProductImageUrl(formData.imagem) || '' }}
-                                     style={styles.photoPreview}
-                                     resizeMode="cover"
-                                  />
-                                  <TouchableOpacity
-                                     style={styles.removePhotoBtn}
-                                     onPress={() => setFormData({ ...formData, imagem: '' })}
-                                     activeOpacity={0.7}
-                                  >
-                                     <SafeIcon name="trash-outline" size={14} color="#fff" fallbackText="✕" />
-                                     <Text style={styles.removePhotoText}>Remover Foto</Text>
-                                  </TouchableOpacity>
-                               </View>
-                            ) : (
-                               <View style={styles.photoPlaceholder}>
-                                  <SafeIcon name="image-outline" size={32} color="#94A3B8" fallbackText="📷" />
-                                  <Text style={styles.photoPlaceholderText}>Sem foto</Text>
-                               </View>
-                            )}
-
-                            <View style={styles.photoActionsBox}>
-                               <TouchableOpacity
-                                  style={[styles.pickPhotoBtn, uploadingImage && styles.pickPhotoBtnDisabled]}
-                                  onPress={handlePickImage}
-                                  disabled={uploadingImage}
-                                  activeOpacity={0.8}
-                                >
-                                  {uploadingImage ? (
-                                     <ActivityIndicator size="small" color="#fff" />
-                                  ) : (
-                                     <>
-                                        <SafeIcon name="camera-outline" size={18} color="#fff" fallbackText="📷" />
-                                        <Text style={styles.pickPhotoBtnText}>
-                                           {formData.imagem ? 'Alterar Foto' : 'Tirar Foto ou Escolher'}
+                                  {/* Nome e Descrição */}
+                                  <View style={{ flex: 1, gap: 6 }}>
+                                    <View>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                                        <Text style={[styles.labelCompact, isNomeMissing && styles.labelRequired]}>
+                                          Nome do Produto *
                                         </Text>
-                                     </>
-                                  )}
-                               </TouchableOpacity>
-                               <Text style={styles.photoHint}>
-                                  PC: Arquivo do computador • Celular: Câmera ou Galeria
-                               </Text>
-                            </View>
-                         </View>
-                      </View>
+                                        {isNomeMissing && <Text style={styles.requiredTag}>Obrigatório</Text>}
+                                      </View>
+                                      <TextInput
+                                        style={[
+                                          styles.inputCompact,
+                                          isNomeMissing && styles.inputRequired
+                                        ]}
+                                        value={formData.nome}
+                                        onChangeText={(t) => setFormData({...formData, nome: t})}
+                                        placeholder="Ex: Coca-Cola Lata 350ml"
+                                        placeholderTextColor="#94A3B8"
+                                      />
+                                    </View>
 
-                      {/* Grupo: Classificação Unificada (Linha Única Forçada sem Scroll Externo) */}
-                      <View style={styles.formSection}>
-                         <Text style={styles.sectionLabel}>Classificação & Impressão</Text>
-                         
-                         {/* Container Row que força tudo na mesma linha */}
-                         <View style={{ flexDirection: 'row', gap: 8, width: '100%' }}>
-                             {/* 1. Categoria */}
-                             <View style={{ flex: 1.2, minWidth: 0 }}>
-                               <Text style={[styles.label, { fontSize: 11, marginBottom: 4 }]}>Categoria</Text>
-                               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                                  {(categorias || []).map(cat => (
-                                    <TouchableOpacity
-                                      key={cat._id}
-                                      style={[
-                                        styles.chip, 
-                                        formData.categoria === cat.nome && styles.chipActive,
-                                        { paddingHorizontal: 8, paddingVertical: 4 }
-                                      ]}
-                                      onPress={() => setFormData({...formData, categoria: cat.nome})}
-                                    >
-                                       <Text style={[styles.chipText, formData.categoria === cat.nome && styles.chipTextActive, { fontSize: 11 }]} numberOfLines={1}>
-                                         {cat.nome}
-                                       </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                               </ScrollView>
-                             </View>
+                                    <View>
+                                      <Text style={styles.labelCompact}>Descrição</Text>
+                                      <TextInput
+                                        style={[styles.inputCompact, { height: 32, paddingVertical: 4 }]}
+                                        value={formData.descricao}
+                                        onChangeText={(t) => setFormData({...formData, descricao: t})}
+                                        placeholder="Detalhes opcionais"
+                                        placeholderTextColor="#94A3B8"
+                                      />
+                                    </View>
+                                  </View>
+                                </View>
+                              </View>
 
-                             {/* 2. Setor */}
-                             <View style={{ flex: 1.2, minWidth: 0 }}>
-                               <Text style={[styles.label, { fontSize: 11, marginBottom: 4 }]}>Setor</Text>
-                               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                                 {(setores || []).map((s) => (
-                                   <TouchableOpacity
-                                     key={s.id}
-                                     style={[
-                                       styles.chip, 
-                                       (selectedSetores || []).includes(String(s.id)) && styles.chipActive,
-                                       { paddingHorizontal: 8, paddingVertical: 4 }
-                                     ]}
-                                     onPress={() => {
-                                       const id = String(s.id);
-                                       setSelectedSetores((prev) => {
-                                         const current = prev || [];
-                                         return current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-                                       });
-                                     }}
-                                   >
-                                     <Text style={[styles.chipText, (selectedSetores || []).includes(String(s.id)) && styles.chipTextActive, { fontSize: 11 }]} numberOfLines={1}>
-                                       {s.nome}
-                                     </Text>
-                                   </TouchableOpacity>
-                                 ))}
-                               </ScrollView>
-                             </View>
-
-                             {/* 3. Tipo */}
-                             <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={[styles.label, { fontSize: 11, marginBottom: 4 }]}>Tipo</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                                  {(tipos || []).map(t => (
-                                    <TouchableOpacity
-                                      key={t._id}
-                                      style={[
-                                        styles.chip, 
-                                        formData.tipo === t.nome && styles.chipActive,
-                                        { paddingHorizontal: 8, paddingVertical: 4 }
-                                      ]}
-                                      onPress={() => setFormData({...formData, tipo: t.nome})}
-                                    >
-                                      <Text style={[styles.chipText, formData.tipo === t.nome && styles.chipTextActive, { fontSize: 11 }]} numberOfLines={1}>
-                                        {t.nome}
+                              {/* 2. Preços (Custo e Venda lado a lado) */}
+                              <View style={styles.subCard}>
+                                <Text style={styles.subCardLabel}>Preços</Text>
+                                <View style={styles.row}>
+                                  <View style={[styles.inputGroupCompact, { flex: 1, marginRight: 6 }]}>
+                                    <Text style={styles.labelCompact}>Preço de Custo (R$)</Text>
+                                    <TextInput
+                                      style={styles.inputCompact}
+                                      value={formData.precoCusto}
+                                      onChangeText={(t) => setFormData({...formData, precoCusto: t})}
+                                      keyboardType="numeric"
+                                      placeholder="0.00"
+                                    />
+                                  </View>
+                                  <View style={[styles.inputGroupCompact, { flex: 1, marginLeft: 6 }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                                      <Text style={[styles.labelCompact, isPrecoVendaMissing ? styles.labelRequired : { color: '#0284C7' }]}>
+                                        Preço de Venda (R$) *
                                       </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                             </View>
-                             
-                             {/* 4. Unidade */}
-                             <View style={{ flex: 0.8, minWidth: 0 }}>
-                                <Text style={[styles.label, { fontSize: 11, marginBottom: 4 }]}>Unid.</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                                  {(unidades || []).map(u => (
-                                    <TouchableOpacity
-                                      key={u._id}
+                                      {isPrecoVendaMissing && <Text style={styles.requiredTag}>Obrigatório</Text>}
+                                    </View>
+                                    <TextInput
                                       style={[
-                                        styles.chip, 
-                                        formData.unidade === u.sigla && styles.chipActive,
-                                        { paddingHorizontal: 8, paddingVertical: 4 }
+                                        styles.inputCompact,
+                                        isPrecoVendaMissing ? styles.inputRequired : { borderColor: '#BAE6FD', backgroundColor: '#F0F9FF', fontWeight: 'bold' }
                                       ]}
-                                      onPress={() => setFormData({...formData, unidade: u.sigla})}
-                                    >
-                                      <Text style={[styles.chipText, formData.unidade === u.sigla && styles.chipTextActive, { fontSize: 11 }]} numberOfLines={1}>
-                                        {u.sigla}
+                                      value={formData.precoVenda}
+                                      onChangeText={(t) => setFormData({...formData, precoVenda: t})}
+                                      keyboardType="numeric"
+                                      placeholder="0.00"
+                                    />
+                                  </View>
+                                </View>
+                              </View>
+
+                              {/* 3. Classificação & Impressão */}
+                              <View style={styles.subCard}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                  <Text style={styles.subCardLabel}>Classificação & Impressão</Text>
+                                  {isCategoriaMissing && <Text style={styles.requiredTag}>Categoria Obrigatória *</Text>}
+                                </View>
+
+                                {/* Categoria */}
+                                <View style={{ marginBottom: 6 }}>
+                                  <Text style={[styles.labelCompact, isCategoriaMissing && styles.labelRequired]}>Categoria *</Text>
+                                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isCategoriaMissing && styles.chipScrollRequired]}>
+                                     {(categorias || []).map(cat => (
+                                       <TouchableOpacity
+                                         key={cat._id}
+                                         style={[
+                                           styles.chipCompact, 
+                                           formData.categoria === cat.nome && styles.chipActiveCompact
+                                         ]}
+                                         onPress={() => setFormData({...formData, categoria: cat.nome})}
+                                       >
+                                          <Text style={[styles.chipTextCompact, formData.categoria === cat.nome && styles.chipTextActiveCompact]} numberOfLines={1}>
+                                            {cat.nome}
+                                          </Text>
+                                       </TouchableOpacity>
+                                     ))}
+                                  </ScrollView>
+                                </View>
+
+                                {/* Setor, Tipo e Unidade em linha */}
+                                <View style={{ flexDirection: 'row', gap: 6 }}>
+                                  {/* Setor */}
+                                  <View style={{ flex: 1.2, minWidth: 0 }}>
+                                    <Text style={styles.labelCompact}>Setor</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                                      {(setores || []).map((s) => (
+                                        <TouchableOpacity
+                                          key={s.id}
+                                          style={[
+                                            styles.chipCompact, 
+                                            (selectedSetores || []).includes(String(s.id)) && styles.chipActiveCompact
+                                          ]}
+                                          onPress={() => {
+                                            const id = String(s.id);
+                                            setSelectedSetores((prev) => {
+                                              const current = prev || [];
+                                              return current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+                                            });
+                                          }}
+                                        >
+                                          <Text style={[styles.chipTextCompact, (selectedSetores || []).includes(String(s.id)) && styles.chipTextActiveCompact]} numberOfLines={1}>
+                                            {s.nome}
+                                          </Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </ScrollView>
+                                  </View>
+
+                                  {/* Tipo */}
+                                  <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Text style={styles.labelCompact}>Tipo</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                                      {(tipos || []).map(t => (
+                                        <TouchableOpacity
+                                          key={t._id}
+                                          style={[
+                                            styles.chipCompact, 
+                                            formData.tipo === t.nome && styles.chipActiveCompact
+                                          ]}
+                                          onPress={() => setFormData({...formData, tipo: t.nome})}
+                                        >
+                                          <Text style={[styles.chipTextCompact, formData.tipo === t.nome && styles.chipTextActiveCompact]} numberOfLines={1}>
+                                            {t.nome}
+                                          </Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </ScrollView>
+                                  </View>
+
+                                  {/* Unidade */}
+                                  <View style={{ flex: 0.8, minWidth: 0 }}>
+                                    <Text style={styles.labelCompact}>Unid.</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                                      {(unidades || []).map(u => (
+                                        <TouchableOpacity
+                                          key={u._id}
+                                          style={[
+                                            styles.chipCompact, 
+                                            formData.unidade === u.sigla && styles.chipActiveCompact
+                                          ]}
+                                          onPress={() => setFormData({...formData, unidade: u.sigla})}
+                                        >
+                                          <Text style={[styles.chipTextCompact, formData.unidade === u.sigla && styles.chipTextActiveCompact]} numberOfLines={1}>
+                                            {u.sigla}
+                                          </Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </ScrollView>
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* ── COLUNA DIREITA: Estoque & Dados Fiscais ── */}
+                            <View style={{ flex: isLargeScreen ? 1 : undefined, gap: 10 }}>
+                              {/* 1. Estoque & Disponibilidade */}
+                              <View style={styles.subCard}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                  <Text style={styles.subCardLabel}>Estoque & Disponibilidade</Text>
+                                  <TouchableOpacity 
+                                    onPress={() => setShowModalNovoLocal(true)}
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 }}
+                                  >
+                                    <Ionicons name="add-circle-outline" size={13} color="#0284C7" />
+                                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0284C7', marginLeft: 3 }}>+ Local</Text>
+                                  </TouchableOpacity>
+                                </View>
+
+                                {/* Local de Venda */}
+                                <View style={styles.locaisSelectorContainerCompact}>
+                                  {locaisEstoque.map(loc => {
+                                    const isSelected = formData.localVendaNome === loc.nome;
+                                    return (
+                                      <TouchableOpacity
+                                        key={loc.id}
+                                        onPress={() => setFormData({ ...formData, localVendaNome: loc.nome, localVendaId: loc.id })}
+                                        style={[
+                                          styles.localSelectorChipCompact,
+                                          isSelected && styles.localSelectorChipActive
+                                        ]}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Ionicons 
+                                          name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
+                                          size={12} 
+                                          color={isSelected ? '#fff' : '#475569'} 
+                                        />
+                                        <Text style={[
+                                          styles.localSelectorChipTextCompact,
+                                          isSelected && styles.localSelectorChipTextActive
+                                        ]}>
+                                          {loc.nome}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
+
+                                {/* Estoques e Total em linha */}
+                                <View style={[styles.row, { marginTop: 8 }]}>
+                                  <View style={[styles.inputGroupCompact, { flex: 1, marginRight: 5 }]}>
+                                    <Text style={styles.labelCompact}>📦 Depósito</Text>
+                                    <TextInput
+                                       style={styles.inputCompact}
+                                       value={formData.estoqueDeposito}
+                                       onChangeText={(t) => {
+                                         const dep = parseInt(t) || 0;
+                                         const gel = parseInt(formData.estoqueGeladeira) || 0;
+                                         setFormData({...formData, estoqueDeposito: t, quantidade: (dep + gel).toString()});
+                                       }}
+                                       keyboardType="numeric"
+                                       placeholder="0"
+                                    />
+                                  </View>
+
+                                  <View style={[styles.inputGroupCompact, { flex: 1, marginHorizontal: 3 }]}>
+                                    <Text style={styles.labelCompact} numberOfLines={1}>📍 {formData.localVendaNome || 'Local Venda'}</Text>
+                                    <TextInput
+                                       style={styles.inputCompact}
+                                       value={formData.estoqueGeladeira}
+                                       onChangeText={(t) => {
+                                         const gel = parseInt(t) || 0;
+                                         const dep = parseInt(formData.estoqueDeposito) || 0;
+                                         setFormData({...formData, estoqueGeladeira: t, quantidade: (dep + gel).toString()});
+                                       }}
+                                       keyboardType="numeric"
+                                       placeholder="0"
+                                    />
+                                  </View>
+
+                                  <View style={[styles.inputGroupCompact, { flex: 0.9, marginLeft: 3, justifyContent: 'center' }]}>
+                                    <Text style={[styles.labelCompact, { color: '#64748B' }]}>Total</Text>
+                                    <View style={styles.totalEstoqueBox}>
+                                      <Text style={styles.totalEstoqueVal}>
+                                        {(parseInt(formData.estoqueDeposito) || 0) + (parseInt(formData.estoqueGeladeira) || 0)} {formData.unidade || 'un'}
                                       </Text>
+                                    </View>
+                                  </View>
+                                </View>
+
+                                {/* Switches em linha */}
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderColor: '#F1F5F9' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Switch
+                                      value={formData.ativo}
+                                      onValueChange={(v) => setFormData({...formData, ativo: v})}
+                                      trackColor={{ false: '#E2E8F0', true: '#2196F3' }}
+                                      thumbColor={'#fff'}
+                                      style={{ transform: Platform.OS === 'web' ? [{ scaleX: 0.8 }, { scaleY: 0.8 }] : [] }}
+                                    />
+                                    <Text style={styles.switchLabelCompact}>Ativo</Text>
+                                  </View>
+
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Switch
+                                      value={formData.disponivel}
+                                      onValueChange={(v) => setFormData({...formData, disponivel: v})}
+                                      trackColor={{ false: '#E2E8F0', true: '#2196F3' }}
+                                      thumbColor={'#fff'}
+                                      style={{ transform: Platform.OS === 'web' ? [{ scaleX: 0.8 }, { scaleY: 0.8 }] : [] }}
+                                    />
+                                    <Text style={styles.switchLabelCompact}>Disponível Venda</Text>
+                                  </View>
+                                </View>
+                              </View>
+
+                              {/* 2. Dados Fiscais com Busca de NCM */}
+                              <View style={styles.subCard}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                  <Text style={styles.subCardLabel}>Dados Fiscais (NFC-e)</Text>
+                                  
+                                  {/* Botão de Busca de NCM */}
+                                  <View style={{ position: 'relative' }}>
+                                    <TouchableOpacity 
+                                      style={styles.ncmSearchBtn}
+                                      onPress={() => setShowNcmMenu(!showNcmMenu)}
+                                      activeOpacity={0.8}
+                                    >
+                                      <Ionicons name="globe-outline" size={13} color="#0284C7" />
+                                      <Text style={styles.ncmSearchBtnText}>Buscar NCM ▾</Text>
                                     </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                             </View>
-                         </View>
-                      </View>
 
-                      {/* Grupo: Preços */}
-                      <View style={styles.formSection}>
-                         <Text style={styles.sectionLabel}>Preços</Text>
-                         <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                               <Text style={styles.label}>Preço de Custo (R$)</Text>
-                               <TextInput
-                                 style={styles.input}
-                                 value={formData.precoCusto}
-                                 onChangeText={(t) => setFormData({...formData, precoCusto: t})}
-                                 keyboardType="numeric"
-                                 placeholder="0.00"
-                               />
+                                    {/* Dropdown de Busca */}
+                                    {showNcmMenu && (
+                                      <View style={styles.ncmDropdownMenu}>
+                                        <TouchableOpacity 
+                                          style={styles.ncmDropdownItem}
+                                          onPress={() => handleSearchNcm('cosmos')}
+                                        >
+                                          <Ionicons name="search" size={14} color="#0284C7" />
+                                          <View>
+                                            <Text style={styles.ncmDropdownItemTitle}>Cosmos Bluesoft</Text>
+                                            <Text style={styles.ncmDropdownItemSub}>Catálogo oficial de produtos</Text>
+                                          </View>
+                                        </TouchableOpacity>
+
+                                        <View style={styles.ncmDropdownDivider} />
+
+                                        <TouchableOpacity 
+                                          style={styles.ncmDropdownItem}
+                                          onPress={() => handleSearchNcm('google')}
+                                        >
+                                          <Ionicons name="logo-google" size={14} color="#EA4335" />
+                                          <View>
+                                            <Text style={styles.ncmDropdownItemTitle}>Google Busca</Text>
+                                            <Text style={styles.ncmDropdownItemSub}>NCM + Nome no Google</Text>
+                                          </View>
+                                        </TouchableOpacity>
+                                      </View>
+                                    )}
+                                  </View>
+                                </View>
+
+                                {/* NCM e CEST */}
+                                <View style={styles.row}>
+                                  <View style={[styles.inputGroupCompact, { flex: 1.2, marginRight: 6 }]}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                      <Text style={[styles.labelCompact, isNcmMissing && styles.labelRequired]}>
+                                        NCM (8 dígitos) *
+                                      </Text>
+                                      {isNcmMissing && <Text style={styles.requiredTag}>Obrigatório</Text>}
+                                    </View>
+                                    <TextInput
+                                      style={[
+                                        styles.inputCompact,
+                                        isNcmMissing && styles.inputRequired
+                                      ]}
+                                      value={formData.ncm}
+                                      onChangeText={(t) => setFormData({...formData, ncm: t})}
+                                      keyboardType="numeric"
+                                      maxLength={8}
+                                      placeholder="Ex: 22021000"
+                                    />
+                                  </View>
+
+                                  <View style={[styles.inputGroupCompact, { flex: 0.8, marginLeft: 6 }]}>
+                                    <Text style={styles.labelCompact}>CEST</Text>
+                                    <TextInput
+                                      style={styles.inputCompact}
+                                      value={formData.cest}
+                                      onChangeText={(t) => setFormData({...formData, cest: t})}
+                                      keyboardType="numeric"
+                                      placeholder="0300700"
+                                    />
+                                  </View>
+                                </View>
+
+                                {/* CFOP, CSOSN e Origem */}
+                                <View style={styles.row}>
+                                  <View style={[styles.inputGroupCompact, { flex: 1, marginRight: 4 }]}>
+                                    <Text style={styles.labelCompact}>CFOP</Text>
+                                    <TextInput
+                                      style={styles.inputCompact}
+                                      value={formData.cfop}
+                                      onChangeText={(t) => setFormData({...formData, cfop: t})}
+                                      keyboardType="numeric"
+                                      placeholder="5102"
+                                    />
+                                  </View>
+
+                                  <View style={[styles.inputGroupCompact, { flex: 1, marginHorizontal: 4 }]}>
+                                    <Text style={styles.labelCompact}>CSOSN</Text>
+                                    <TextInput
+                                      style={styles.inputCompact}
+                                      value={formData.csosn}
+                                      onChangeText={(t) => setFormData({...formData, csosn: t})}
+                                      keyboardType="numeric"
+                                      placeholder="102"
+                                    />
+                                  </View>
+
+                                  <View style={[styles.inputGroupCompact, { flex: 0.8, marginLeft: 4 }]}>
+                                    <Text style={styles.labelCompact}>Origem</Text>
+                                    <TextInput
+                                      style={styles.inputCompact}
+                                      value={formData.origem}
+                                      onChangeText={(t) => setFormData({...formData, origem: t})}
+                                      keyboardType="numeric"
+                                      maxLength={1}
+                                      placeholder="0"
+                                    />
+                                  </View>
+                                </View>
+
+                                {/* Acordeão Retrátil Reforma Tributária */}
+                                <TouchableOpacity 
+                                  style={styles.accordionHeader}
+                                  onPress={() => setShowReformaTributaria(!showReformaTributaria)}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Ionicons name="calculator-outline" size={14} color="#6A1B9A" />
+                                    <Text style={styles.accordionTitle}>Reforma Tributária (IBS / CBS)</Text>
+                                    {hasReformaValues && (
+                                      <View style={styles.badgePreenchido}>
+                                        <Text style={styles.badgePreenchidoText}>Preenchido</Text>
+                                      </View>
+                                    )}
+                                  </View>
+                                  <Ionicons 
+                                    name={showReformaTributaria ? "chevron-up" : "chevron-down"} 
+                                    size={14} 
+                                    color="#64748B" 
+                                  />
+                                </TouchableOpacity>
+
+                                {showReformaTributaria && (
+                                  <View style={styles.accordionBody}>
+                                    {/* IBS */}
+                                    <Text style={[styles.labelCompact, { color: '#6A1B9A', fontWeight: 'bold', marginBottom: 4 }]}>IBS</Text>
+                                    <View style={[styles.row, { marginBottom: 6 }]}>
+                                      <View style={[styles.inputGroupCompact, { flex: 1, marginRight: 4 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#6A1B9A' }]}>CST IBS</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.ibsCst}
+                                          onChangeText={(t) => setFormData({...formData, ibsCst: t})}
+                                          keyboardType="numeric"
+                                          maxLength={3}
+                                          placeholder="000"
+                                        />
+                                      </View>
+                                      <View style={[styles.inputGroupCompact, { flex: 1.2, marginHorizontal: 2 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#6A1B9A' }]}>Cl.Trib.IBS</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.ibsClassTrib}
+                                          onChangeText={(t) => setFormData({...formData, ibsClassTrib: t})}
+                                          keyboardType="numeric"
+                                          maxLength={6}
+                                          placeholder="410031"
+                                        />
+                                      </View>
+                                      <View style={[styles.inputGroupCompact, { flex: 1, marginLeft: 4 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#6A1B9A' }]}>Alíq. %</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.ibsAliquota}
+                                          onChangeText={(t) => setFormData({...formData, ibsAliquota: t})}
+                                          keyboardType="decimal-pad"
+                                          placeholder="0.00"
+                                        />
+                                      </View>
+                                    </View>
+
+                                    {/* CBS */}
+                                    <Text style={[styles.labelCompact, { color: '#E65100', fontWeight: 'bold', marginBottom: 4 }]}>CBS & Imposto Seletivo</Text>
+                                    <View style={styles.row}>
+                                      <View style={[styles.inputGroupCompact, { flex: 1, marginRight: 3 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#E65100' }]}>CST CBS</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.cbsCst}
+                                          onChangeText={(t) => setFormData({...formData, cbsCst: t})}
+                                          keyboardType="numeric"
+                                          maxLength={3}
+                                          placeholder="000"
+                                        />
+                                      </View>
+                                      <View style={[styles.inputGroupCompact, { flex: 1.1, marginHorizontal: 2 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#E65100' }]}>Cl.Trib.CBS</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.cbsClassTrib}
+                                          onChangeText={(t) => setFormData({...formData, cbsClassTrib: t})}
+                                          keyboardType="numeric"
+                                          maxLength={6}
+                                          placeholder="410031"
+                                        />
+                                      </View>
+                                      <View style={[styles.inputGroupCompact, { flex: 1, marginHorizontal: 2 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#E65100' }]}>Alíq. %</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.cbsAliquota}
+                                          onChangeText={(t) => setFormData({...formData, cbsAliquota: t})}
+                                          keyboardType="decimal-pad"
+                                          placeholder="0.00"
+                                        />
+                                      </View>
+                                      <View style={[styles.inputGroupCompact, { flex: 0.9, marginLeft: 3 }]}>
+                                        <Text style={[styles.labelCompact, { fontSize: 10, color: '#B71C1C' }]}>IS %</Text>
+                                        <TextInput
+                                          style={styles.inputCompact}
+                                          value={formData.isAliquota}
+                                          onChangeText={(t) => setFormData({...formData, isAliquota: t})}
+                                          keyboardType="decimal-pad"
+                                          placeholder="0.00"
+                                        />
+                                      </View>
+                                    </View>
+                                  </View>
+                                )}
+                              </View>
                             </View>
-                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                               <Text style={[styles.label, { color: '#2196F3' }]}>Preço de Venda (R$)</Text>
-                               <TextInput
-                                 style={[styles.input, { borderColor: '#BBDEFB', backgroundColor: '#F0F9FF' }]}
-                                 value={formData.precoVenda}
-                                 onChangeText={(t) => setFormData({...formData, precoVenda: t})}
-                                 keyboardType="numeric"
-                                 placeholder="0.00"
-                               />
-                            </View>
-                         </View>
-                      </View>
-
-                      {/* Grupo: Estoque e Controles */}
-                      <View style={styles.formSection}>
-                         <Text style={styles.sectionLabel}>Estoque e Disponibilidade</Text>
-                         
-                         {/* Local de Venda / Ponto de Saída */}
-                         <View style={{ marginBottom: 14 }}>
-                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                             <Text style={[styles.label, { marginBottom: 0 }]}>📍 Local de Venda (Onde o produto fica):</Text>
-                             <TouchableOpacity 
-                               onPress={() => setShowModalNovoLocal(true)}
-                               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}
-                             >
-                               <Ionicons name="add-circle-outline" size={15} color="#0284C7" />
-                               <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#0284C7', marginLeft: 4 }}>+ Novo Local</Text>
-                             </TouchableOpacity>
-                           </View>
-
-                           {/* Seletor de locais com quebra de linha (flexWrap) para exibir todos os locais sem cortar */}
-                           <View style={styles.locaisSelectorContainer}>
-                             {locaisEstoque.map(loc => {
-                               const isSelected = formData.localVendaNome === loc.nome;
-                               return (
-                                 <TouchableOpacity
-                                   key={loc.id}
-                                   onPress={() => setFormData({ ...formData, localVendaNome: loc.nome, localVendaId: loc.id })}
-                                   style={[
-                                     styles.localSelectorChip,
-                                     isSelected && styles.localSelectorChipActive
-                                   ]}
-                                   activeOpacity={0.7}
-                                 >
-                                   <Ionicons 
-                                     name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
-                                     size={14} 
-                                     color={isSelected ? '#fff' : '#475569'} 
-                                   />
-                                   <Text style={[
-                                     styles.localSelectorChipText,
-                                     isSelected && styles.localSelectorChipTextActive
-                                   ]}>
-                                     {loc.nome}
-                                   </Text>
-                                 </TouchableOpacity>
-                               );
-                             })}
-                           </View>
-                         </View>
-
-                         <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                               <Text style={styles.label}>📦 No Depósito</Text>
-                               <TextInput
-                                  style={styles.input}
-                                  value={formData.estoqueDeposito}
-                                  onChangeText={(t) => {
-                                    const dep = parseInt(t) || 0;
-                                    const gel = parseInt(formData.estoqueGeladeira) || 0;
-                                    setFormData({...formData, estoqueDeposito: t, quantidade: (dep + gel).toString()});
-                                  }}
-                                  keyboardType="numeric"
-                                  placeholder="0"
-                               />
-                            </View>
-
-                            <View style={[styles.inputGroup, { flex: 1 }]}>
-                               <Text style={styles.label}>📍 Em {formData.localVendaNome || 'Geladeira / Balcão'}</Text>
-                               <TextInput
-                                  style={styles.input}
-                                  value={formData.estoqueGeladeira}
-                                  onChangeText={(t) => {
-                                    const gel = parseInt(t) || 0;
-                                    const dep = parseInt(formData.estoqueDeposito) || 0;
-                                    setFormData({...formData, estoqueGeladeira: t, quantidade: (dep + gel).toString()});
-                                  }}
-                                  keyboardType="numeric"
-                                  placeholder="0"
-                               />
-                            </View>
-                         </View>
-                         <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 12, marginTop: -4 }}>
-                            Total Geral: {(parseInt(formData.estoqueDeposito) || 0) + (parseInt(formData.estoqueGeladeira) || 0)} {formData.unidade || 'un'}
-                         </Text>
-
-                         <View style={styles.switchRow}>
-                            <Text style={styles.switchLabel}>Produto Ativo</Text>
-                            <Switch
-                              value={formData.ativo}
-                              onValueChange={(v) => setFormData({...formData, ativo: v})}
-                              trackColor={{ false: '#E2E8F0', true: '#2196F3' }}
-                              thumbColor={'#fff'}
-                            />
-                         </View>
-
-                         <View style={styles.switchRow}>
-                            <Text style={styles.switchLabel}>Disponível para Venda</Text>
-                            <Switch
-                              value={formData.disponivel}
-                              onValueChange={(v) => setFormData({...formData, disponivel: v})}
-                              trackColor={{ false: '#E2E8F0', true: '#2196F3' }}
-                              thumbColor={'#fff'}
-                            />
                           </View>
-                       </View>
-
-                      {/* Grupo: Dados Fiscais */}
-                      <View style={styles.formSection}>
-                         <Text style={styles.sectionLabel}>Dados Fiscais</Text>
-                         <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                               <Text style={[styles.label, { color: '#f44336' }]}>NCM (Obrigatório)*</Text>
-                               <TextInput
-                                 style={[styles.input, { borderColor: '#FFCDD2' }]}
-                                 value={formData.ncm}
-                                 onChangeText={(t) => setFormData({...formData, ncm: t})}
-                                 keyboardType="numeric"
-                                 placeholder="Ex: 22021000"
-                               />
-                            </View>
-                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                               <Text style={styles.label}>CEST</Text>
-                               <TextInput
-                                 style={styles.input}
-                                 value={formData.cest}
-                                 onChangeText={(t) => setFormData({...formData, cest: t})}
-                                 keyboardType="numeric"
-                                 placeholder="Ex: 0300700"
-                               />
-                            </View>
-                         </View>
-                         
-                         <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                               <Text style={styles.label}>CFOP</Text>
-                               <TextInput
-                                 style={styles.input}
-                                 value={formData.cfop}
-                                 onChangeText={(t) => setFormData({...formData, cfop: t})}
-                                 keyboardType="numeric"
-                                 placeholder="Ex: 5102"
-                               />
-                            </View>
-                            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                               <Text style={styles.label}>CSOSN (Simples)</Text>
-                               <TextInput
-                                 style={styles.input}
-                                 value={formData.csosn}
-                                 onChangeText={(t) => setFormData({...formData, csosn: t})}
-                                 keyboardType="numeric"
-                                 placeholder="Ex: 102"
-                               />
-                            </View>
-                         </View>
-
-                         <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1 }]}>
-                               <Text style={styles.label}>Origem (0-8)</Text>
-                               <TextInput
-                                 style={styles.input}
-                                 value={formData.origem}
-                                 onChangeText={(t) => setFormData({...formData, origem: t})}
-                                 keyboardType="numeric"
-                                 maxLength={1}
-                                 placeholder="Ex: 0"
-                               />
-                            </View>
-                         </View>
-
-                         {/* ── LINHA IBS (Reforma Tributária) ── */}
-                         <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }}>
-                            <Text style={[styles.label, { color: '#6A1B9A', fontWeight: 'bold', marginBottom: 8 }]}>IBS (Reforma Tributária)</Text>
-                            <View style={styles.row}>
-                               <View style={[styles.inputGroup, { flex: 1, marginRight: 6 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#6A1B9A' }]}>CST IBS</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.ibsCst}
-                                    onChangeText={(t) => setFormData({...formData, ibsCst: t})}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    placeholder="000"
-                                  />
-                               </View>
-                               <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#6A1B9A' }]}>Cl.Trib.IBS</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.ibsClassTrib}
-                                    onChangeText={(t) => setFormData({...formData, ibsClassTrib: t})}
-                                    keyboardType="numeric"
-                                    maxLength={6}
-                                    placeholder="410031"
-                                  />
-                               </View>
-                               <View style={[styles.inputGroup, { flex: 1, marginLeft: 6 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#6A1B9A' }]}>Alíq. IBS %</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.ibsAliquota}
-                                    onChangeText={(t) => setFormData({...formData, ibsAliquota: t})}
-                                    keyboardType="decimal-pad"
-                                    placeholder="0.0000"
-                                  />
-                               </View>
-                            </View>
-                         </View>
-
-                         {/* ── LINHA CBS + Imposto Seletivo ── */}
-                         <View style={{ marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }}>
-                            <Text style={[styles.label, { color: '#E65100', fontWeight: 'bold', marginBottom: 8 }]}>CBS e Imposto Seletivo</Text>
-                            <View style={styles.row}>
-                               <View style={[styles.inputGroup, { flex: 1, marginRight: 4 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#E65100' }]}>CST CBS</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.cbsCst}
-                                    onChangeText={(t) => setFormData({...formData, cbsCst: t})}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    placeholder="000"
-                                  />
-                               </View>
-                               <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#E65100' }]}>Cl.Trib.CBS</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.cbsClassTrib}
-                                    onChangeText={(t) => setFormData({...formData, cbsClassTrib: t})}
-                                    keyboardType="numeric"
-                                    maxLength={6}
-                                    placeholder="410031"
-                                  />
-                               </View>
-                               <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 3 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#E65100' }]}>Alíq. CBS %</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.cbsAliquota}
-                                    onChangeText={(t) => setFormData({...formData, cbsAliquota: t})}
-                                    keyboardType="decimal-pad"
-                                    placeholder="0.0000"
-                                  />
-                               </View>
-                               <View style={[styles.inputGroup, { flex: 1, marginLeft: 4 }]}>
-                                  <Text style={[styles.label, { fontSize: 11, color: '#B71C1C' }]}>IS %</Text>
-                                  <TextInput
-                                    style={styles.input}
-                                    value={formData.isAliquota}
-                                    onChangeText={(t) => setFormData({...formData, isAliquota: t})}
-                                    keyboardType="decimal-pad"
-                                    placeholder="0.00"
-                                  />
-                               </View>
-                            </View>
-                         </View>
-                      </View>
-
+                        );
+                      })()}
                    </View>
                    <View style={{height: 40}} />
                 </ScrollView>
@@ -2069,16 +2214,291 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 14,
+    padding: 16,
     width: '100%',
-    maxWidth: 840, // Otimizado de 1200 para 840 para não ficar excessivamente largo
-    alignSelf: 'center', // Centraliza o card
+    maxWidth: 980,
+    alignSelf: 'center',
     shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  subCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  subCardLabel: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  compactPhotoBox: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  compactPhotoWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  compactPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  compactPhotoRemove: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactPhotoPlaceholder: {
+    width: 68,
+    height: 68,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    gap: 2,
+  },
+  compactPhotoText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  compactPhotoChangeBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: '#F1F5F9',
+  },
+  compactPhotoChangeText: {
+    fontSize: 10,
+    color: '#0284C7',
+    fontWeight: 'bold',
+  },
+  labelCompact: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 3,
+  },
+  labelRequired: {
+    color: '#DC2626',
+    fontWeight: 'bold',
+  },
+  requiredTag: {
+    fontSize: 9,
+    color: '#DC2626',
+    fontWeight: 'bold',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  inputCompact: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    minHeight: 34,
+  },
+  inputRequired: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
+    backgroundColor: '#FEF2F2',
+  },
+  inputGroupCompact: {
+    marginBottom: 6,
+  },
+  chipScrollRequired: {
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    padding: 3,
+    backgroundColor: '#FEF2F2',
+  },
+  chipCompact: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  chipActiveCompact: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#0284C7',
+  },
+  chipTextCompact: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  chipTextActiveCompact: {
+    color: '#0284C7',
+    fontWeight: 'bold',
+  },
+  locaisSelectorContainerCompact: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  localSelectorChipCompact: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  localSelectorChipTextCompact: {
+    fontSize: 11,
+    color: '#334155',
+  },
+  totalEstoqueBox: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minHeight: 34,
+  },
+  totalEstoqueVal: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  switchLabelCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  ncmSearchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  ncmSearchBtnText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0284C7',
+  },
+  ncmDropdownMenu: {
+    position: 'absolute',
+    top: 26,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999,
+    width: 220,
+    padding: 4,
+  },
+  ncmDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  ncmDropdownItemTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  ncmDropdownItemSub: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  ncmDropdownDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 2,
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginTop: 6,
+  },
+  accordionTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#6A1B9A',
+  },
+  badgePreenchido: {
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D8B4FE',
+  },
+  badgePreenchidoText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#6A1B9A',
+  },
+  accordionBody: {
+    backgroundColor: '#FCFAFF',
+    borderWidth: 1,
+    borderColor: '#F3E8FF',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 4,
   },
   locaisSelectorContainer: {
     flexDirection: 'row',
