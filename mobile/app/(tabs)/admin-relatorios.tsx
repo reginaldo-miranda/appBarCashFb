@@ -264,27 +264,17 @@ export default function AdminRelatoriosScreen() {
     >
       <ScreenIdentifier screenName="Admin - Relatórios" />
 
-      {/* 1. Header Compacto com Botão de Atualizar */}
-      <View style={styles.header}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="bar-chart" size={22} color="#0284C7" />
-            <Text style={styles.headerTitle}>Relatórios Administrativos</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Análise de vendas, faturamento e estatísticas</Text>
+      {/* 1. Header Compacto e Filtros Unificados na Mesma Linha */}
+      <View style={styles.topBar}>
+        {/* Título */}
+        <View style={styles.topTitleBox}>
+          <Ionicons name="bar-chart" size={17} color="#0284C7" />
+          <Text style={styles.headerTitle}>Relatórios</Text>
         </View>
 
-        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} activeOpacity={0.8}>
-          <Ionicons name="refresh" size={15} color="#0284C7" />
-          <Text style={styles.refreshBtnText}>Atualizar</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. Barra de Filtros Unificada (Período e Fiscal) */}
-      <View style={styles.filterCard}>
         {/* Filtro de Período */}
-        <View style={styles.filterGroup}>
-          <Text style={styles.filterLabel}>📅 Período:</Text>
+        <View style={styles.filterInlineGroup}>
+          <Text style={styles.filterInlineLabel}>📅 Período:</Text>
           <View style={styles.filterPillsRow}>
             {periodOptions.map((opt) => {
               const active = periodo === opt.key;
@@ -304,11 +294,11 @@ export default function AdminRelatoriosScreen() {
           </View>
         </View>
 
-        <View style={styles.filterDivider} />
+        <View style={styles.topBarDivider} />
 
         {/* Filtro Fiscal */}
-        <View style={styles.filterGroup}>
-          <Text style={styles.filterLabel}>🏛️ Tipo de Venda:</Text>
+        <View style={styles.filterInlineGroup}>
+          <Text style={styles.filterInlineLabel}>🏛️ Tipo:</Text>
           <View style={styles.filterPillsRow}>
             {fiscalOptions.map((opt) => {
               const active = filtroFiscal === opt.key;
@@ -327,68 +317,74 @@ export default function AdminRelatoriosScreen() {
             })}
           </View>
         </View>
+
+        {/* Botão de Atualizar */}
+        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} activeOpacity={0.8}>
+          <Ionicons name="refresh" size={12} color="#0284C7" />
+          <Text style={styles.refreshBtnText}>Atualizar</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* 3. Resumo Geral - Grid de 5 Cards no Desktop/Tablet */}
+      {/* 2. Resumo Geral - Cards Compactados (Altura Reduzida ~65px) */}
       <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="trending-up" size={18} color="#0F172A" />
-          <Text style={styles.sectionTitle}>Resumo Geral</Text>
+        <View style={styles.sectionHeaderCompact}>
+          <Ionicons name="trending-up" size={14} color="#0F172A" />
+          <Text style={styles.sectionTitleCompact}>Resumo Geral</Text>
         </View>
 
         <View style={styles.kpiGrid}>
           {/* Total de Vendas */}
           <View style={[styles.kpiCard, { borderTopColor: '#10B981' }]}>
             <View style={styles.kpiHeader}>
-              <View style={[styles.kpiIconBox, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="receipt-outline" size={18} color="#10B981" />
-              </View>
-              <Text style={styles.kpiTitle}>Total de Vendas</Text>
+              <Ionicons name="receipt-outline" size={14} color="#10B981" />
+              <Text style={styles.kpiTitle} numberOfLines={1}>Total de Vendas</Text>
             </View>
-            <Text style={styles.kpiValue}>{stats.totalVendas}</Text>
-            <Text style={styles.kpiSub}>pedidos no período</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={styles.kpiValue}>{stats.totalVendas}</Text>
+              <Text style={styles.kpiSub}>pedidos</Text>
+            </View>
           </View>
 
           {/* Faturamento Total */}
           <View style={[styles.kpiCard, { borderTopColor: '#2563EB' }]}>
             <View style={styles.kpiHeader}>
-              <View style={[styles.kpiIconBox, { backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="cash-outline" size={18} color="#2563EB" />
-              </View>
-              <Text style={styles.kpiTitle}>Faturamento Total</Text>
+              <Ionicons name="cash-outline" size={14} color="#2563EB" />
+              <Text style={styles.kpiTitle} numberOfLines={1}>Faturamento Total</Text>
             </View>
-            <Text style={[styles.kpiValue, { color: '#2563EB' }]}>
-              {formatCurrency(stats.faturamentoTotal)}
-            </Text>
-            <Text style={styles.kpiSub}>vendas finalizadas</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={[styles.kpiValue, { color: '#2563EB' }]} numberOfLines={1}>
+                {formatCurrency(stats.faturamentoTotal)}
+              </Text>
+              <Text style={styles.kpiSub}>finalizadas</Text>
+            </View>
           </View>
 
           {/* Faturamento Médio */}
           <View style={[styles.kpiCard, { borderTopColor: '#F59E0B' }]}>
             <View style={styles.kpiHeader}>
-              <View style={[styles.kpiIconBox, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="trending-up-outline" size={18} color="#F59E0B" />
-              </View>
-              <Text style={styles.kpiTitle}>Faturamento Médio</Text>
+              <Ionicons name="trending-up-outline" size={14} color="#F59E0B" />
+              <Text style={styles.kpiTitle} numberOfLines={1}>Faturamento Médio</Text>
             </View>
-            <Text style={styles.kpiValue}>
-              {formatCurrency(stats.faturamentoMedio)}
-            </Text>
-            <Text style={styles.kpiSub}>ticket médio por venda</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={styles.kpiValue} numberOfLines={1}>
+                {formatCurrency(stats.faturamentoMedio)}
+              </Text>
+              <Text style={styles.kpiSub}>médio</Text>
+            </View>
           </View>
 
           {/* Produto Mais Vendido */}
           <View style={[styles.kpiCard, { borderTopColor: '#8B5CF6' }]}>
             <View style={styles.kpiHeader}>
-              <View style={[styles.kpiIconBox, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="star-outline" size={18} color="#8B5CF6" />
-              </View>
-              <Text style={styles.kpiTitle}>Mais Vendido</Text>
+              <Ionicons name="star-outline" size={14} color="#8B5CF6" />
+              <Text style={styles.kpiTitle} numberOfLines={1}>Mais Vendido</Text>
             </View>
-            <Text style={[styles.kpiValue, { fontSize: 15 }]} numberOfLines={2}>
-              {stats.produtoMaisVendido}
-            </Text>
-            <Text style={styles.kpiSub}>destaque do período</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={[styles.kpiValue, { fontSize: 13, flex: 1 }]} numberOfLines={1}>
+                {stats.produtoMaisVendido}
+              </Text>
+              <Text style={styles.kpiSub}>destaque</Text>
+            </View>
           </View>
 
           {/* Total de Produtos (Clicável) */}
@@ -398,136 +394,116 @@ export default function AdminRelatoriosScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.kpiHeader}>
-              <View style={[styles.kpiIconBox, { backgroundColor: '#E0F2FE' }]}>
-                <Ionicons name="cube-outline" size={18} color="#0284C7" />
-              </View>
-              <Text style={styles.kpiTitle}>Total Produtos</Text>
-              <Ionicons name="arrow-forward" size={12} color="#0284C7" style={{ marginLeft: 'auto' }} />
+              <Ionicons name="cube-outline" size={14} color="#0284C7" />
+              <Text style={styles.kpiTitle} numberOfLines={1}>Total Produtos</Text>
+              <Ionicons name="arrow-forward" size={10} color="#0284C7" style={{ marginLeft: 'auto' }} />
             </View>
-            <Text style={styles.kpiValue}>{stats.totalProdutos}</Text>
-            <Text style={[styles.kpiSub, { color: '#0284C7', fontWeight: 'bold' }]}>gerenciar catálogo →</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={styles.kpiValue}>{stats.totalProdutos}</Text>
+              <Text style={[styles.kpiSub, { color: '#0284C7', fontWeight: 'bold' }]}>catálogo →</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 4. Canais de Venda e Status das Vendas (2 Painéis Lado a Lado no Desktop) */}
+      {/* 3. Canais de Venda e Status das Vendas (Lado a Lado Compacto ~65px) */}
       <View style={[styles.panelsRow, { flexDirection: isLargeScreen ? 'row' : 'column' }]}>
         {/* Painel: Vendas por Tipo (Canal) */}
         <View style={styles.subPanel}>
-          <View style={styles.subPanelHeader}>
-            <Ionicons name="storefront-outline" size={16} color="#0F172A" />
-            <Text style={styles.subPanelTitle}>Vendas por Tipo de Canal</Text>
+          <View style={styles.subPanelHeaderCompact}>
+            <Ionicons name="storefront-outline" size={13} color="#0F172A" />
+            <Text style={styles.subPanelTitleCompact}>Vendas por Tipo de Canal</Text>
           </View>
-          <View style={styles.channelGrid}>
-            <View style={styles.channelItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="storefront" size={16} color="#10B981" />
-                <Text style={styles.channelLabel}>Balcão</Text>
-              </View>
-              <Text style={styles.channelCount}>{stats.vendasPorTipo.balcao}</Text>
+          <View style={styles.channelGridCompact}>
+            <View style={styles.channelItemCompact}>
+              <Ionicons name="storefront" size={13} color="#10B981" />
+              <Text style={styles.channelLabelCompact}>Balcão:</Text>
+              <Text style={styles.channelCountCompact}>{stats.vendasPorTipo.balcao}</Text>
             </View>
 
-            <View style={styles.channelItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="restaurant" size={16} color="#2563EB" />
-                <Text style={styles.channelLabel}>Mesa</Text>
-              </View>
-              <Text style={styles.channelCount}>{stats.vendasPorTipo.mesa}</Text>
+            <View style={styles.channelItemCompact}>
+              <Ionicons name="restaurant" size={13} color="#2563EB" />
+              <Text style={styles.channelLabelCompact}>Mesa:</Text>
+              <Text style={styles.channelCountCompact}>{stats.vendasPorTipo.mesa}</Text>
             </View>
 
-            <View style={styles.channelItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="receipt" size={16} color="#F59E0B" />
-                <Text style={styles.channelLabel}>Comanda</Text>
-              </View>
-              <Text style={styles.channelCount}>{stats.vendasPorTipo.comanda}</Text>
+            <View style={styles.channelItemCompact}>
+              <Ionicons name="receipt" size={13} color="#F59E0B" />
+              <Text style={styles.channelLabelCompact}>Comanda:</Text>
+              <Text style={styles.channelCountCompact}>{stats.vendasPorTipo.comanda}</Text>
             </View>
           </View>
         </View>
 
         {/* Painel: Vendas por Status */}
         <View style={styles.subPanel}>
-          <View style={styles.subPanelHeader}>
-            <Ionicons name="checkmark-done-circle-outline" size={16} color="#0F172A" />
-            <Text style={styles.subPanelTitle}>Status das Vendas</Text>
+          <View style={styles.subPanelHeaderCompact}>
+            <Ionicons name="checkmark-done-circle-outline" size={13} color="#0F172A" />
+            <Text style={styles.subPanelTitleCompact}>Status das Vendas</Text>
           </View>
-          <View style={styles.channelGrid}>
-            <View style={[styles.channelItem, { borderLeftColor: '#10B981', borderLeftWidth: 3 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.channelLabel}>Finalizadas</Text>
-              </View>
-              <Text style={[styles.channelCount, { color: '#10B981' }]}>{stats.vendasPorStatus.finalizadas}</Text>
+          <View style={styles.channelGridCompact}>
+            <View style={[styles.channelItemCompact, { borderLeftColor: '#10B981', borderLeftWidth: 3 }]}>
+              <Ionicons name="checkmark-circle" size={13} color="#10B981" />
+              <Text style={styles.channelLabelCompact}>Finalizadas:</Text>
+              <Text style={[styles.channelCountCompact, { color: '#10B981' }]}>{stats.vendasPorStatus.finalizadas}</Text>
             </View>
 
-            <View style={[styles.channelItem, { borderLeftColor: '#F59E0B', borderLeftWidth: 3 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="time" size={16} color="#F59E0B" />
-                <Text style={styles.channelLabel}>Abertas</Text>
-              </View>
-              <Text style={[styles.channelCount, { color: '#F59E0B' }]}>{stats.vendasPorStatus.abertas}</Text>
+            <View style={[styles.channelItemCompact, { borderLeftColor: '#F59E0B', borderLeftWidth: 3 }]}>
+              <Ionicons name="time" size={13} color="#F59E0B" />
+              <Text style={styles.channelLabelCompact}>Abertas:</Text>
+              <Text style={[styles.channelCountCompact, { color: '#F59E0B' }]}>{stats.vendasPorStatus.abertas}</Text>
             </View>
 
-            <View style={[styles.channelItem, { borderLeftColor: '#EF4444', borderLeftWidth: 3 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="close-circle" size={16} color="#EF4444" />
-                <Text style={styles.channelLabel}>Canceladas</Text>
-              </View>
-              <Text style={[styles.channelCount, { color: '#EF4444' }]}>{stats.vendasPorStatus.canceladas}</Text>
+            <View style={[styles.channelItemCompact, { borderLeftColor: '#EF4444', borderLeftWidth: 3 }]}>
+              <Ionicons name="close-circle" size={13} color="#EF4444" />
+              <Text style={styles.channelLabelCompact}>Canceladas:</Text>
+              <Text style={[styles.channelCountCompact, { color: '#EF4444' }]}>{stats.vendasPorStatus.canceladas}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* 5. Atalhos de Gestão Geral (Clientes e Funcionários) */}
-      <View style={styles.shortcutsRow}>
+      {/* 4. Atalhos de Gestão Geral (Faixa Fina de 30px) */}
+      <View style={styles.shortcutsRowCompact}>
         <TouchableOpacity
-          style={styles.shortcutCard}
+          style={styles.shortcutCardCompact}
           onPress={() => router.push('/(tabs)/admin-clientes')}
           activeOpacity={0.8}
         >
-          <View style={[styles.shortcutIconBox, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="people" size={18} color="#2563EB" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.shortcutTitle}>Total de Clientes</Text>
-            <Text style={styles.shortcutValue}>{stats.totalClientes} cadastrados</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+          <Ionicons name="people" size={14} color="#2563EB" />
+          <Text style={styles.shortcutTitleCompact}>Total de Clientes:</Text>
+          <Text style={styles.shortcutValueCompact}>{stats.totalClientes} cadastrados</Text>
+          <Ionicons name="chevron-forward" size={12} color="#94A3B8" style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.shortcutCard}
+          style={styles.shortcutCardCompact}
           onPress={() => router.push('/(tabs)/admin-funcionarios')}
           activeOpacity={0.8}
         >
-          <View style={[styles.shortcutIconBox, { backgroundColor: '#F5F3FF' }]}>
-            <Ionicons name="person" size={18} color="#8B5CF6" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.shortcutTitle}>Total de Funcionários</Text>
-            <Text style={styles.shortcutValue}>{stats.totalFuncionarios} cadastrados</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+          <Ionicons name="person" size={14} color="#8B5CF6" />
+          <Text style={styles.shortcutTitleCompact}>Total de Funcionários:</Text>
+          <Text style={styles.shortcutValueCompact}>{stats.totalFuncionarios} cadastrados</Text>
+          <Ionicons name="chevron-forward" size={12} color="#94A3B8" style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>
       </View>
 
-      {/* 6. Botão Retrátil de Detalhamento das Vendas com Contador */}
+      {/* 5. Botão Retrátil de Detalhamento das Vendas com Contador */}
       <View style={styles.accordionContainer}>
         <TouchableOpacity
           style={[styles.accordionToggleBtn, showDetails && styles.accordionToggleBtnActive]}
           onPress={() => setShowDetails(!showDetails)}
           activeOpacity={0.8}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="list" size={18} color={showDetails ? '#FFFFFF' : '#0284C7'} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="list" size={15} color={showDetails ? '#FFFFFF' : '#0284C7'} />
             <Text style={[styles.accordionToggleText, showDetails && styles.accordionToggleTextActive]}>
               Detalhamento das Vendas ({salesList.length})
             </Text>
           </View>
           <Ionicons
             name={showDetails ? 'chevron-up' : 'chevron-down'}
-            size={18}
+            size={16}
             color={showDetails ? '#FFFFFF' : '#0284C7'}
           />
         </TouchableOpacity>
@@ -537,7 +513,7 @@ export default function AdminRelatoriosScreen() {
           <View style={styles.detailsContent}>
             {/* Barra de Busca na Tabela */}
             <View style={styles.tableSearchBox}>
-              <Ionicons name="search" size={15} color="#94A3B8" />
+              <Ionicons name="search" size={14} color="#94A3B8" />
               <TextInput
                 style={styles.tableSearchInput}
                 placeholder="Buscar por cliente, nº do documento ou status..."
@@ -547,7 +523,7 @@ export default function AdminRelatoriosScreen() {
               />
               {searchTable !== '' && (
                 <TouchableOpacity onPress={() => setSearchTable('')}>
-                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  <Ionicons name="close-circle" size={15} color="#94A3B8" />
                 </TouchableOpacity>
               )}
             </View>
@@ -563,9 +539,11 @@ export default function AdminRelatoriosScreen() {
 
             {/* Linhas de Vendas */}
             {filteredSalesList.length === 0 ? (
-              <View style={{ padding: 24, alignItems: 'center' }}>
-                <Ionicons name="file-tray-outline" size={32} color="#CBD5E1" />
-                <Text style={{ fontSize: 13, color: '#64748B', marginTop: 6 }}>Nenhuma venda encontrada para os filtros selecionados.</Text>
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Ionicons name="file-tray-outline" size={28} color="#CBD5E1" />
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                  Nenhuma venda encontrada para os filtros selecionados.
+                </Text>
               </View>
             ) : (
               filteredSalesList.map((sale: any, idx: number) => {
@@ -597,7 +575,7 @@ export default function AdminRelatoriosScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <Ionicons
                           name={isNfce ? 'document-text' : 'receipt-outline'}
-                          size={13}
+                          size={12}
                           color={isNfce ? '#0284C7' : '#64748B'}
                         />
                         <Text style={[styles.tableCell, isNfce && { fontWeight: 'bold', color: '#0369A1' }]} numberOfLines={1}>
@@ -672,8 +650,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   contentContainer: {
-    padding: 14,
-    gap: 12,
+    padding: 10,
+    gap: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -682,76 +660,52 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: 10,
+    fontSize: 13,
     color: '#64748B',
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  topTitleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 4,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#0F172A',
   },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  refreshBtn: {
+  filterInlineGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#E0F2FE',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
   },
-  refreshBtnText: {
-    fontSize: 12,
+  filterInlineLabel: {
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#0284C7',
-  },
-  filterCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    gap: 10,
-  },
-  filterGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#334155',
-    minWidth: 110,
+    color: '#475569',
   },
   filterPillsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    alignItems: 'center',
+    gap: 4,
   },
   filterPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 12,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -765,7 +719,7 @@ const styles = StyleSheet.create({
     borderColor: '#0F172A',
   },
   filterPillText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#475569',
     fontWeight: '500',
   },
@@ -777,42 +731,65 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  filterDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
+  topBarDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 2,
+  },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 6,
+    marginLeft: 'auto',
+  },
+  refreshBtnText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0284C7',
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 14,
+    padding: 9,
   },
-  sectionHeader: {
+  sectionHeaderCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
+    gap: 5,
+    marginBottom: 6,
   },
-  sectionTitle: {
-    fontSize: 14,
+  sectionTitleCompact: {
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#0F172A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   kpiCard: {
     flex: 1,
-    minWidth: 160,
+    minWidth: 140,
     backgroundColor: '#F8FAFC',
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderTopWidth: 4,
-    padding: 12,
+    borderTopWidth: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    justifyContent: 'center',
   },
   kpiCardClickable: {
     backgroundColor: '#F0F9FF',
@@ -821,119 +798,113 @@ const styles = StyleSheet.create({
   kpiHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  kpiIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    marginBottom: 2,
   },
   kpiTitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
     color: '#64748B',
+    flex: 1,
+  },
+  kpiValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
   },
   kpiValue: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#0F172A',
-    marginVertical: 2,
   },
   kpiSub: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#94A3B8',
   },
   panelsRow: {
-    gap: 10,
+    gap: 8,
   },
   subPanel: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  subPanelHeader: {
+  subPanelHeaderCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-    paddingBottom: 6,
+    gap: 5,
+    marginBottom: 6,
+    paddingBottom: 4,
     borderBottomWidth: 1,
     borderColor: '#F1F5F9',
   },
-  subPanelTitle: {
-    fontSize: 12.5,
+  subPanelTitleCompact: {
+    fontSize: 11.5,
     fontWeight: 'bold',
     color: '#0F172A',
   },
-  channelGrid: {
+  channelGridCompact: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
-  channelItem: {
+  channelItemCompact: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#F8FAFC',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
+    gap: 5,
   },
-  channelLabel: {
-    fontSize: 11,
+  channelLabelCompact: {
+    fontSize: 10.5,
     color: '#475569',
     fontWeight: '600',
   },
-  channelCount: {
-    fontSize: 16,
+  channelCountCompact: {
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#0F172A',
+    marginLeft: 'auto',
   },
-  shortcutsRow: {
+  shortcutsRowCompact: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
-  shortcutCard: {
+  shortcutCardCompact: {
     flex: 1,
-    minWidth: 220,
+    minWidth: 200,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  shortcutIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shortcutTitle: {
+  shortcutTitleCompact: {
     fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
   },
-  shortcutValue: {
-    fontSize: 13,
+  shortcutValueCompact: {
+    fontSize: 11.5,
     fontWeight: 'bold',
     color: '#0F172A',
   },
   accordionContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     overflow: 'hidden',
@@ -942,15 +913,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#F8FAFC',
   },
   accordionToggleBtnActive: {
     backgroundColor: '#0284C7',
   },
   accordionToggleText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#0284C7',
   },
@@ -958,7 +929,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   detailsContent: {
-    padding: 14,
+    padding: 10,
     backgroundColor: '#FFFFFF',
   },
   tableSearchBox: {
@@ -968,34 +939,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 34,
-    marginBottom: 12,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    height: 30,
+    marginBottom: 8,
   },
   tableSearchInput: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#0F172A',
     ...(Platform.OS === 'web' ? { outlineStyle: 'none' as any } : {}),
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#F1F5F9',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 5,
     marginBottom: 4,
   },
   tableCellHeader: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: 'bold',
     color: '#475569',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderColor: '#F1F5F9',
@@ -1007,13 +978,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tableCell: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#334155',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 8,
   },
   statusBadgeFinalizada: {
     backgroundColor: '#DCFCE7',
@@ -1025,7 +996,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
   statusBadgeText: {
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: 'bold',
     textTransform: 'capitalize',
   },
@@ -1042,19 +1013,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 10,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 8,
+    gap: 6,
   },
   tableFooterLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
   },
   tableFooterValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#0284C7',
   },
