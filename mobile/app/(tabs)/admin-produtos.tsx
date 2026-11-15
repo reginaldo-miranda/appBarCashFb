@@ -120,6 +120,7 @@ export default function AdminProdutosScreen() {
   const [selectedSetores, setSelectedSetores] = useState<string[] | null>(null);
   const [locaisEstoque, setLocaisEstoque] = useState<any[]>([]);
   const [selectedLocalFilter, setSelectedLocalFilter] = useState<string>('');
+  const [showLocalMenu, setShowLocalMenu] = useState(false);
   const [showModalNovoLocal, setShowModalNovoLocal] = useState(false);
   const [novoLocalNome, setNovoLocalNome] = useState('');
   const [novoLocalTipo, setNovoLocalTipo] = useState('GELADEIRA');
@@ -928,8 +929,44 @@ export default function AdminProdutosScreen() {
           ))}
         </View>
 
-        {/* Ordenação e Alternador de Grade/Lista */}
+        {/* Ordenação, Seletor de Local e Alternador de Grade/Lista */}
         <View style={styles.sortAndViewModeRow}>
+          {/* Seletor Compacto de Local de Estoque */}
+          {locaisEstoque.length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.localDropdownButton,
+                selectedLocalFilter !== '' && styles.localDropdownButtonActive,
+              ]}
+              onPress={() => setShowLocalMenu(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={
+                  selectedLocalFilter === ''
+                    ? 'apps'
+                    : (locaisEstoque.find(l => l.nome === selectedLocalFilter)?.tipo === 'GELADEIRA' ? 'snow' : 'storefront')
+                }
+                size={13}
+                color={selectedLocalFilter !== '' ? '#0284C7' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.localDropdownText,
+                  selectedLocalFilter !== '' && styles.localDropdownTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                {selectedLocalFilter === '' ? 'Todos os Locais' : selectedLocalFilter}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={12}
+                color={selectedLocalFilter !== '' ? '#0284C7' : '#94A3B8'}
+              />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.sortButton}
             onPress={() => {
@@ -1027,64 +1064,6 @@ export default function AdminProdutosScreen() {
           )}
         </ScrollView>
       </View>
-
-      {/* 4. Fita de Locais de Estoque com Scroll Horizontal Suave */}
-      {locaisEstoque.length > 0 && (
-        <View style={styles.locaisRibbon}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScrollContent}
-          >
-            <TouchableOpacity
-              onPress={() => setSelectedLocalFilter('')}
-              style={[
-                styles.localChip,
-                selectedLocalFilter === '' && styles.localChipAllActive,
-              ]}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="apps"
-                size={13}
-                color={selectedLocalFilter === '' ? '#fff' : '#64748B'}
-              />
-              <Text
-                style={[
-                  styles.localChipText,
-                  selectedLocalFilter === '' && styles.localChipAllTextActive,
-                ]}
-              >
-                Todos os Locais
-              </Text>
-            </TouchableOpacity>
-
-            {locaisEstoque.map(loc => {
-              const isSel = selectedLocalFilter === loc.nome;
-              return (
-                <TouchableOpacity
-                  key={loc.id}
-                  onPress={() => setSelectedLocalFilter(isSel ? '' : loc.nome)}
-                  style={[
-                    styles.localChip,
-                    isSel && styles.localChipActive,
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'} 
-                    size={13} 
-                    color={isSel ? '#fff' : '#475569'} 
-                  />
-                  <Text style={[styles.localChipText, isSel && styles.localChipTextActive]}>
-                    {loc.nome}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
     </View>
   );
 
@@ -1948,6 +1927,71 @@ export default function AdminProdutosScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Modal Dropdown Flutuante de Seleção de Local de Estoque */}
+        <Modal
+          visible={showLocalMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowLocalMenu(false)}
+        >
+          <TouchableOpacity
+            style={styles.localModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowLocalMenu(false)}
+          >
+            <View style={styles.localModalCard}>
+              <View style={styles.localModalHeader}>
+                <Ionicons name="location" size={16} color="#0284C7" />
+                <Text style={styles.localModalTitle}>Filtrar por Local de Estoque</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.localDropdownItem,
+                  selectedLocalFilter === '' && styles.localDropdownItemActive,
+                ]}
+                onPress={() => {
+                  setSelectedLocalFilter('');
+                  setShowLocalMenu(false);
+                }}
+              >
+                <Ionicons name="apps" size={15} color={selectedLocalFilter === '' ? '#0284C7' : '#64748B'} />
+                <Text style={[styles.localDropdownItemText, selectedLocalFilter === '' && styles.localDropdownItemTextActive]}>
+                  Todos os Locais
+                </Text>
+                {selectedLocalFilter === '' && <Ionicons name="checkmark" size={16} color="#0284C7" />}
+              </TouchableOpacity>
+
+              {locaisEstoque.map(loc => {
+                const isSel = selectedLocalFilter === loc.nome;
+                return (
+                  <TouchableOpacity
+                    key={loc.id}
+                    style={[
+                      styles.localDropdownItem,
+                      isSel && styles.localDropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedLocalFilter(isSel ? '' : loc.nome);
+                      setShowLocalMenu(false);
+                    }}
+                  >
+                    <Ionicons
+                      name={loc.tipo === 'GELADEIRA' ? 'snow' : loc.tipo === 'COZINHA' ? 'restaurant' : 'storefront'}
+                      size={15}
+                      color={isSel ? '#0284C7' : '#64748B'}
+                    />
+                    <Text style={[styles.localDropdownItemText, isSel && styles.localDropdownItemTextActive]}>
+                      {loc.nome}
+                    </Text>
+                    {isSel && <Ionicons name="checkmark" size={16} color="#0284C7" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -2154,39 +2198,84 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#92400E',
   },
-  locaisRibbon: {
-    marginBottom: 6,
-  },
-  localChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  localDropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    maxWidth: 175,
   },
-  localChipActive: {
-    backgroundColor: '#0284C7',
-    borderColor: '#0284C7',
+  localDropdownButtonActive: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#38BDF8',
   },
-  localChipAllActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
-  },
-  localChipText: {
+  localDropdownText: {
     fontSize: 12,
     color: '#475569',
-    fontWeight: '500',
+    fontWeight: '600',
+    maxWidth: 120,
   },
-  localChipTextActive: {
-    color: '#FFFFFF',
+  localDropdownTextActive: {
+    color: '#0369A1',
     fontWeight: 'bold',
   },
-  localChipAllTextActive: {
-    color: '#FFFFFF',
+  localModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  localModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  localModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingBottom: 8,
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  localModalTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  localDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  localDropdownItemActive: {
+    backgroundColor: '#F0F9FF',
+  },
+  localDropdownItemText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  localDropdownItemTextActive: {
+    color: '#0284C7',
     fontWeight: 'bold',
   },
   sortButton: {
