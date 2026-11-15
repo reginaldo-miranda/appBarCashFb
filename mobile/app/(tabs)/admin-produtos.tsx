@@ -2408,7 +2408,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
   },
-  ncmSearchBtn: {
+  ncmDirectBtnCosmos: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -2416,51 +2416,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BAE6FD',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
   },
-  ncmSearchBtnText: {
+  ncmDirectBtnCosmosText: {
     fontSize: 11,
     fontWeight: 'bold',
     color: '#0284C7',
   },
-  ncmDropdownMenu: {
-    position: 'absolute',
-    top: 26,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 999,
-    width: 220,
-    padding: 4,
-  },
-  ncmDropdownItem: {
+  ncmDirectBtnGoogle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 6,
   },
-  ncmDropdownItemTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  ncmDropdownItemSub: {
-    fontSize: 10,
-    color: '#64748B',
-  },
-  ncmDropdownDivider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 2,
+  ncmDirectBtnGoogleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
   },
   accordionHeader: {
     flexDirection: 'row',
