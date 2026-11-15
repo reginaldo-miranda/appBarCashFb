@@ -3,12 +3,68 @@ import prisma from '../lib/prisma.js';
 
 const router = express.Router();
 
+const DEFAULT_ROLES = [
+  {
+    nome: 'Administrador',
+    descricao: 'Acesso total a todas as funções e configurações do sistema',
+    permissoes: { vendas: true, clientes: true, produtos: true, relatorios: true, funcionarios: true, configuracoes: true },
+  },
+  {
+    nome: 'Gerente',
+    descricao: 'Gestão de vendas, equipe, clientes, produtos e relatórios',
+    permissoes: { vendas: true, clientes: true, produtos: true, relatorios: true, funcionarios: true, configuracoes: false },
+  },
+  {
+    nome: 'Caixa',
+    descricao: 'Operações de caixa, recebimentos, pedidos e fechamento de contas',
+    permissoes: { vendas: true, clientes: true, produtos: true, relatorios: false, funcionarios: false, configuracoes: false },
+  },
+  {
+    nome: 'Garçom',
+    descricao: 'Abertura de mesas/comandas e lançamento de pedidos dos clientes',
+    permissoes: { vendas: true, clientes: true, produtos: false, relatorios: false, funcionarios: false, configuracoes: false },
+  },
+  {
+    nome: 'Cozinha / Bar',
+    descricao: 'Visualização da fila de pedidos e controle de preparo',
+    permissoes: { vendas: false, clientes: false, produtos: false, relatorios: false, funcionarios: false, configuracoes: false },
+  },
+];
+
+async function ensureDefaultRoles() {
+  for (const r of DEFAULT_ROLES) {
+    try {
+      await prisma.role.upsert({
+        where: { nome: r.nome },
+        update: {},
+        create: {
+          nome: r.nome,
+          descricao: r.descricao,
+          permissoes: r.permissoes,
+          ativo: true,
+        },
+      });
+    } catch (e) {
+      // Ignora caso já exista
+    }
+  }
+}
+
 // Listar todos os perfis
 router.get('/', async (req, res) => {
   try {
-    const roles = await prisma.role.findMany({
+    let roles = await prisma.role.findMany({
       orderBy: { nome: 'asc' }
     });
+
+    // Se houver poucos perfis (ex: banco recém-iniciado ou apenas 1 cargo avulso), adiciona os cargos padrão
+    if (roles.length <= 1) {
+      await ensureDefaultRoles();
+      roles = await prisma.role.findMany({
+        orderBy: { nome: 'asc' }
+      });
+    }
+
     res.json(roles);
   } catch (error) {
     console.error('Erro ao listar roles:', error);

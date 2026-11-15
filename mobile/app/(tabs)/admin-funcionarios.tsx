@@ -68,7 +68,11 @@ export default function AdminFuncionariosScreen() {
   const loadRoles = async () => {
       try {
           const res = await roleService.getAll();
-          setRolesList(res);
+          if (Array.isArray(res)) {
+              setRolesList(res);
+          } else if (res && Array.isArray((res as any).data)) {
+              setRolesList((res as any).data);
+          }
       } catch (e) {
           console.error('Erro roles', e);
       }
@@ -126,6 +130,7 @@ export default function AdminFuncionariosScreen() {
   };
 
   const handleEditEmployee = (employee: Employee) => {
+    loadRoles();
     setEditingEmployee(employee);
     setFormData({
       nome: employee.nome,
@@ -300,6 +305,7 @@ export default function AdminFuncionariosScreen() {
           style={styles.addButton}
           onPress={() => {
             resetForm();
+            loadRoles();
             setModalVisible(true);
           }}
         >
