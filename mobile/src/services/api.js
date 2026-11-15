@@ -449,6 +449,7 @@ export const productService = {
   getById: (id) => api.get(`/product/${id}`),
   create: (data) => api.post('/product/create', data),
   createBulk: (products) => api.post('/product/bulk-create', { products }),
+  bulkUpdateFiscal: (data) => api.put('/product/bulk-update-fiscal', data),
   update: (id, data) => api.put(`/product/update/${id}`, data),
   delete: (id) => api.delete(`/product/delete/${id}`),
   uploadImage: (formData) => api.post('/product/upload-image', formData, {

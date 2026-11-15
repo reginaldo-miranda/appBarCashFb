@@ -759,6 +759,76 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// Rota para aplicar dados fiscais em massa por categoria ou filtro
+router.put("/bulk-update-fiscal", async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const { 
+      categoriaId, 
+      categoriaNome, 
+      ncm, 
+      cest, 
+      cfop, 
+      csosn, 
+      origem,
+      ibsCst, 
+      ibsClassTrib, 
+      ibsAliquota, 
+      cbsCst, 
+      cbsClassTrib, 
+      cbsAliquota, 
+      isAliquota,
+      onlyMissingFiscal 
+    } = req.body;
+
+    if (!categoriaId && !categoriaNome) {
+      return res.status(400).json({ error: "Informe a categoria (categoriaId ou categoriaNome)" });
+    }
+
+    const where = { ativo: true };
+    const catId = Number(categoriaId);
+    if (Number.isInteger(catId) && catId > 0) {
+      where.categoriaId = catId;
+    } else if (categoriaNome) {
+      where.categoria = String(categoriaNome);
+    }
+
+    if (onlyMissingFiscal) {
+      where.OR = [
+        { ncm: null },
+        { ncm: '' },
+      ];
+    }
+
+    const updateData = {};
+    if (ncm !== undefined) updateData.ncm = ncm ? String(ncm).replace(/\D/g, '') : null;
+    if (cest !== undefined) updateData.cest = cest ? String(cest).replace(/\D/g, '') : null;
+    if (cfop !== undefined) updateData.cfop = cfop ? String(cfop).replace(/\D/g, '') : '5102';
+    if (csosn !== undefined) updateData.csosn = csosn ? String(csosn) : '102';
+    if (origem !== undefined) updateData.origem = Number(origem) || 0;
+
+    // Reforma Tributária (IBS/CBS/IS)
+    if (ibsCst !== undefined) updateData.ibsCst = (ibsCst !== null && String(ibsCst).trim() !== '') ? String(ibsCst).replace(/\D/g, '') : null;
+    if (ibsClassTrib !== undefined) updateData.ibsClassTrib = (ibsClassTrib !== null && String(ibsClassTrib).trim() !== '') ? String(ibsClassTrib).replace(/\D/g, '') : null;
+    if (ibsAliquota !== undefined) updateData.ibsAliquota = (ibsAliquota !== null && String(ibsAliquota).trim() !== '') ? String(Number(ibsAliquota)) : null;
+    if (cbsCst !== undefined) updateData.cbsCst = (cbsCst !== null && String(cbsCst).trim() !== '') ? String(cbsCst).replace(/\D/g, '') : null;
+    if (cbsClassTrib !== undefined) updateData.cbsClassTrib = (cbsClassTrib !== null && String(cbsClassTrib).trim() !== '') ? String(cbsClassTrib).replace(/\D/g, '') : null;
+    if (cbsAliquota !== undefined) updateData.cbsAliquota = (cbsAliquota !== null && String(cbsAliquota).trim() !== '') ? String(Number(cbsAliquota)) : null;
+    if (isAliquota !== undefined) updateData.isAliquota = (isAliquota !== null && String(isAliquota).trim() !== '') ? String(Number(isAliquota)) : null;
+
+    const result = await prisma.product.updateMany({
+      where,
+      data: updateData
+    });
+
+    console.log(`[BULK-FISCAL] Atualizados ${result.count} produtos da categoria ${categoriaNome || categoriaId}.`);
+    res.json({ message: "Dados fiscais atualizados com sucesso", count: result.count });
+  } catch (error) {
+    console.error('Erro ao atualizar dados fiscais em massa:', error);
+    res.status(500).json({ error: "Erro ao atualizar dados fiscais em massa", details: error.message });
+  }
+});
+
 // Rota para atualizar produto
 router.put("/update/:id", async (req, res) => {
   try {

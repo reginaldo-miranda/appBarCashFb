@@ -30,6 +30,7 @@ import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { events } from '../../src/utils/eventBus';
 import { testApiConnection, getCurrentBaseUrl } from '../../src/services/api';
 import BulkProductModal from '../../src/components/BulkProductModal';
+import BulkFiscalModal from '../../src/components/BulkFiscalModal';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -111,6 +112,8 @@ export default function AdminProdutosScreen() {
   const [sortBy, setSortBy] = useState<'nome' | 'categoria' | 'preco'>('nome');
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [filterSemSetor, setFilterSemSetor] = useState(false);
+  const [filterSemFiscal, setFilterSemFiscal] = useState(false);
+  const [showBulkFiscalModal, setShowBulkFiscalModal] = useState(false);
   const [dbTarget, setDbTarget] = useState('');
   const [apiHost, setApiHost] = useState('');
   const [setores, setSetores] = useState<SetorImpressao[]>([]);
@@ -670,12 +673,15 @@ export default function AdminProdutosScreen() {
       const sids = (product as any)?.setoresImpressaoIds || [];
       const matchesSemSetor = !filterSemSetor || sids.length === 0;
       const matchesLocal = !selectedLocalFilter || (product.localVendaNome || 'Geladeira 1') === selectedLocalFilter;
+      const hasValidNcm = !!(product.ncm && String(product.ncm).replace(/\D/g, '').length === 8);
+      const matchesSemFiscal = !filterSemFiscal || !hasValidNcm;
 
       return (nome.includes(q) || categoria.includes(q) || descricao.includes(q)) &&
              (!selectedCategory || product.categoria === selectedCategory) &&
              (filterActive === null || product.ativo === filterActive) &&
              matchesSemSetor &&
-             matchesLocal;
+             matchesLocal &&
+             matchesSemFiscal;
     });
 
     filtered.sort((a, b) => {
@@ -836,6 +842,21 @@ export default function AdminProdutosScreen() {
               {isLargeScreen ? 'Estoque & Transferência' : 'Estoque'}
             </Text>
           </TouchableOpacity>
+
+          {/* Botão Fiscal em Massa */}
+          <TouchableOpacity 
+            style={[
+              isLargeScreen ? styles.estoqueXmlHeaderButton : styles.estoqueMobileHeaderButton,
+              { backgroundColor: '#D97706', borderColor: '#B45309' }
+            ]}
+            onPress={() => setShowBulkFiscalModal(true)}
+            activeOpacity={0.8}
+          >
+            <SafeIcon name="flash" size={15} color="#fff" fallbackText="⚡" />
+            <Text style={isLargeScreen ? styles.estoqueXmlHeaderButtonText : styles.estoqueMobileButtonText}>
+              {isLargeScreen ? 'Fiscal em Massa' : 'Fiscal'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -860,10 +881,11 @@ export default function AdminProdutosScreen() {
         {/* Chips de Status (Totalmente independentes das Categorias!) */}
         <View style={styles.statusChipsRow}>
           {[
-            { key: 'todos', label: 'Todos', active: filterActive === null && !filterSemSetor },
-            { key: 'ativo', label: 'Ativos', active: filterActive === true && !filterSemSetor },
-            { key: 'inativo', label: 'Inativos', active: filterActive === false && !filterSemSetor },
-            { key: 'sem-setor', label: 'Sem Setor', active: filterSemSetor },
+            { key: 'todos', label: 'Todos', active: filterActive === null && !filterSemSetor && !filterSemFiscal },
+            { key: 'ativo', label: 'Ativos', active: filterActive === true && !filterSemSetor && !filterSemFiscal },
+            { key: 'inativo', label: 'Inativos', active: filterActive === false && !filterSemSetor && !filterSemFiscal },
+            { key: 'sem-setor', label: 'Sem Setor', active: filterSemSetor && !filterSemFiscal },
+            { key: 'sem-fiscal', label: 'Sem Fiscal 🚨', active: filterSemFiscal },
           ].map(st => (
             <TouchableOpacity
               key={st.key}
@@ -871,21 +893,35 @@ export default function AdminProdutosScreen() {
                 if (st.key === 'todos') {
                   setFilterActive(null);
                   setFilterSemSetor(false);
+                  setFilterSemFiscal(false);
                 } else if (st.key === 'ativo') {
                   setFilterActive(true);
                   setFilterSemSetor(false);
+                  setFilterSemFiscal(false);
                 } else if (st.key === 'inativo') {
                   setFilterActive(false);
                   setFilterSemSetor(false);
+                  setFilterSemFiscal(false);
                 } else if (st.key === 'sem-setor') {
                   setFilterActive(null);
                   setFilterSemSetor(true);
+                  setFilterSemFiscal(false);
+                } else if (st.key === 'sem-fiscal') {
+                  setFilterSemFiscal(!filterSemFiscal);
                 }
               }}
-              style={[styles.statusChipBtn, st.active && styles.statusChipBtnActive]}
+              style={[
+                styles.statusChipBtn,
+                st.active && styles.statusChipBtnActive,
+                st.key === 'sem-fiscal' && st.active && { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }
+              ]}
               activeOpacity={0.7}
             >
-              <Text style={[styles.statusChipBtnText, st.active && styles.statusChipBtnTextActive]}>
+              <Text style={[
+                styles.statusChipBtnText,
+                st.active && styles.statusChipBtnTextActive,
+                st.key === 'sem-fiscal' && st.active && { color: '#DC2626', fontWeight: 'bold' }
+              ]}>
                 {st.label}
               </Text>
             </TouchableOpacity>
@@ -976,6 +1012,19 @@ export default function AdminProdutosScreen() {
               </TouchableOpacity>
             );
           })}
+
+          {selectedCategory !== '' && (
+            <TouchableOpacity
+              onPress={() => setShowBulkFiscalModal(true)}
+              style={styles.categoryFiscalPill}
+              activeOpacity={0.7}
+            >
+              <SafeIcon name="flash" size={12} color="#D97706" fallbackText="⚡" />
+              <Text style={styles.categoryFiscalPillText}>
+                Padronizar Fiscal de "{selectedCategory}"
+              </Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
 
@@ -1809,6 +1858,16 @@ export default function AdminProdutosScreen() {
           onSuccess={handleBulkSuccess}
         />
 
+        {/* Modal de Aplicação Fiscal em Massa */}
+        <BulkFiscalModal
+          visible={showBulkFiscalModal}
+          onClose={() => setShowBulkFiscalModal(false)}
+          initialCategory={selectedCategory}
+          categorias={categorias || []}
+          products={products || []}
+          onSuccess={() => loadInitialData()}
+        />
+
         {/* Modal de Cadastro Rápido de Novo Local */}
         <Modal
           visible={showModalNovoLocal}
@@ -2077,6 +2136,23 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  categoryFiscalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 18,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    marginLeft: 6,
+  },
+  categoryFiscalPillText: {
+    fontSize: 11.5,
+    fontWeight: 'bold',
+    color: '#92400E',
   },
   locaisRibbon: {
     marginBottom: 6,
