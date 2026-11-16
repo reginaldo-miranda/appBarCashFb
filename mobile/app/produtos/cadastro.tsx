@@ -231,7 +231,23 @@ export default function CadastroProduto() {
     loadTipos();
     loadUnidades();
     loadSetores();
+    loadFiscalDefaults();
   }, [authLoading, isAuthenticated]);
+
+  const loadFiscalDefaults = async () => {
+    try {
+      const res = await api.get('/config/fiscal-reforma');
+      if (res.data?.ok && res.data?.data && !id) {
+        if (res.data.data.defaultIbsCst) setIbsCst(res.data.data.defaultIbsCst);
+        if (res.data.data.defaultIbsClassTrib) setIbsClassTrib(res.data.data.defaultIbsClassTrib);
+        if (res.data.data.defaultIbsAliquota) setIbsAliquota(res.data.data.defaultIbsAliquota);
+        if (res.data.data.defaultCbsCst) setCbsCst(res.data.data.defaultCbsCst);
+        if (res.data.data.defaultCbsClassTrib) setCbsClassTrib(res.data.data.defaultCbsClassTrib);
+        if (res.data.data.defaultCbsAliquota) setCbsAliquota(res.data.data.defaultCbsAliquota);
+        if (res.data.data.defaultIsAliquota) setIsAliquota(res.data.data.defaultIsAliquota);
+      }
+    } catch {}
+  };
 
   const loadCategorias = async () => {
     setLoadingCategorias(true);

@@ -534,6 +534,23 @@ router.post("/smart-batch-create", async (req, res) => {
       }
     }
 
+    // Defaults fiscais configuráveis da Reforma Tributária
+    let fallbackIbsCst = "410";
+    let fallbackIbsClassTrib = "410031";
+    let fallbackCbsCst = "410";
+    let fallbackCbsClassTrib = "410031";
+    try {
+      const rfSettings = await prisma.appSetting.findMany({
+        where: { key: { in: ['default_ibs_cst', 'default_ibs_class_trib', 'default_cbs_cst', 'default_cbs_class_trib'] } }
+      });
+      const rfMap = {};
+      rfSettings.forEach(s => { rfMap[s.key] = s.value; });
+      if (rfMap['default_ibs_cst']) fallbackIbsCst = rfMap['default_ibs_cst'];
+      if (rfMap['default_ibs_class_trib']) fallbackIbsClassTrib = rfMap['default_ibs_class_trib'];
+      if (rfMap['default_cbs_cst']) fallbackCbsCst = rfMap['default_cbs_cst'];
+      if (rfMap['default_cbs_class_trib']) fallbackCbsClassTrib = rfMap['default_cbs_class_trib'];
+    } catch (e) {}
+
     const createdProducts = [];
 
     for (const item of items) {
@@ -612,12 +629,12 @@ router.post("/smart-batch-create", async (req, res) => {
           csosn: sampleProduct?.csosn || "102",
           origem: sampleProduct?.origem ?? 0,
 
-          // Reforma Tributária herdada
-          ibsCst: sampleProduct?.ibsCst || "410",
-          ibsClassTrib: sampleProduct?.ibsClassTrib || "410031",
+          // Reforma Tributária herdada ou configurada
+          ibsCst: sampleProduct?.ibsCst || fallbackIbsCst,
+          ibsClassTrib: sampleProduct?.ibsClassTrib || fallbackIbsClassTrib,
           ibsAliquota: sampleProduct?.ibsAliquota || null,
-          cbsCst: sampleProduct?.cbsCst || "410",
-          cbsClassTrib: sampleProduct?.cbsClassTrib || "410031",
+          cbsCst: sampleProduct?.cbsCst || fallbackCbsCst,
+          cbsClassTrib: sampleProduct?.cbsClassTrib || fallbackCbsClassTrib,
           cbsAliquota: sampleProduct?.cbsAliquota || null,
           isAliquota: sampleProduct?.isAliquota || null
         }

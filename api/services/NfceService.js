@@ -9,6 +9,7 @@ import https from 'https';
 import crypto from 'crypto';
 import forge from 'node-forge';
 import { fileURLToPath } from 'url';
+import prisma from '../lib/prisma.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -264,6 +265,27 @@ class NfceService {
     let totalCBS = 0;
     let totalIS  = 0;
 
+    // Carregar configurações da Reforma Tributária (se ativa ou desligada)
+    let reformaAtiva = false;
+    let cfgDefaultIbsCst = '410';
+    let cfgDefaultIbsClTr = '410031';
+    let cfgDefaultCbsCst = '410';
+    let cfgDefaultCbsClTr = '410031';
+    try {
+        const rfSettings = await prisma.appSetting.findMany({
+            where: { key: { in: ['reforma_tributaria_ativa', 'default_ibs_cst', 'default_ibs_class_trib', 'default_cbs_cst', 'default_cbs_class_trib'] } }
+        });
+        const rfMap = {};
+        rfSettings.forEach(s => { rfMap[s.key] = s.value; });
+        reformaAtiva = rfMap['reforma_tributaria_ativa'] === 'true';
+        if (rfMap['default_ibs_cst']) cfgDefaultIbsCst = rfMap['default_ibs_cst'];
+        if (rfMap['default_ibs_class_trib']) cfgDefaultIbsClTr = rfMap['default_ibs_class_trib'];
+        if (rfMap['default_cbs_cst']) cfgDefaultCbsCst = rfMap['default_cbs_cst'];
+        if (rfMap['default_cbs_class_trib']) cfgDefaultCbsClTr = rfMap['default_cbs_class_trib'];
+    } catch (e) {
+        console.warn('[NfceService] Erro ao carregar config da Reforma Tributária:', e.message);
+    }
+
     itens.forEach((item, index) => {
         const prod = item.product || item.produto || {};
         const nItem = index + 1;
@@ -375,12 +397,12 @@ class NfceService {
         //   <IS> (grupo separado, opcional, só se alíquota > 0)
         // ════════════════════════════════════════════════════════
         // Fallback seguro caso produto não tenha cadastro
-        const prodIbsCst = String(prod.ibsCst || item.ibsCst || '410').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
-        const prodIbsClTr = String(prod.ibsClassTrib || item.ibsClassTrib || '410031').replace(/\D/g, '').padStart(6, '0').substring(0, 6);
+        const prodIbsCst = String(prod.ibsCst || item.ibsCst || cfgDefaultIbsCst).replace(/\D/g, '').padStart(3, '0').substring(0, 3);
+        const prodIbsClTr = String(prod.ibsClassTrib || item.ibsClassTrib || cfgDefaultIbsClTr).replace(/\D/g, '').padStart(6, '0').substring(0, 6);
         const prodIbsAliq = Number(prod.ibsAliquota || item.ibsAliquota || 0);
 
-        const prodCbsCst = String(prod.cbsCst || item.cbsCst || '410').replace(/\D/g, '').padStart(3, '0').substring(0, 3);
-        const prodCbsClTr = String(prod.cbsClassTrib || item.cbsClassTrib || '410031').replace(/\D/g, '').padStart(6, '0').substring(0, 6);
+        const prodCbsCst = String(prod.cbsCst || item.cbsCst || cfgDefaultCbsCst).replace(/\D/g, '').padStart(3, '0').substring(0, 3);
+        const prodCbsClTr = String(prod.cbsClassTrib || item.cbsClassTrib || cfgDefaultCbsClTr).replace(/\D/g, '').padStart(6, '0').substring(0, 6);
         const prodCbsAliq = Number(prod.cbsAliquota || item.cbsAliquota || 0);
 
         const prodIsAliq = Number(prod.isAliquota || item.isAliquota || 0);
@@ -417,7 +439,7 @@ class NfceService {
         // na fase de transição (2026), exceto se houver alíquotas expressamente configuradas (> 0).
         // Empresas no Regime Normal (CRT 3) geram o grupo.
         const isSimplesOrMei = (crtValue === '1' || crtValue === '4');
-        const shouldIncludeIbsCbs = (!isSimplesOrMei) || (prodIbsAliq > 0 || prodCbsAliq > 0);
+        const shouldIncludeIbsCbs = reformaAtiva && ((!isSimplesOrMei) || (prodIbsAliq > 0 || prodCbsAliq > 0));
 
         if (shouldIncludeIbsCbs) {
             // Regra UB12-10 (Rejeição 1024):
@@ -460,7 +482,7 @@ class NfceService {
         }
 
         // ── IS (Imposto Seletivo) — GRUPO SEPARADO, opcional (só se > 0) ──
-        if (prodIsAliq > 0 || vISItem > 0) {
+        if (reformaAtiva && (prodIsAliq > 0 || vISItem > 0)) {
             const isNode = imposto.ele('IS');
             isNode.ele('vBC').txt(vBCItem.toFixed(2)).up();
             isNode.ele('pIS').txt(prodIsAliq.toFixed(4)).up();
@@ -509,7 +531,7 @@ class NfceService {
     // (Apenas emitido se houver grupo IBSCBS emitido)
     // ════════════════════════════════════════════════════════
     const isSimplesOrMei = (crtValue === '1' || crtValue === '4');
-    const shouldIncludeIbsCbsTot = (!isSimplesOrMei) || (totalIBS > 0 || totalCBS > 0);
+    const shouldIncludeIbsCbsTot = reformaAtiva && ((!isSimplesOrMei) || (totalIBS > 0 || totalCBS > 0));
 
     if (shouldIncludeIbsCbsTot) {
         const ibscbsTot = total.ele('IBSCBSTot');

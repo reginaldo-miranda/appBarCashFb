@@ -202,6 +202,34 @@ export default function AdminProdutosScreen() {
   const [showNcmMenu, setShowNcmMenu] = useState(false);
   const [showReformaTributaria, setShowReformaTributaria] = useState(false);
 
+  // Defaults fiscais configuráveis da Reforma Tributária
+  const [fiscalDefaults, setFiscalDefaults] = useState({
+    ibsCst: '410',
+    ibsClassTrib: '410031',
+    ibsAliquota: '',
+    cbsCst: '410',
+    cbsClassTrib: '410031',
+    cbsAliquota: '',
+    isAliquota: '',
+  });
+
+  const loadFiscalDefaults = async () => {
+    try {
+      const res = await api.get('/config/fiscal-reforma');
+      if (res.data?.ok && res.data?.data) {
+        setFiscalDefaults({
+          ibsCst: res.data.data.defaultIbsCst ?? '410',
+          ibsClassTrib: res.data.data.defaultIbsClassTrib ?? '410031',
+          ibsAliquota: res.data.data.defaultIbsAliquota || '',
+          cbsCst: res.data.data.defaultCbsCst ?? '410',
+          cbsClassTrib: res.data.data.defaultCbsClassTrib ?? '410031',
+          cbsAliquota: res.data.data.defaultCbsAliquota || '',
+          isAliquota: res.data.data.defaultIsAliquota || '',
+        });
+      }
+    } catch {}
+  };
+
   const handleSearchNcm = (engine: 'cosmos' | 'google') => {
     setShowNcmMenu(false);
     const termo = (formData.nome || '').trim();
@@ -265,11 +293,11 @@ export default function AdminProdutosScreen() {
       cfop: formData.cfop,
       csosn: formData.csosn ? formData.csosn.replace(/\D/g, '') : '102',
       origem: parseInt(formData.origem) || 0,
-      ibsCst: formData.ibsCst ? formData.ibsCst.replace(/\D/g, '') : (formData.ibsClassTrib?.startsWith('410') ? '410' : '000'),
-      ibsClassTrib: formData.ibsClassTrib ? formData.ibsClassTrib.replace(/\D/g, '') : '410031',
+      ibsCst: formData.ibsCst ? formData.ibsCst.replace(/\D/g, '') : (formData.ibsClassTrib?.startsWith('410') ? '410' : (fiscalDefaults.ibsCst || '000')),
+      ibsClassTrib: formData.ibsClassTrib ? formData.ibsClassTrib.replace(/\D/g, '') : (fiscalDefaults.ibsClassTrib || '410031'),
       ibsAliquota: formData.ibsAliquota !== '' ? parseFloat(formData.ibsAliquota.replace(',', '.')) : null,
-      cbsCst: formData.cbsCst ? formData.cbsCst.replace(/\D/g, '') : (formData.cbsClassTrib?.startsWith('410') ? '410' : '000'),
-      cbsClassTrib: formData.cbsClassTrib ? formData.cbsClassTrib.replace(/\D/g, '') : '410031',
+      cbsCst: formData.cbsCst ? formData.cbsCst.replace(/\D/g, '') : (formData.cbsClassTrib?.startsWith('410') ? '410' : (fiscalDefaults.cbsCst || '000')),
+      cbsClassTrib: formData.cbsClassTrib ? formData.cbsClassTrib.replace(/\D/g, '') : (fiscalDefaults.cbsClassTrib || '410031'),
       cbsAliquota: formData.cbsAliquota !== '' ? parseFloat(formData.cbsAliquota.replace(',', '.')) : null,
       isAliquota: formData.isAliquota !== '' ? parseFloat(formData.isAliquota.replace(',', '.')) : null,
       setoresImpressaoIds: selectedSetores !== null ? selectedSetores.map((id) => Number(id)) : undefined,
@@ -374,7 +402,8 @@ export default function AdminProdutosScreen() {
       loadTipos(),
       loadUnidades(),
       loadSetores(),
-      loadLocaisEstoque()
+      loadLocaisEstoque(),
+      loadFiscalDefaults()
     ]);
   };
 
@@ -502,11 +531,11 @@ export default function AdminProdutosScreen() {
         cfop: formData.cfop,
         csosn: formData.csosn ? formData.csosn.replace(/\D/g, '') : '102',
         origem: parseInt(formData.origem) || 0,
-        ibsCst: formData.ibsCst ? formData.ibsCst.replace(/\D/g, '') : (formData.ibsClassTrib?.startsWith('410') ? '410' : '000'),
-        ibsClassTrib: formData.ibsClassTrib ? formData.ibsClassTrib.replace(/\D/g, '') : '410031',
+        ibsCst: formData.ibsCst ? formData.ibsCst.replace(/\D/g, '') : (formData.ibsClassTrib?.startsWith('410') ? '410' : (fiscalDefaults.ibsCst || '000')),
+        ibsClassTrib: formData.ibsClassTrib ? formData.ibsClassTrib.replace(/\D/g, '') : (fiscalDefaults.ibsClassTrib || '410031'),
         ibsAliquota: formData.ibsAliquota !== '' ? parseFloat(formData.ibsAliquota.replace(',', '.')) : null,
-        cbsCst: formData.cbsCst ? formData.cbsCst.replace(/\D/g, '') : (formData.cbsClassTrib?.startsWith('410') ? '410' : '000'),
-        cbsClassTrib: formData.cbsClassTrib ? formData.cbsClassTrib.replace(/\D/g, '') : '410031',
+        cbsCst: formData.cbsCst ? formData.cbsCst.replace(/\D/g, '') : (formData.cbsClassTrib?.startsWith('410') ? '410' : (fiscalDefaults.cbsCst || '000')),
+        cbsClassTrib: formData.cbsClassTrib ? formData.cbsClassTrib.replace(/\D/g, '') : (fiscalDefaults.cbsClassTrib || '410031'),
         cbsAliquota: formData.cbsAliquota !== '' ? parseFloat(formData.cbsAliquota.replace(',', '.')) : null,
         isAliquota: formData.isAliquota !== '' ? parseFloat(formData.isAliquota.replace(',', '.')) : null,
       };
@@ -654,13 +683,13 @@ export default function AdminProdutosScreen() {
       cfop: '',
       csosn: '102',
       origem: '0',
-      ibsCst: '410',
-      ibsClassTrib: '410031',
-      ibsAliquota: '',
-      cbsCst: '410',
-      cbsClassTrib: '410031',
-      cbsAliquota: '',
-      isAliquota: '',
+      ibsCst: fiscalDefaults.ibsCst || '410',
+      ibsClassTrib: fiscalDefaults.ibsClassTrib || '410031',
+      ibsAliquota: fiscalDefaults.ibsAliquota || '',
+      cbsCst: fiscalDefaults.cbsCst || '410',
+      cbsClassTrib: fiscalDefaults.cbsClassTrib || '410031',
+      cbsAliquota: fiscalDefaults.cbsAliquota || '',
+      isAliquota: fiscalDefaults.isAliquota || '',
     });
     setEditingProduct(null);
     setSelectedSetores([]);

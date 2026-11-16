@@ -8,6 +8,8 @@ import {
   getCardapioTunnelStatus,
   startCardapioTunnel,
   stopCardapioTunnel,
+  getFiscalReformaConfig,
+  saveFiscalReformaConfig,
 } from '../controllers/ConfigController.js';
 
 const router = express.Router();
@@ -22,5 +24,8 @@ router.post('/cardapio-ip', saveCardapioIpConfig);
 router.get('/tunnel/status', getCardapioTunnelStatus);
 router.post('/tunnel/start', startCardapioTunnel);
 router.post('/tunnel/stop', stopCardapioTunnel);
+
+router.get('/fiscal-reforma', getFiscalReformaConfig);
+router.post('/fiscal-reforma', saveFiscalReformaConfig);
 
 export default router;

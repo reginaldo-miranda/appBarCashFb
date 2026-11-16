@@ -102,6 +102,22 @@ export default function AdminConfiguracoesScreen() {
   const [contingenciaModalVisible, setContingenciaModalVisible] = useState(false);
   const [contingenciaJustificativa, setContingenciaJustificativa] = useState('');
 
+  // States de Reforma Tributária (IBS / CBS)
+  const [reformaModalVisible, setReformaModalVisible] = useState(false);
+  const [loadingReforma, setLoadingReforma] = useState(false);
+  const [savingReforma, setSavingReforma] = useState(false);
+  const [reformaData, setReformaData] = useState({
+    reformaTributariaAtiva: false,
+    defaultIbsCst: '410',
+    defaultIbsClassTrib: '410031',
+    defaultIbsAliquota: '0.00',
+    defaultIbsAliquotaMun: '0.00',
+    defaultCbsCst: '410',
+    defaultCbsClassTrib: '410031',
+    defaultCbsAliquota: '0.00',
+    defaultIsAliquota: '0.00',
+  });
+
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -324,6 +340,54 @@ export default function AdminConfiguracoesScreen() {
         }
       ]
     );
+  };
+
+  // ── Funções da Reforma Tributária (IBS / CBS) ─────────────────────────────
+
+  const carregarReformaConfig = async () => {
+    try {
+      setLoadingReforma(true);
+      const res = await api.get('/config/fiscal-reforma');
+      if (res.data?.ok && res.data?.data) {
+        setReformaData({
+          reformaTributariaAtiva: !!res.data.data.reformaTributariaAtiva,
+          defaultIbsCst: res.data.data.defaultIbsCst ?? '410',
+          defaultIbsClassTrib: res.data.data.defaultIbsClassTrib ?? '410031',
+          defaultIbsAliquota: String(res.data.data.defaultIbsAliquota ?? '0.00'),
+          defaultIbsAliquotaMun: String(res.data.data.defaultIbsAliquotaMun ?? '0.00'),
+          defaultCbsCst: res.data.data.defaultCbsCst ?? '410',
+          defaultCbsClassTrib: res.data.data.defaultCbsClassTrib ?? '410031',
+          defaultCbsAliquota: String(res.data.data.defaultCbsAliquota ?? '0.00'),
+          defaultIsAliquota: String(res.data.data.defaultIsAliquota ?? '0.00'),
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao carregar configurações da Reforma:', e);
+    } finally {
+      setLoadingReforma(false);
+    }
+  };
+
+  const handleSalvarReforma = async () => {
+    try {
+      setSavingReforma(true);
+      await api.post('/config/fiscal-reforma', reformaData);
+      const msg = 'Configurações da Reforma Tributária salvas com sucesso!';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Sucesso', msg);
+      setReformaModalVisible(false);
+    } catch (e: any) {
+      const err = e.response?.data?.message || e.message || 'Erro ao salvar';
+      if (Platform.OS === 'web') window.alert('Erro: ' + err);
+      else Alert.alert('Erro', err);
+    } finally {
+      setSavingReforma(false);
+    }
+  };
+
+  const handleAbrirReformaTributaria = () => {
+    setReformaModalVisible(true);
+    carregarReformaConfig();
   };
 
   const fetchAddressByCep = async (cep: string) => {
@@ -853,6 +917,28 @@ export default function AdminConfiguracoesScreen() {
           </View>
         </View>
 
+        {/* ─── Seção da Reforma Tributária (IBS / CBS) ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reforma Tributária 2026</Text>
+          <View style={styles.settingsCard}>
+            <TouchableOpacity
+              style={[styles.settingItem, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}
+              onPress={handleAbrirReformaTributaria}
+            >
+              <View style={styles.settingContent}>
+                <SafeIcon name="calculator" size={24} color="#7C3AED" fallbackText="🧮" />
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Reforma Tributária (IBS / CBS)</Text>
+                  <Text style={styles.settingDescription}>
+                    Ativar/desativar no XML e personalizar códigos e alíquotas padrão (IBS, CBS e IS)
+                  </Text>
+                </View>
+              </View>
+              <SafeIcon name="chevron-forward" size={20} color="#ccc" fallbackText="›" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
       </ScrollView>
 
       {/* Modal de Controle de Contingência */}
@@ -987,6 +1073,187 @@ export default function AdminConfiguracoesScreen() {
                     NFC-es em contingência têm prazo de 24h para transmissão. Após esse prazo, serão marcadas como expiradas e deverão ser inutilizadas.
                   </Text>
                 </View>
+              </>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Modal de Reforma Tributária (IBS / CBS) */}
+      <Modal
+        visible={reformaModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onShow={carregarReformaConfig}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setReformaModalVisible(false)}>
+              <Text style={styles.cancelButton}>Fechar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Reforma Tributária (IBS / CBS)</Text>
+            <TouchableOpacity onPress={handleSalvarReforma} disabled={savingReforma}>
+              <Text style={[styles.saveButton, savingReforma && { opacity: 0.5 }]}>
+                {savingReforma ? 'Salvando...' : 'Salvar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
+            {loadingReforma ? (
+              <ActivityIndicator size="large" color="#7C3AED" style={{ marginTop: 40 }} />
+            ) : (
+              <>
+                {/* Banner Informativo */}
+                <View style={{ backgroundColor: '#F3E8FF', borderRadius: 10, padding: 14, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#7C3AED' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B21A8', marginBottom: 4 }}>
+                    ℹ️ Reforma Tributária — Transição 2026 (NT 2025.002)
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#581C87', lineHeight: 18 }}>
+                    Aqui você define se a NFC-e deve incluir as novas tags de IBS/CBS e quais os códigos fiscais e alíquotas padrão usados no cadastro de produtos. Se o seu estado ou a sua empresa (Simples Nacional) ainda não exigirem o destaque, mantenha o recurso desativado para garantir emissão normal sem rejeições.
+                  </Text>
+                </View>
+
+                {/* Card 1: Habilitar no XML */}
+                <View style={{ backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E293B' }}>
+                        Habilitar no XML da NFC-e
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                        Gera as tags &lt;IBSCBS&gt; e &lt;IBSCBSTot&gt; ao transmitir notas à SEFAZ
+                      </Text>
+                    </View>
+                    <Switch
+                      value={reformaData.reformaTributariaAtiva}
+                      onValueChange={(v) => setReformaData({ ...reformaData, reformaTributariaAtiva: v })}
+                      trackColor={{ false: '#CBD5E1', true: '#7C3AED' }}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '600', marginTop: 10, color: reformaData.reformaTributariaAtiva ? '#7C3AED' : '#64748B' }}>
+                    {reformaData.reformaTributariaAtiva
+                      ? '🟢 ATIVADO — XML incluirá tags da Reforma Tributária'
+                      : '⚪ DESATIVADO — Emissão padrão NFC-e 4.00 (Normal online)'}
+                  </Text>
+                </View>
+
+                {/* Card 2: Padrões IBS */}
+                <View style={{ backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#7C3AED', marginBottom: 12 }}>
+                    Padrões de IBS (Imposto sobre Bens e Serviços)
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="CST IBS Padrão"
+                        value={reformaData.defaultIbsCst}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultIbsCst: t })}
+                        placeholder="410"
+                        maxLength={3}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="Classif. Trib. IBS"
+                        value={reformaData.defaultIbsClassTrib}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultIbsClassTrib: t })}
+                        placeholder="410031"
+                        maxLength={6}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="Alíq. IBS Estadual (%)"
+                        value={reformaData.defaultIbsAliquota}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultIbsAliquota: t })}
+                        placeholder="0.00"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="Alíq. IBS Municipal (%)"
+                        value={reformaData.defaultIbsAliquotaMun}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultIbsAliquotaMun: t })}
+                        placeholder="0.00"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Card 3: Padrões CBS & IS */}
+                <View style={{ backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#E65100', marginBottom: 12 }}>
+                    Padrões de CBS & Imposto Seletivo
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="CST CBS Padrão"
+                        value={reformaData.defaultCbsCst}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultCbsCst: t })}
+                        placeholder="410"
+                        maxLength={3}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="Classif. Trib. CBS"
+                        value={reformaData.defaultCbsClassTrib}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultCbsClassTrib: t })}
+                        placeholder="410031"
+                        maxLength={6}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="Alíquota CBS (%)"
+                        value={reformaData.defaultCbsAliquota}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultCbsAliquota: t })}
+                        placeholder="0.00"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <SimpleInput
+                        label="Alíq. Imposto Seletivo (%)"
+                        value={reformaData.defaultIsAliquota}
+                        onChangeText={(t: string) => setReformaData({ ...reformaData, defaultIsAliquota: t })}
+                        placeholder="0.00"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Botão Salvar */}
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#7C3AED',
+                    paddingVertical: 14,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    marginTop: 6,
+                    marginBottom: 20,
+                    opacity: savingReforma ? 0.6 : 1
+                  }}
+                  onPress={handleSalvarReforma}
+                  disabled={savingReforma}
+                >
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                    {savingReforma ? 'Salvando...' : 'Salvar Configurações da Reforma'}
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
           </ScrollView>

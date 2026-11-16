@@ -161,4 +161,81 @@ export const stopCardapioTunnel = async (req, res) => {
   }
 };
 
+export const getFiscalReformaConfig = async (req, res) => {
+  try {
+    const keys = [
+      'reforma_tributaria_ativa',
+      'default_ibs_cst',
+      'default_ibs_class_trib',
+      'default_ibs_aliquota',
+      'default_ibs_aliquota_mun',
+      'default_cbs_cst',
+      'default_cbs_class_trib',
+      'default_cbs_aliquota',
+      'default_is_aliquota'
+    ];
+    const settings = await prisma.appSetting.findMany({
+      where: { key: { in: keys } }
+    });
+    const map = {};
+    settings.forEach(s => { map[s.key] = s.value; });
+
+    res.json({
+      ok: true,
+      data: {
+        reformaTributariaAtiva: map['reforma_tributaria_ativa'] === 'true',
+        defaultIbsCst: map['default_ibs_cst'] !== undefined ? map['default_ibs_cst'] : '410',
+        defaultIbsClassTrib: map['default_ibs_class_trib'] !== undefined ? map['default_ibs_class_trib'] : '410031',
+        defaultIbsAliquota: map['default_ibs_aliquota'] !== undefined ? map['default_ibs_aliquota'] : '0.00',
+        defaultIbsAliquotaMun: map['default_ibs_aliquota_mun'] !== undefined ? map['default_ibs_aliquota_mun'] : '0.00',
+        defaultCbsCst: map['default_cbs_cst'] !== undefined ? map['default_cbs_cst'] : '410',
+        defaultCbsClassTrib: map['default_cbs_class_trib'] !== undefined ? map['default_cbs_class_trib'] : '410031',
+        defaultCbsAliquota: map['default_cbs_aliquota'] !== undefined ? map['default_cbs_aliquota'] : '0.00',
+        defaultIsAliquota: map['default_is_aliquota'] !== undefined ? map['default_is_aliquota'] : '0.00'
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar configuração fiscal da Reforma:', error);
+    res.status(500).json({ ok: false, message: 'Erro ao buscar configurações' });
+  }
+};
+
+export const saveFiscalReformaConfig = async (req, res) => {
+  try {
+    const {
+      reformaTributariaAtiva,
+      defaultIbsCst,
+      defaultIbsClassTrib,
+      defaultIbsAliquota,
+      defaultIbsAliquotaMun,
+      defaultCbsCst,
+      defaultCbsClassTrib,
+      defaultCbsAliquota,
+      defaultIsAliquota
+    } = req.body;
+
+    const entries = [
+      ['reforma_tributaria_ativa', reformaTributariaAtiva ? 'true' : 'false'],
+      ['default_ibs_cst', String(defaultIbsCst ?? '').trim()],
+      ['default_ibs_class_trib', String(defaultIbsClassTrib ?? '').trim()],
+      ['default_ibs_aliquota', String(defaultIbsAliquota ?? '').trim()],
+      ['default_ibs_aliquota_mun', String(defaultIbsAliquotaMun ?? '').trim()],
+      ['default_cbs_cst', String(defaultCbsCst ?? '').trim()],
+      ['default_cbs_class_trib', String(defaultCbsClassTrib ?? '').trim()],
+      ['default_cbs_aliquota', String(defaultCbsAliquota ?? '').trim()],
+      ['default_is_aliquota', String(defaultIsAliquota ?? '').trim()]
+    ];
+
+    for (const [key, val] of entries) {
+      await setConfigValue(key, val);
+    }
+
+    res.json({ ok: true, message: 'Configurações da Reforma Tributária salvas com sucesso' });
+  } catch (error) {
+    console.error('Erro ao salvar configuração fiscal da Reforma:', error);
+    res.status(500).json({ ok: false, message: 'Erro ao salvar configurações' });
+  }
+};
+
+
 
