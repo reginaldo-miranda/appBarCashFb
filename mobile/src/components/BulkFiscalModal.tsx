@@ -261,7 +261,7 @@ export default function BulkFiscalModal({
             {/* 1. Escolha da Categoria */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>1. Selecione a Categoria:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catsRow}>
+              <View style={styles.catsContainer}>
                 {categorias.map(c => {
                   const isSel = selectedCat === c.nome;
                   return (
@@ -269,6 +269,7 @@ export default function BulkFiscalModal({
                       key={c.id || c.nome}
                       style={[styles.catChip, isSel && styles.catChipActive]}
                       onPress={() => setSelectedCat(c.nome)}
+                      activeOpacity={0.7}
                     >
                       <Text style={[styles.catChipText, isSel && styles.catChipTextActive]}>
                         {c.nome}
@@ -276,7 +277,7 @@ export default function BulkFiscalModal({
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
+              </View>
             </View>
 
             {/* 2. Resumo de Produtos Afetados & Modo de Aplicação */}
@@ -608,8 +609,10 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 6,
   },
-  catsRow: {
+  catsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     paddingVertical: 2,
   },
   catChip: {
@@ -617,21 +620,22 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
-    marginRight: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
+    marginBottom: 4,
   },
   catChipActive: {
     backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    borderColor: '#1D4ED8',
   },
   catChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: '#334155',
   },
   catChipTextActive: {
     color: '#fff',
+    fontWeight: '700',
   },
   impactCard: {
     backgroundColor: '#F0F9FF',
