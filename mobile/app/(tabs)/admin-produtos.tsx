@@ -251,7 +251,11 @@ export default function AdminProdutosScreen() {
         setTimeout(() => setPuxadoIndividualFeedback(false), 3000);
       }
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível carregar as configurações da Reforma Tributária.');
+      if (Platform.OS === 'web') {
+        window.alert('Erro: Não foi possível carregar as configurações da Reforma Tributária.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível carregar as configurações da Reforma Tributária.');
+      }
     }
   };
 
@@ -1764,12 +1768,12 @@ export default function AdminProdutosScreen() {
                                 </View>
 
                                 {/* Acordeão Retrátil Reforma Tributária */}
-                                <TouchableOpacity 
-                                  style={styles.accordionHeader}
-                                  onPress={() => setShowReformaTributaria(!showReformaTributaria)}
-                                  activeOpacity={0.7}
-                                >
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                <View style={styles.accordionHeader}>
+                                  <TouchableOpacity 
+                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, paddingVertical: 2 }}
+                                    onPress={() => setShowReformaTributaria(!showReformaTributaria)}
+                                    activeOpacity={0.7}
+                                  >
                                     <Ionicons name="calculator-outline" size={14} color="#6A1B9A" />
                                     <Text style={styles.accordionTitle}>Reforma Tributária (IBS / CBS)</Text>
                                     {hasReformaValues && (
@@ -1777,7 +1781,7 @@ export default function AdminProdutosScreen() {
                                         <Text style={styles.badgePreenchidoText}>Preenchido</Text>
                                       </View>
                                     )}
-                                  </View>
+                                  </TouchableOpacity>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                     <TouchableOpacity
                                       style={{
@@ -1791,28 +1795,32 @@ export default function AdminProdutosScreen() {
                                         paddingHorizontal: 8,
                                         paddingVertical: 3,
                                       }}
-                                      onPress={(e) => {
-                                        e.stopPropagation();
-                                        handlePuxarConfigReformaIndividual();
-                                      }}
+                                      onPress={handlePuxarConfigReformaIndividual}
                                       activeOpacity={0.8}
                                     >
                                       <Ionicons
                                         name={puxadoIndividualFeedback ? 'checkmark-circle' : 'cloud-download-outline'}
                                         size={12}
                                         color={puxadoIndividualFeedback ? '#15803D' : '#7C3AED'}
+                                        style={{ marginRight: 2 }}
                                       />
                                       <Text style={{ fontSize: 11, fontWeight: '700', color: puxadoIndividualFeedback ? '#15803D' : '#7C3AED' }}>
                                         {puxadoIndividualFeedback ? 'Puxado!' : 'Puxar da Configuração'}
                                       </Text>
                                     </TouchableOpacity>
-                                    <Ionicons 
-                                      name={showReformaTributaria ? "chevron-up" : "chevron-down"} 
-                                      size={14} 
-                                      color="#64748B" 
-                                    />
+                                    <TouchableOpacity
+                                      onPress={() => setShowReformaTributaria(!showReformaTributaria)}
+                                      style={{ padding: 4 }}
+                                      activeOpacity={0.7}
+                                    >
+                                      <Ionicons 
+                                        name={showReformaTributaria ? "chevron-up" : "chevron-down"} 
+                                        size={14} 
+                                        color="#64748B" 
+                                      />
+                                    </TouchableOpacity>
                                   </View>
-                                </TouchableOpacity>
+                                </View>
 
                                 {showReformaTributaria && (
                                   <View style={styles.accordionBody}>
