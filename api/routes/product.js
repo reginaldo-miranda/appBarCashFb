@@ -461,10 +461,15 @@ router.get("/search-web-images", async (req, res) => {
     const cleanQ = String(q).trim();
     const cleanCat = categoria ? String(categoria).trim() : '';
     
-    // Se a query não contiver o nome da categoria, adiciona para melhorar a precisão
+    // Se a query não contiver o nome da categoria, adiciona em formato singular para maior precisão
     let fullQuery = cleanQ;
-    if (cleanCat && !cleanQ.toLowerCase().includes(cleanCat.toLowerCase())) {
-      fullQuery = `${cleanCat} ${cleanQ}`;
+    if (cleanCat) {
+      const singularCat = cleanCat.toLowerCase().endsWith('s') && cleanCat.length > 3
+        ? cleanCat.slice(0, -1)
+        : cleanCat;
+      if (!cleanQ.toLowerCase().includes(singularCat.toLowerCase()) && !cleanQ.toLowerCase().includes(cleanCat.toLowerCase())) {
+        fullQuery = `${singularCat} ${cleanQ}`;
+      }
     }
 
     const images = await searchWebImagesHelper(fullQuery, 4);

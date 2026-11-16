@@ -111,6 +111,11 @@ export default function SmartBatchProductModal({
   const triggerImageSearch = async (itemId: string, term: string) => {
     if (!term || term.trim().length < 3) return;
 
+    // Cancela timer de digitação pendente para este item
+    if (searchTimers.current[itemId]) {
+      clearTimeout(searchTimers.current[itemId]);
+    }
+
     setItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, searchingImages: true } : i))
     );
@@ -122,13 +127,20 @@ export default function SmartBatchProductModal({
       setItems((prev) =>
         prev.map((i) => {
           if (i.id !== itemId) return i;
+          
+          // Se a foto selecionada anteriormente ainda estiver nas novas imagens, mantém.
+          // Caso contrário, seleciona obrigatoriamente a primeira foto do produto atual!
+          const jaExisteNasNovas = foundImages.some((img: any) => img.url === i.selectedImageUrl);
+          const autoSelected = jaExisteNasNovas
+            ? i.selectedImageUrl
+            : (foundImages.length > 0 ? foundImages[0].url : null);
+
           return {
             ...i,
             searchingImages: false,
             searchDone: true,
             images: foundImages,
-            // Pré-seleciona a primeira foto se ainda não houver nenhuma selecionada
-            selectedImageUrl: i.selectedImageUrl || (foundImages.length > 0 ? foundImages[0].url : null),
+            selectedImageUrl: autoSelected,
           };
         })
       );
@@ -142,17 +154,42 @@ export default function SmartBatchProductModal({
 
   const handleNomeChange = (itemId: string, text: string) => {
     setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, nome: text } : i))
+      prev.map((i) => {
+        if (i.id !== itemId) return i;
+        const mudou = i.nome.trim().toLowerCase() !== text.trim().toLowerCase();
+        return {
+          ...i,
+          nome: text,
+          // Se o nome foi alterado, zera as fotos antigas para NUNCA misturar com outro produto
+          images: mudou ? [] : i.images,
+          selectedImageUrl: mudou ? null : i.selectedImageUrl,
+          searchDone: mudou ? false : i.searchDone,
+        };
+      })
     );
 
-    // Debounce automático de 900ms para disparar busca enquanto digita
+    // Limpa timer anterior do item
     if (searchTimers.current[itemId]) {
       clearTimeout(searchTimers.current[itemId]);
     }
-    if (text.trim().length >= 4) {
+
+    // Debounce automático de 750ms para disparar busca enquanto digita (mínimo 3 caracteres)
+    if (text.trim().length >= 3) {
       searchTimers.current[itemId] = setTimeout(() => {
         triggerImageSearch(itemId, text);
-      }, 900);
+      }, 750);
+    }
+  };
+
+  // Buscar fotos de todas as linhas de uma vez
+  const handleSearchAllImages = async () => {
+    const itemsToSearch = items.filter((i) => i.nome.trim().length >= 3);
+    if (itemsToSearch.length === 0) {
+      Alert.alert('Aviso', 'Preencha ao menos o nome de um produto para buscar fotos.');
+      return;
+    }
+    for (const item of itemsToSearch) {
+      triggerImageSearch(item.id, item.nome);
     }
   };
 
@@ -293,12 +330,22 @@ export default function SmartBatchProductModal({
 
             {/* 2. Grade de Marcas e Preços */}
             <View style={styles.sectionBox}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
                 <Text style={styles.sectionLabel}>2. Produtos e Fotos da Internet:</Text>
-                <TouchableOpacity style={styles.addLineBtn} onPress={handleAddItem} activeOpacity={0.8}>
-                  <Ionicons name="add" size={14} color="#0284C7" />
-                  <Text style={styles.addLineBtnText}>Adicionar Linha</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity 
+                    style={[styles.addLineBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]} 
+                    onPress={handleSearchAllImages} 
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="search" size={13} color="#16A34A" />
+                    <Text style={[styles.addLineBtnText, { color: '#16A34A' }]}>Buscar Fotos de Todas</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.addLineBtn} onPress={handleAddItem} activeOpacity={0.8}>
+                    <Ionicons name="add" size={14} color="#0284C7" />
+                    <Text style={styles.addLineBtnText}>Adicionar Linha</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.itemsTable}>
@@ -319,7 +366,11 @@ export default function SmartBatchProductModal({
                             placeholderTextColor="#94A3B8"
                             value={item.nome}
                             onChangeText={(t) => handleNomeChange(item.id, t)}
-                            onBlur={() => triggerImageSearch(item.id, item.nome)}
+                            onBlur={() => {
+                              if (item.images.length === 0 && item.nome.trim().length >= 3) {
+                                triggerImageSearch(item.id, item.nome);
+                              }
+                            }}
                           />
                         </View>
 
@@ -390,9 +441,16 @@ export default function SmartBatchProductModal({
                                 </TouchableOpacity>
                               );
                             })}
-                            <Text style={styles.clickHint}>
-                              {item.selectedImageUrl ? '✓ Foto selecionada' : 'Clique na foto desejada'}
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 }}>
+                              <Ionicons 
+                                name={item.selectedImageUrl ? "checkmark-circle" : "alert-circle-outline"} 
+                                size={13} 
+                                color={item.selectedImageUrl ? "#10B981" : "#F59E0B"} 
+                              />
+                              <Text style={[styles.clickHint, item.selectedImageUrl ? { color: '#047857', fontWeight: 'bold' } : {}]}>
+                                {item.selectedImageUrl ? '✓ Foto vinculada a este produto' : 'Clique na foto desejada'}
+                              </Text>
+                            </View>
                           </View>
                         )}
                       </View>
