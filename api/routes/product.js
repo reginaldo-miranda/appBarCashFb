@@ -364,8 +364,45 @@ router.post("/create", async (req, res) => {
   }
 });
 
-// Helper para busca de imagens na web
-async function searchWebImagesHelper(query, limit = 4) {
+// Helper para busca de imagens na web (Bing como primário, DuckDuckGo como contingência)
+async function searchBingImagesHelper(query, limit = 4) {
+  try {
+    const url = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC2&first=1`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const regex = /class="iusc"[^>]*m="([^"]+)"/g;
+    let match;
+    const results = [];
+    while ((match = regex.exec(html)) !== null) {
+      try {
+        const decoded = match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        const obj = JSON.parse(decoded);
+        if (obj.murl) {
+          results.push({
+            title: obj.t || query,
+            url: obj.murl,
+            thumbnail: obj.turl || obj.murl
+          });
+        }
+        if (results.length >= limit) break;
+      } catch (e) {}
+    }
+    return results;
+  } catch (err) {
+    console.warn('[searchBingImagesHelper] Aviso na busca Bing:', err.message);
+    return [];
+  }
+}
+
+async function searchDuckDuckGoHelper(query, limit = 4) {
   try {
     const tokenRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
       headers: {
@@ -393,9 +430,25 @@ async function searchWebImagesHelper(query, limit = 4) {
       thumbnail: r.thumbnail || r.image
     }));
   } catch (err) {
-    console.warn('[searchWebImagesHelper] Aviso na busca de imagens:', err.message);
+    console.warn('[searchDuckDuckGoHelper] Aviso na busca DDG:', err.message);
     return [];
   }
+}
+
+async function searchWebImagesHelper(query, limit = 4) {
+  // 1. Tentar Bing (mais rápido, sem bloqueio de botnet, fotos reais de alta qualidade)
+  const bingResults = await searchBingImagesHelper(query, limit);
+  if (bingResults && bingResults.length > 0) {
+    return bingResults;
+  }
+
+  // 2. Fallback contingência DuckDuckGo
+  const ddgResults = await searchDuckDuckGoHelper(query, limit);
+  if (ddgResults && ddgResults.length > 0) {
+    return ddgResults;
+  }
+
+  return [];
 }
 
 // Rota para buscar fotos de produtos na internet
@@ -485,27 +538,43 @@ router.post("/smart-batch-create", async (req, res) => {
       const precoVenda = Number(item.precoVenda || 0);
       const quantidade = Number(item.quantidade || 0);
 
-      // Download da imagem se for URL externa
+      // Download da imagem se for URL externa (tenta URL completa ou miniatura de CDN)
       let localImagePath = null;
+      const downloadCandidates = [];
       if (item.imageUrl && (item.imageUrl.startsWith('http://') || item.imageUrl.startsWith('https://'))) {
-        try {
-          const imgRes = await fetch(item.imageUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-            signal: AbortSignal.timeout(6000)
-          });
-          if (imgRes.ok) {
-            const buffer = Buffer.from(await imgRes.arrayBuffer());
-            const ext = '.jpg';
-            const filename = `prod-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-            const filepath = path.join(uploadDir, filename);
-            fs.writeFileSync(filepath, buffer);
-            localImagePath = `/uploads/products/${filename}`;
-          } else {
-            localImagePath = item.imageUrl;
+        downloadCandidates.push(item.imageUrl);
+      }
+      if (item.thumbnailUrl && (item.thumbnailUrl.startsWith('http://') || item.thumbnailUrl.startsWith('https://')) && item.thumbnailUrl !== item.imageUrl) {
+        downloadCandidates.push(item.thumbnailUrl);
+      }
+
+      if (downloadCandidates.length > 0) {
+        for (const candidateUrl of downloadCandidates) {
+          try {
+            const imgRes = await fetch(candidateUrl, {
+              headers: { 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+              },
+              signal: AbortSignal.timeout(6000)
+            });
+            if (imgRes.ok) {
+              const buffer = Buffer.from(await imgRes.arrayBuffer());
+              if (buffer.length > 1000) {
+                const ext = '.jpg';
+                const filename = `prod-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+                const filepath = path.join(uploadDir, filename);
+                fs.writeFileSync(filepath, buffer);
+                localImagePath = `/uploads/products/${filename}`;
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn('[smartBatchCreate] Falha no download de:', candidateUrl, e.message);
           }
-        } catch (e) {
-          console.warn('[smartBatchCreate] Falha no download da imagem:', e.message);
-          localImagePath = item.imageUrl;
+        }
+        if (!localImagePath) {
+          localImagePath = item.imageUrl || item.thumbnailUrl || null;
         }
       } else if (item.imageUrl) {
         localImagePath = item.imageUrl;

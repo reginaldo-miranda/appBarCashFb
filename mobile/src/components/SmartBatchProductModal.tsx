@@ -203,6 +203,7 @@ export default function SmartBatchProductModal({
         precoVenda: parseFloat(cleanPrice) || 0,
         quantidade: parseInt(i.quantidade, 10) || 0,
         imageUrl: i.selectedImageUrl,
+        thumbnailUrl: i.images.find(img => img.url === i.selectedImageUrl)?.thumbnail || null,
       };
     });
 
