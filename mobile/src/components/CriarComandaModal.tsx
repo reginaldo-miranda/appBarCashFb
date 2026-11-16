@@ -313,15 +313,21 @@ export default function CriarComandaModal({ visible, onClose, onSubmit }: Props)
           </View>
         </View>
       ) : (
-        <View style={[styles.modalContent, { width: '100%', height: '100%' }]}>
-          <Text style={styles.modalTitle}>Nova Comanda</Text>
-          {loading ? (
-            <View style={{flex:1, alignItems:'center', justifyContent:'center'}}>
-              <ActivityIndicator size="large" color="#2196F3" />
-              <Text style={{marginTop:12, color:'#666'}}>Carregando dados...</Text>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.modalContentResponsive]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>Nova Comanda</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color="#666" />
+              </TouchableOpacity>
             </View>
-          ) : (
-            <ScrollView style={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            {loading ? (
+              <View style={{flex:1, alignItems:'center', justifyContent:'center'}}>
+                <ActivityIndicator size="large" color="#2196F3" />
+                <Text style={{marginTop:12, color:'#666'}}>Carregando dados...</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               {/* Seleção de Funcionário */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Funcionário: *</Text>
@@ -447,7 +453,8 @@ export default function CriarComandaModal({ visible, onClose, onSubmit }: Props)
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </View>
+    )}
       {/* Modal Selecionar Cliente */}
        <Modal
           visible={showClientModal}
@@ -628,36 +635,54 @@ const styles = StyleSheet.create({
     overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
     zIndex: 1000,
   },
+  modalContentResponsive: {
+    width: Platform.OS === 'web' ? '92%' : '95%',
+    maxWidth: 520,
+    maxHeight: '92%',
+    height: 'auto',
+    borderRadius: 14,
+    padding: 18,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  closeBtn: {
+    padding: 4,
+  },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+    textAlign: 'left',
+    color: '#1E293B',
   },
   scrollContent: {
-    flex: 1,
+    flexShrink: 1,
   },
   fieldContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
+    marginBottom: 4,
+    color: '#334155',
   },
   input: {
-    height: 45,
+    height: 42,
     borderColor: '#ddd',
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    fontSize: 14,
     backgroundColor: '#f9f9f9',
   },
   textArea: {
-    height: 80,
+    height: 60,
     textAlignVertical: 'top',
   },
   pickerContainer: {
@@ -674,12 +699,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 14,
     gap: 10,
   },
   button: {
     flex: 1,
-    padding: 15,
+    paddingVertical: 11,
     borderRadius: 8,
     alignItems: 'center',
   },

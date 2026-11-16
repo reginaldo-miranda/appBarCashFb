@@ -1369,3 +1369,13 @@
 [2026-11-13T20:15:36.144Z] [EmitirNfce] Delivery Fee: null
 [2026-11-13T20:15:36.144Z] [EmitirNfce] Total Venda: 12
 [2026-11-13T20:15:36.145Z] [EmitirNfce] Subtotal: 12
+[2026-11-16T13:50:29.381Z] [Finalize] ID: 97 (Int: 97). FreshItens: 1, FreshCV: 1
+[2026-11-16T13:50:29.383Z] [Finalize] Recalculated Subtotal: 19
+[2026-11-16T13:50:29.423Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-11-16T13:50:29.424Z] [DEBUG] CV: 65 - dinheiro - 19
+[2026-11-16T13:50:29.425Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0
+[2026-11-16T13:51:11.646Z] [Finalize] ID: 98 (Int: 98). FreshItens: 1, FreshCV: 1
+[2026-11-16T13:51:11.647Z] [Finalize] Recalculated Subtotal: 12
+[2026-11-16T13:51:11.692Z] [DEBUG] Finalize - FreshCV Count: 1
+[2026-11-16T13:51:11.693Z] [DEBUG] CV: 66 - dinheiro - 12
+[2026-11-16T13:51:11.693Z] [DEBUG] Calculated Total Cashback Usado (Fresh): 0

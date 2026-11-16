@@ -52,7 +52,7 @@ export default function PaymentSplitModal({
   const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
   const [paymentMethod, setPaymentMethod] = useState<string>('dinheiro');
-  const [emitirNfce, setEmitirNfce] = useState(true);
+  const [emitirNfce, setEmitirNfce] = useState(false);
   const [pixModalVisible, setPixModalVisible] = useState(false);
   const [pixAmount, setPixAmount] = useState(0);
   const [cpfModalVisible, setCpfModalVisible] = useState(false);
@@ -76,6 +76,9 @@ export default function PaymentSplitModal({
     if (visible && sale && (sale as any).status === 'finalizada') {
       Alert.alert('Aviso', 'Esta venda foi finalizada.');
       onClose();
+    }
+    if (visible) {
+      setEmitirNfce(false);
     }
   }, [sale, visible]);
 
@@ -839,10 +842,30 @@ export default function PaymentSplitModal({
                    </View>
                 )}
 
+                {/* Histórico de Pagamentos Recentes */}
+                {(sale as any)?.caixaVendas && (sale as any).caixaVendas.length > 0 && (
+                  <View style={styles.historyBox}>
+                    <Text style={styles.historyTitle}>Histórico recente:</Text>
+                    {(sale as any).caixaVendas.map((cv: any, idx: number) => (
+                      <View key={idx} style={styles.historyRow}>
+                         <Text style={styles.historyDesc}>
+                           {new Date(cv.dataVenda).toLocaleTimeString().substring(0,5)} - {cv.formaPagamento.toUpperCase()}
+                         </Text>
+                         <Text style={styles.historyAmount}>
+                           R$ {Number(cv.valor).toFixed(2)}
+                         </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Rodapé Fixo da Coluna Direita: NFC-e e Confirmar Pagamento (Sempre Visível!) */}
+              <View style={styles.rightFooterFixed}>
                 {/* NFC-e Switch */}
                 <View style={styles.nfceCard}>
                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                     <Ionicons name="receipt-outline" size={20} color="#2196F3" />
+                     <Ionicons name="receipt-outline" size={18} color="#2196F3" />
                      <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333' }}>Emitir NFC-e (Cupom Fiscal)</Text>
                    </View>
                    <Switch
@@ -871,24 +894,7 @@ export default function PaymentSplitModal({
                     </Text>
                   )}
                 </TouchableOpacity>
-
-                {/* Histórico de Pagamentos Recentes */}
-                {(sale as any)?.caixaVendas && (sale as any).caixaVendas.length > 0 && (
-                  <View style={styles.historyBox}>
-                    <Text style={styles.historyTitle}>Histórico recente:</Text>
-                    {(sale as any).caixaVendas.map((cv: any, idx: number) => (
-                      <View key={idx} style={styles.historyRow}>
-                         <Text style={styles.historyDesc}>
-                           {new Date(cv.dataVenda).toLocaleTimeString().substring(0,5)} - {cv.formaPagamento.toUpperCase()}
-                         </Text>
-                         <Text style={styles.historyAmount}>
-                           R$ {Number(cv.valor).toFixed(2)}
-                         </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </ScrollView>
+              </View>
             </View>
           </View>
         </View>
@@ -1146,16 +1152,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFCDD2',
   },
+  rightFooterFixed: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    gap: 8,
+  },
   nfceCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d0e8ff',
+    borderColor: '#E2E8F0',
   },
   confirmButton: {
     backgroundColor: '#4CAF50',
