@@ -13,7 +13,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { productService } from '../services/api';
+import api, { productService } from '../services/api';
 
 interface BulkFiscalModalProps {
   visible: boolean;
@@ -43,6 +43,7 @@ export default function BulkFiscalModal({
   const [cfop, setCfop] = useState('5102');
   const [csosn, setCsosn] = useState('102');
   const [origem, setOrigem] = useState('0');
+  const [isAutoFilledNcm, setIsAutoFilledNcm] = useState(false);
 
   // Reforma Tributária
   const [ibsCst, setIbsCst] = useState('410');
@@ -52,14 +53,101 @@ export default function BulkFiscalModal({
   const [cbsClassTrib, setCbsClassTrib] = useState('410031');
   const [cbsAliquota, setCbsAliquota] = useState('');
   const [isAliquota, setIsAliquota] = useState('');
+  const [loadingConfigReforma, setLoadingConfigReforma] = useState(false);
+  const [puxadoFeedback, setPuxadoFeedback] = useState(false);
 
+  // Carregar dados iniciais e defaults da Reforma Tributária ao abrir
   useEffect(() => {
     if (visible) {
-      setSelectedCat(initialCategory || (categorias.length > 0 ? categorias[0].nome : ''));
-      setOnlyMissingFiscal(true);
+      const initial = initialCategory || (categorias.length > 0 ? categorias[0].nome : '');
+      setSelectedCat(initial);
       setShowReforma(false);
+
+      // Carregar defaults da configuração da Reforma
+      api.get('/config/fiscal-reforma')
+        .then(res => {
+          if (res.data?.ok && res.data?.data) {
+            const d = res.data.data;
+            if (d.defaultIbsCst !== undefined) setIbsCst(d.defaultIbsCst);
+            if (d.defaultIbsClassTrib !== undefined) setIbsClassTrib(d.defaultIbsClassTrib);
+            if (d.defaultIbsAliquota !== undefined) setIbsAliquota(String(d.defaultIbsAliquota || ''));
+            if (d.defaultCbsCst !== undefined) setCbsCst(d.defaultCbsCst);
+            if (d.defaultCbsClassTrib !== undefined) setCbsClassTrib(d.defaultCbsClassTrib);
+            if (d.defaultCbsAliquota !== undefined) setCbsAliquota(String(d.defaultCbsAliquota || ''));
+            if (d.defaultIsAliquota !== undefined) setIsAliquota(String(d.defaultIsAliquota || ''));
+          }
+        })
+        .catch(() => {});
     }
   }, [visible, initialCategory, categorias]);
+
+  // Auto-preenchimento inteligente de NCM/CEST e seleção de escopo ao mudar categoria
+  useEffect(() => {
+    if (!visible || !selectedCat) return;
+
+    const inCat = products.filter(
+      p => String(p.categoria || '').toLowerCase() === selectedCat.toLowerCase()
+    );
+
+    // Identificar NCMs existentes na categoria para sugerir o mais frequente
+    const ncmCounts: Record<string, { count: number; cest?: string; cfop?: string; csosn?: string; origem?: any }> = {};
+    for (const p of inCat) {
+      const clean = String(p.ncm || '').replace(/\D/g, '');
+      if (clean.length === 8) {
+        if (!ncmCounts[clean]) {
+          ncmCounts[clean] = { count: 0, cest: p.cest, cfop: p.cfop, csosn: p.csosn, origem: p.origem };
+        }
+        ncmCounts[clean].count++;
+      }
+    }
+
+    const ncmList = Object.entries(ncmCounts).sort((a, b) => b[1].count - a[1].count);
+    if (ncmList.length > 0) {
+      const [topNcm, topMeta] = ncmList[0];
+      setNcm(topNcm);
+      setIsAutoFilledNcm(true);
+      if (topMeta.cest) setCest(String(topMeta.cest).replace(/\D/g, ''));
+      if (topMeta.cfop) setCfop(String(topMeta.cfop).replace(/\D/g, '') || '5102');
+      if (topMeta.csosn) setCsosn(String(topMeta.csosn) || '102');
+      if (topMeta.origem !== undefined) setOrigem(String(topMeta.origem));
+    } else {
+      setNcm('');
+      setCest('');
+      setIsAutoFilledNcm(false);
+    }
+
+    // Se todos os produtos já tiverem NCM (0 sem NCM), seleciona "Todos da Categoria" automaticamente
+    const missing = inCat.filter(p => !p.ncm || String(p.ncm).replace(/\D/g, '').length !== 8);
+    if (missing.length === 0 && inCat.length > 0) {
+      setOnlyMissingFiscal(false);
+    } else {
+      setOnlyMissingFiscal(true);
+    }
+  }, [selectedCat, visible, products]);
+
+  const handlePuxarConfigReforma = async () => {
+    try {
+      setLoadingConfigReforma(true);
+      const res = await api.get('/config/fiscal-reforma');
+      if (res.data?.ok && res.data?.data) {
+        const d = res.data.data;
+        if (d.defaultIbsCst !== undefined) setIbsCst(d.defaultIbsCst);
+        if (d.defaultIbsClassTrib !== undefined) setIbsClassTrib(d.defaultIbsClassTrib);
+        if (d.defaultIbsAliquota !== undefined) setIbsAliquota(String(d.defaultIbsAliquota || ''));
+        if (d.defaultCbsCst !== undefined) setCbsCst(d.defaultCbsCst);
+        if (d.defaultCbsClassTrib !== undefined) setCbsClassTrib(d.defaultCbsClassTrib);
+        if (d.defaultCbsAliquota !== undefined) setCbsAliquota(String(d.defaultCbsAliquota || ''));
+        if (d.defaultIsAliquota !== undefined) setIsAliquota(String(d.defaultIsAliquota || ''));
+        setShowReforma(true);
+        setPuxadoFeedback(true);
+        setTimeout(() => setPuxadoFeedback(false), 3000);
+      }
+    } catch (e: any) {
+      Alert.alert('Erro', 'Não foi possível carregar as configurações da Reforma Tributária.');
+    } finally {
+      setLoadingConfigReforma(false);
+    }
+  };
 
   // Contagem de produtos afetados
   const { totalCat, missingCat } = useMemo(() => {
@@ -252,13 +340,24 @@ export default function BulkFiscalModal({
 
               <View style={styles.row}>
                 <View style={{ flex: 1.5, marginRight: 8 }}>
-                  <Text style={styles.inputLabel}>NCM (8 dígitos) *</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.inputLabel}>NCM (8 dígitos) *</Text>
+                    {isAutoFilledNcm && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 }}>
+                        <Ionicons name="sparkles" size={10} color="#0284C7" />
+                        <Text style={{ fontSize: 9, color: '#0284C7', fontWeight: '700' }}>Sugerido</Text>
+                      </View>
+                    )}
+                  </View>
                   <TextInput
                     style={[styles.input, (!ncm || ncm.replace(/\D/g, '').length !== 8) && styles.inputWarning]}
                     placeholder="Ex: 22030000"
                     placeholderTextColor="#94A3B8"
                     value={ncm}
-                    onChangeText={setNcm}
+                    onChangeText={(t) => {
+                      setNcm(t);
+                      setIsAutoFilledNcm(false);
+                    }}
                     keyboardType="numeric"
                     maxLength={10}
                   />
@@ -309,21 +408,44 @@ export default function BulkFiscalModal({
 
             {/* 4. Acordeão Reforma Tributária (IBS / CBS) */}
             <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.accordionHeader}
-                onPress={() => setShowReforma(!showReforma)}
-                activeOpacity={0.7}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={styles.accordionHeader}>
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
+                  onPress={() => setShowReforma(!showReforma)}
+                  activeOpacity={0.7}
+                >
                   <Ionicons name="calculator-outline" size={15} color="#6B21A8" />
                   <Text style={styles.accordionTitle}>Reforma Tributária (IBS / CBS)</Text>
-                </View>
-                <Ionicons
-                  name={showReforma ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color="#6B21A8"
-                />
-              </TouchableOpacity>
+                  <Ionicons
+                    name={showReforma ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color="#6B21A8"
+                  />
+                </TouchableOpacity>
+
+                {/* Botão para puxar da tela de configuração (conforme marcado na Imagem 2) */}
+                <TouchableOpacity
+                  style={[styles.btnPuxarConfig, puxadoFeedback && styles.btnPuxarConfigSuccess]}
+                  onPress={handlePuxarConfigReforma}
+                  disabled={loadingConfigReforma}
+                  activeOpacity={0.8}
+                >
+                  {loadingConfigReforma ? (
+                    <ActivityIndicator size="small" color="#7C3AED" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name={puxadoFeedback ? 'checkmark-circle' : 'cloud-download-outline'}
+                        size={13}
+                        color={puxadoFeedback ? '#15803D' : '#7C3AED'}
+                      />
+                      <Text style={[styles.btnPuxarConfigText, puxadoFeedback && { color: '#15803D' }]}>
+                        {puxadoFeedback ? 'Puxado!' : 'Puxar da Configuração'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
 
               {showReforma && (
                 <View style={styles.accordionBody}>
@@ -435,8 +557,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 14,
     width: '100%',
-    maxWidth: 580,
-    maxHeight: '90%',
+    maxWidth: 600,
+    maxHeight: '85%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -612,9 +734,29 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   accordionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#6B21A8',
+  },
+  btnPuxarConfig: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3E8FF',
+    borderWidth: 1,
+    borderColor: '#D8B4FE',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  btnPuxarConfigSuccess: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
+  },
+  btnPuxarConfigText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
   accordionBody: {
     backgroundColor: '#FCFAFF',

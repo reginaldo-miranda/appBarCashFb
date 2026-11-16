@@ -212,6 +212,7 @@ export default function AdminProdutosScreen() {
     cbsAliquota: '',
     isAliquota: '',
   });
+  const [puxadoIndividualFeedback, setPuxadoIndividualFeedback] = useState(false);
 
   const loadFiscalDefaults = async () => {
     try {
@@ -228,6 +229,30 @@ export default function AdminProdutosScreen() {
         });
       }
     } catch {}
+  };
+
+  const handlePuxarConfigReformaIndividual = async () => {
+    try {
+      const res = await api.get('/config/fiscal-reforma');
+      if (res.data?.ok && res.data?.data) {
+        const d = res.data.data;
+        setFormData(prev => ({
+          ...prev,
+          ibsCst: d.defaultIbsCst ?? '410',
+          ibsClassTrib: d.defaultIbsClassTrib ?? '410031',
+          ibsAliquota: d.defaultIbsAliquota || '',
+          cbsCst: d.defaultCbsCst ?? '410',
+          cbsClassTrib: d.defaultCbsClassTrib ?? '410031',
+          cbsAliquota: d.defaultCbsAliquota || '',
+          isAliquota: d.defaultIsAliquota || '',
+        }));
+        setShowReformaTributaria(true);
+        setPuxadoIndividualFeedback(true);
+        setTimeout(() => setPuxadoIndividualFeedback(false), 3000);
+      }
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível carregar as configurações da Reforma Tributária.');
+    }
   };
 
   const handleSearchNcm = (engine: 'cosmos' | 'google') => {
@@ -1744,7 +1769,7 @@ export default function AdminProdutosScreen() {
                                   onPress={() => setShowReformaTributaria(!showReformaTributaria)}
                                   activeOpacity={0.7}
                                 >
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                                     <Ionicons name="calculator-outline" size={14} color="#6A1B9A" />
                                     <Text style={styles.accordionTitle}>Reforma Tributária (IBS / CBS)</Text>
                                     {hasReformaValues && (
@@ -1753,11 +1778,40 @@ export default function AdminProdutosScreen() {
                                       </View>
                                     )}
                                   </View>
-                                  <Ionicons 
-                                    name={showReformaTributaria ? "chevron-up" : "chevron-down"} 
-                                    size={14} 
-                                    color="#64748B" 
-                                  />
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <TouchableOpacity
+                                      style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        backgroundColor: puxadoIndividualFeedback ? '#DCFCE7' : '#F3E8FF',
+                                        borderWidth: 1,
+                                        borderColor: puxadoIndividualFeedback ? '#86EFAC' : '#D8B4FE',
+                                        borderRadius: 6,
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                      }}
+                                      onPress={(e) => {
+                                        e.stopPropagation();
+                                        handlePuxarConfigReformaIndividual();
+                                      }}
+                                      activeOpacity={0.8}
+                                    >
+                                      <Ionicons
+                                        name={puxadoIndividualFeedback ? 'checkmark-circle' : 'cloud-download-outline'}
+                                        size={12}
+                                        color={puxadoIndividualFeedback ? '#15803D' : '#7C3AED'}
+                                      />
+                                      <Text style={{ fontSize: 11, fontWeight: '700', color: puxadoIndividualFeedback ? '#15803D' : '#7C3AED' }}>
+                                        {puxadoIndividualFeedback ? 'Puxado!' : 'Puxar da Configuração'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                    <Ionicons 
+                                      name={showReformaTributaria ? "chevron-up" : "chevron-down"} 
+                                      size={14} 
+                                      color="#64748B" 
+                                    />
+                                  </View>
                                 </TouchableOpacity>
 
                                 {showReformaTributaria && (
