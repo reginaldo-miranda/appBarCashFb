@@ -23,7 +23,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import { SafeIcon } from '../../components/SafeIcon';
 import { Ionicons } from '@expo/vector-icons';
-import { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService, stockService, getProductImageUrl } from '../../src/services/api';
+import api, { productService, categoryService, typeService, unidadeMedidaService, setorImpressaoService, stockService, getProductImageUrl } from '../../src/services/api';
 import { useAuth } from '../../src/contexts/AuthContext';
 import SearchAndFilter from '../../src/components/SearchAndFilter';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';

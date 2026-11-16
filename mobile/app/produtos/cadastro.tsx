@@ -21,7 +21,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useProduct } from '../../src/contexts/ProductContext';
-import { productService, typeService, unidadeMedidaService, categoryService, setorImpressaoService } from '../../src/services/api';
+import api, { productService, typeService, unidadeMedidaService, categoryService, setorImpressaoService } from '../../src/services/api';
 import BulkProductModal from '../../src/components/BulkProductModal';
 
 
