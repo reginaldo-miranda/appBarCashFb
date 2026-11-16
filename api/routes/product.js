@@ -364,6 +364,216 @@ router.post("/create", async (req, res) => {
   }
 });
 
+// Helper para busca de imagens na web
+async function searchWebImagesHelper(query, limit = 4) {
+  try {
+    const tokenRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    const html = await tokenRes.text();
+    const vqdMatch = html.match(/vqd=([0-9-]+)/) || html.match(/vqd=['"]([0-9-]+)['"]/);
+    if (!vqdMatch) return [];
+
+    const vqd = vqdMatch[1];
+    const imgRes = await fetch(`https://duckduckgo.com/i.js?l=wt-wt&o=json&q=${encodeURIComponent(query)}&vqd=${vqd}&f=,,,`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://duckduckgo.com/'
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await imgRes.json();
+    if (!data.results || !Array.isArray(data.results)) return [];
+    return data.results.slice(0, limit).map(r => ({
+      title: r.title,
+      url: r.image,
+      thumbnail: r.thumbnail || r.image
+    }));
+  } catch (err) {
+    console.warn('[searchWebImagesHelper] Aviso na busca de imagens:', err.message);
+    return [];
+  }
+}
+
+// Rota para buscar fotos de produtos na internet
+router.get("/search-web-images", async (req, res) => {
+  try {
+    const { q, categoria } = req.query;
+    if (!q || !String(q).trim()) {
+      return res.status(400).json({ error: "Termo de busca 'q' é obrigatório" });
+    }
+    const cleanQ = String(q).trim();
+    const cleanCat = categoria ? String(categoria).trim() : '';
+    
+    // Se a query não contiver o nome da categoria, adiciona para melhorar a precisão
+    let fullQuery = cleanQ;
+    if (cleanCat && !cleanQ.toLowerCase().includes(cleanCat.toLowerCase())) {
+      fullQuery = `${cleanCat} ${cleanQ}`;
+    }
+
+    const images = await searchWebImagesHelper(fullQuery, 4);
+    res.json({ ok: true, query: fullQuery, images });
+  } catch (error) {
+    console.error('[SearchWebImages] Erro:', error);
+    res.status(500).json({ error: "Erro ao buscar imagens na web" });
+  }
+});
+
+// Rota de Cadastro Inteligente em Lote (com herança fiscal da categoria e download de imagem)
+router.post("/smart-batch-create", async (req, res) => {
+  try {
+    const prisma = getActivePrisma();
+    const { categoria, items } = req.body;
+
+    if (!categoria || !String(categoria).trim()) {
+      return res.status(400).json({ error: "Categoria é obrigatória" });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Nenhum produto foi enviado para cadastro" });
+    }
+
+    const catNome = String(categoria).trim();
+
+    // 1. Buscar produto existente da categoria para herdar dados fiscais e locais
+    const sampleProduct = await prisma.product.findFirst({
+      where: {
+        categoria: { equals: catNome },
+        ncm: { not: null }
+      },
+      orderBy: { id: 'desc' }
+    }) || await prisma.product.findFirst({
+      where: { categoria: { equals: catNome } },
+      orderBy: { id: 'desc' }
+    });
+
+    // Setores de impressão herdados
+    let setoresIds = [];
+    if (sampleProduct) {
+      try {
+        const rels = await prisma.productSetorImpressao.findMany({
+          where: { productId: sampleProduct.id }
+        });
+        setoresIds = rels.map(r => r.setorId);
+      } catch (e) {}
+    }
+
+    // Identificar local de venda padrão
+    let localVendaId = sampleProduct?.localVendaId;
+    let localVendaNome = sampleProduct?.localVendaNome;
+    if (!localVendaNome) {
+      const lowerCat = catNome.toLowerCase();
+      if (lowerCat.includes('cerveja') || lowerCat.includes('refrigerante') || lowerCat.includes('bebida') || lowerCat.includes('suco') || lowerCat.includes('agua')) {
+        localVendaNome = 'Geladeira 1';
+      } else if (lowerCat.includes('porco') || lowerCat.includes('lanche') || lowerCat.includes('pizza') || lowerCat.includes('pastel') || lowerCat.includes('comida') || lowerCat.includes('refeicao')) {
+        localVendaNome = 'Cozinha';
+      } else if (lowerCat.includes('dose') || lowerCat.includes('drink') || lowerCat.includes('whisky') || lowerCat.includes('vodka') || lowerCat.includes('gin')) {
+        localVendaNome = 'Bar / Doses';
+      } else {
+        localVendaNome = 'Balcão';
+      }
+    }
+
+    const createdProducts = [];
+
+    for (const item of items) {
+      if (!item.nome || !String(item.nome).trim()) continue;
+
+      const nome = String(item.nome).trim();
+      const precoVenda = Number(item.precoVenda || 0);
+      const quantidade = Number(item.quantidade || 0);
+
+      // Download da imagem se for URL externa
+      let localImagePath = null;
+      if (item.imageUrl && (item.imageUrl.startsWith('http://') || item.imageUrl.startsWith('https://'))) {
+        try {
+          const imgRes = await fetch(item.imageUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            signal: AbortSignal.timeout(6000)
+          });
+          if (imgRes.ok) {
+            const buffer = Buffer.from(await imgRes.arrayBuffer());
+            const ext = '.jpg';
+            const filename = `prod-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+            const filepath = path.join(uploadDir, filename);
+            fs.writeFileSync(filepath, buffer);
+            localImagePath = `/uploads/products/${filename}`;
+          } else {
+            localImagePath = item.imageUrl;
+          }
+        } catch (e) {
+          console.warn('[smartBatchCreate] Falha no download da imagem:', e.message);
+          localImagePath = item.imageUrl;
+        }
+      } else if (item.imageUrl) {
+        localImagePath = item.imageUrl;
+      }
+
+      // Criação do produto no banco via Prisma
+      const novoProduto = await prisma.product.create({
+        data: {
+          nome,
+          descricao: item.descricao || null,
+          precoCusto: "0.00",
+          precoVenda: String(precoVenda.toFixed(2)),
+          categoria: catNome,
+          tipo: sampleProduct?.tipo || null,
+          grupo: sampleProduct?.grupo || null,
+          unidade: sampleProduct?.unidade || "un",
+          ativo: true,
+          disponivel: true,
+          quantidade: quantidade,
+          estoqueDeposito: 0,
+          estoqueGeladeira: localVendaNome?.toLowerCase().includes('geladeira') ? quantidade : 0,
+          localVendaId: localVendaId || undefined,
+          localVendaNome: localVendaNome || undefined,
+          imagem: localImagePath,
+
+          // Fiscal NFC-e herdado
+          ncm: sampleProduct?.ncm || null,
+          cest: sampleProduct?.cest || null,
+          cfop: sampleProduct?.cfop || "5102",
+          csosn: sampleProduct?.csosn || "102",
+          origem: sampleProduct?.origem ?? 0,
+
+          // Reforma Tributária herdada
+          ibsCst: sampleProduct?.ibsCst || "410",
+          ibsClassTrib: sampleProduct?.ibsClassTrib || "410031",
+          ibsAliquota: sampleProduct?.ibsAliquota || null,
+          cbsCst: sampleProduct?.cbsCst || "410",
+          cbsClassTrib: sampleProduct?.cbsClassTrib || "410031",
+          cbsAliquota: sampleProduct?.cbsAliquota || null,
+          isAliquota: sampleProduct?.isAliquota || null
+        }
+      });
+
+      // Vincular setores de impressão herdados
+      if (setoresIds.length > 0) {
+        try {
+          await prisma.productSetorImpressao.createMany({
+            data: setoresIds.map(sid => ({ productId: novoProduto.id, setorId: sid })),
+            skipDuplicates: true
+          });
+        } catch (e) {}
+      }
+
+      createdProducts.push(mapProduct(novoProduto));
+    }
+
+    console.log(`[SmartBatch] Criados ${createdProducts.length} produtos na categoria "${catNome}".`);
+    res.status(201).json({
+      success: true,
+      createdCount: createdProducts.length,
+      products: createdProducts
+    });
+  } catch (error) {
+    console.error('[SmartBatch] Erro ao cadastrar lote inteligente:', error);
+    res.status(500).json({ error: error.message || "Erro ao cadastrar produtos em lote" });
+  }
+});
+
 // Rota de criação em massa
 router.post("/bulk-create", async (req, res) => {
   try {

@@ -31,6 +31,7 @@ import { events } from '../../src/utils/eventBus';
 import { testApiConnection, getCurrentBaseUrl } from '../../src/services/api';
 import BulkProductModal from '../../src/components/BulkProductModal';
 import BulkFiscalModal from '../../src/components/BulkFiscalModal';
+import SmartBatchProductModal from '../../src/components/SmartBatchProductModal';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -114,6 +115,7 @@ export default function AdminProdutosScreen() {
   const [filterSemSetor, setFilterSemSetor] = useState(false);
   const [filterSemFiscal, setFilterSemFiscal] = useState(false);
   const [showBulkFiscalModal, setShowBulkFiscalModal] = useState(false);
+  const [showSmartBatchModal, setShowSmartBatchModal] = useState(false);
   const [dbTarget, setDbTarget] = useState('');
   const [apiHost, setApiHost] = useState('');
   const [setores, setSetores] = useState<SetorImpressao[]>([]);
@@ -858,6 +860,21 @@ export default function AdminProdutosScreen() {
               {isLargeScreen ? 'Fiscal em Massa' : 'Fiscal'}
             </Text>
           </TouchableOpacity>
+
+          {/* Botão Cadastro Inteligente */}
+          <TouchableOpacity 
+            style={[
+              isLargeScreen ? styles.estoqueXmlHeaderButton : styles.estoqueMobileHeaderButton,
+              { backgroundColor: '#7C3AED', borderColor: '#6D28D9' }
+            ]}
+            onPress={() => setShowSmartBatchModal(true)}
+            activeOpacity={0.8}
+          >
+            <SafeIcon name="sparkles" size={15} color="#fff" fallbackText="🤖" />
+            <Text style={isLargeScreen ? styles.estoqueXmlHeaderButtonText : styles.estoqueMobileButtonText}>
+              {isLargeScreen ? 'Cadastro Inteligente' : 'Inteligente'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1051,16 +1068,29 @@ export default function AdminProdutosScreen() {
           })}
 
           {selectedCategory !== '' && (
-            <TouchableOpacity
-              onPress={() => setShowBulkFiscalModal(true)}
-              style={styles.categoryFiscalPill}
-              activeOpacity={0.7}
-            >
-              <SafeIcon name="flash" size={12} color="#D97706" fallbackText="⚡" />
-              <Text style={styles.categoryFiscalPillText}>
-                Padronizar Fiscal de "{selectedCategory}"
-              </Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                onPress={() => setShowBulkFiscalModal(true)}
+                style={styles.categoryFiscalPill}
+                activeOpacity={0.7}
+              >
+                <SafeIcon name="flash" size={12} color="#D97706" fallbackText="⚡" />
+                <Text style={styles.categoryFiscalPillText}>
+                  Padronizar Fiscal de "{selectedCategory}"
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowSmartBatchModal(true)}
+                style={[styles.categoryFiscalPill, { backgroundColor: '#EDE9FE', borderColor: '#C4B5FD', marginLeft: 6 }]}
+                activeOpacity={0.7}
+              >
+                <SafeIcon name="sparkles" size={12} color="#7C3AED" fallbackText="🤖" />
+                <Text style={[styles.categoryFiscalPillText, { color: '#6D28D9' }]}>
+                  + Adicionar Marcas em "{selectedCategory}"
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
         </ScrollView>
       </View>
@@ -1821,6 +1851,16 @@ export default function AdminProdutosScreen() {
         <BulkFiscalModal
           visible={showBulkFiscalModal}
           onClose={() => setShowBulkFiscalModal(false)}
+          initialCategory={selectedCategory}
+          categorias={categorias || []}
+          products={products || []}
+          onSuccess={() => loadInitialData()}
+        />
+
+        {/* Modal de Cadastro Inteligente de Produtos */}
+        <SmartBatchProductModal
+          visible={showSmartBatchModal}
+          onClose={() => setShowSmartBatchModal(false)}
           initialCategory={selectedCategory}
           categorias={categorias || []}
           products={products || []}
