@@ -688,9 +688,14 @@ router.get('/:id', async (req, res) => {
           variacaoRegra = vt ? vt.regraPreco : regra;
           variacaoOpcoes = prods.map((p, idx) => ({ productId: p.id, nome: p.nome, preco: precos[idx], fracao: fractions[idx] || undefined }));
           
-          // Construir nome do produto concatenado (Ex: Meio Calabresa / Meio Frango)
+          // Construir nome do produto concatenado (Ex: 1/2 Calabresa / 1/2 Mussarela (G))
           if (variacaoOpcoes.length > 1) {
-            const nomesConcatenados = variacaoOpcoes.map(o => `meio ${o.nome}`).join(' / ');
+            const fractionLabel = variacaoOpcoes.length === 2 ? '1/2' : `1/${variacaoOpcoes.length}`;
+            const nomesConcatenados = variacaoOpcoes.map(o => {
+              const clean = String(o.nome || '').replace(/^pizza\s+/i, '').trim();
+              const titleName = clean ? (clean.charAt(0).toUpperCase() + clean.slice(1)) : (o.nome || '');
+              return `${fractionLabel} ${titleName}`;
+            }).join(' / ');
             nomeFinal = nomesConcatenados + (tamanhoName ? ` (${tamanhoName})` : '');
           }
         } catch (e) {

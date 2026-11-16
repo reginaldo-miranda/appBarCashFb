@@ -324,7 +324,7 @@ class NfceService {
         prodEle.ele('cEAN').txt(prod.ean || 'SEM GTIN').up();
         
         // REGRA HOMOLOGAÇÃO: Primeiro item deve ter descrição fixa
-        let xProdText = (prod.nome || item.nomeProduto || 'Produto').substring(0, 120);
+        let xProdText = (item.nomeProduto || prod.nome || 'Produto').substring(0, 120);
         if (!isProd && nItem === 1) {
             xProdText = 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
         }

@@ -20,52 +20,15 @@ const SaleItemsModal: React.FC<SaleItemsModalProps> = ({ visible, items, total, 
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>
       <View style={styles.itemLeft}>
-        {item.variacao && (item.variacao.regraPreco === 'mais_caro' || item.variacao.regraPreco === 'media') ? (
-          <View>
-            {(() => {
-               const options = Array.isArray(item.variacao.opcoes) ? [...item.variacao.opcoes] : [];
-               const rawNameClean = item.nomeProduto.replace(/^meio\s+/i, '').trim().toLowerCase();
-               
-               // Check if main product is in options
-               const hasMainInOptions = options.some(op => {
-                  const opName = String(op.nome || '').replace(/^meio\s+/i, '').trim().toLowerCase();
-                  return opName === rawNameClean;
-               });
-               
-               const itemsToDisplay = [];
-               if (!hasMainInOptions && options.length > 0) {
-                 const mainName = item.nomeProduto.match(/^meio/i) ? item.nomeProduto : `meio ${item.nomeProduto}`;
-                 itemsToDisplay.push(mainName);
-               } else if (options.length <= 1 && !hasMainInOptions) {
-                   const mainName = item.nomeProduto.match(/^meio/i) ? item.nomeProduto : `meio ${item.nomeProduto}`;
-                   itemsToDisplay.push(mainName);
-               }
-               
-               options.forEach(o => {
-                  const name = o.nome.match(/^meio/i) ? o.nome : `meio ${o.nome}`;
-                  itemsToDisplay.push(name);
-               });
-
-               return itemsToDisplay.map((name, idx) => (
-                  <Text key={idx} style={styles.itemName}>
-                    {name}
-                  </Text>
-               ));
-            })()}
+        <Text style={styles.itemName}>{item.nomeProduto}</Text>
+        {item.variacao && item.variacao.regraPreco === 'fixo' && (
+          <View style={{ marginTop: 2 }}>
+            {(Array.isArray(item.variacao.opcoes) ? item.variacao.opcoes : []).map((o, idx) => (
+              <Text key={idx} style={{ fontSize: 11, color: '#666' }}>
+                {o.nome}
+              </Text>
+            ))}
           </View>
-        ) : (
-          <>
-            <Text style={styles.itemName}>{item.nomeProduto}</Text>
-            {item.variacao && (
-              <View style={{ marginTop: 2 }}>
-                {(Array.isArray(item.variacao.opcoes) ? item.variacao.opcoes : []).map((o, idx) => (
-                  <Text key={idx} style={{ fontSize: 11, color: '#666' }}>
-                    {o.nome}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </>
         )}
       </View>
       <View style={styles.itemRight}>

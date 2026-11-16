@@ -160,11 +160,15 @@ router.post("/create", async (req, res) => {
         const uniId = Number(unidadeMedidaId);
         const grpId = Number(groupId);
         let catNome = categoria;
+        let finalCatId = Number.isInteger(catId) && catId > 0 ? catId : undefined;
         
         // Se tem ID mas não tem nome, tenta buscar (opcional, mantendo logica original)
-        if ((!catNome || !String(catNome).trim()) && Number.isInteger(catId) && catId > 0) {
-            const cat = await tx.categoria.findUnique({ where: { id: catId } });
+        if ((!catNome || !String(catNome).trim()) && finalCatId) {
+            const cat = await tx.categoria.findUnique({ where: { id: finalCatId } });
             catNome = cat?.nome;
+        } else if (!finalCatId && catNome && String(catNome).trim()) {
+            const cat = await tx.categoria.findFirst({ where: { nome: String(catNome).trim() } });
+            if (cat) finalCatId = cat.id;
         }
 
         const lVid = Number(localVendaId);
@@ -178,7 +182,7 @@ router.post("/create", async (req, res) => {
                 categoria: catNome,
                 tipo,
                 grupo,
-                categoriaId: Number.isInteger(catId) && catId > 0 ? catId : undefined,
+                categoriaId: finalCatId,
                 tipoId: Number.isInteger(tipId) && tipId > 0 ? tipId : undefined,
                 groupId: Number.isInteger(grpId) && grpId > 0 ? grpId : undefined,
                 unidadeMedidaId: Number.isInteger(uniId) && uniId > 0 ? uniId : undefined,
@@ -277,9 +281,13 @@ router.post("/create", async (req, res) => {
     const grpId = Number(groupId);
     const lVid = Number(localVendaId);
     let catNome = categoria;
-    if ((!catNome || !String(catNome).trim()) && Number.isInteger(catId) && catId > 0) {
-      const cat = await prisma.categoria.findUnique({ where: { id: catId } });
+    let finalCatId = Number.isInteger(catId) && catId > 0 ? catId : undefined;
+    if ((!catNome || !String(catNome).trim()) && finalCatId) {
+      const cat = await prisma.categoria.findUnique({ where: { id: finalCatId } });
       catNome = cat?.nome;
+    } else if (!finalCatId && catNome && String(catNome).trim()) {
+      const cat = await prisma.categoria.findFirst({ where: { nome: String(catNome).trim() } });
+      if (cat) finalCatId = cat.id;
     }
 
     const novoProduto = await prisma.product.create({
@@ -291,7 +299,7 @@ router.post("/create", async (req, res) => {
         categoria: catNome,
         tipo,
         grupo,
-        categoriaId: Number.isInteger(catId) && catId > 0 ? catId : undefined,
+        categoriaId: finalCatId,
         tipoId: Number.isInteger(tipId) && tipId > 0 ? tipId : undefined,
         groupId: Number.isInteger(grpId) && grpId > 0 ? grpId : undefined,
         unidadeMedidaId: Number.isInteger(uniId) && uniId > 0 ? uniId : undefined,
@@ -701,9 +709,13 @@ router.post("/bulk-create", async (req, res) => {
             const lVid = Number(localVendaId);
             
             let catNome = categoria;
-            if ((!catNome || !String(catNome).trim()) && Number.isInteger(catId) && catId > 0) {
-                const cat = await tx.categoria.findUnique({ where: { id: catId } });
+            let finalCatId = Number.isInteger(catId) && catId > 0 ? catId : undefined;
+            if ((!catNome || !String(catNome).trim()) && finalCatId) {
+                const cat = await tx.categoria.findUnique({ where: { id: finalCatId } });
                 catNome = cat?.nome;
+            } else if (!finalCatId && catNome && String(catNome).trim()) {
+                const cat = await tx.categoria.findFirst({ where: { nome: String(catNome).trim() } });
+                if (cat) finalCatId = cat.id;
             }
     
             const novoProduto = await tx.product.create({
@@ -715,7 +727,7 @@ router.post("/bulk-create", async (req, res) => {
                     categoria: catNome,
                     tipo,
                     grupo,
-                    categoriaId: Number.isInteger(catId) && catId > 0 ? catId : undefined,
+                    categoriaId: finalCatId,
                     tipoId: Number.isInteger(tipId) && tipId > 0 ? tipId : undefined,
                     groupId: Number.isInteger(grpId) && grpId > 0 ? grpId : undefined,
                     unidadeMedidaId: Number.isInteger(uniId) && uniId > 0 ? uniId : undefined,
@@ -1149,6 +1161,12 @@ router.put("/update/:id", async (req, res) => {
     const reqCbsAliquota = req.body.cbsAliquota;
     const reqIsAliquota = req.body.isAliquota;
     
+    let resolvedCatId = categoriaId !== undefined ? (Number.isInteger(Number(categoriaId)) && Number(categoriaId) > 0 ? Number(categoriaId) : undefined) : undefined;
+    if (!resolvedCatId && categoria && String(categoria).trim()) {
+      const cat = await prisma.categoria.findFirst({ where: { nome: String(categoria).trim() } });
+      if (cat) resolvedCatId = cat.id;
+    }
+
     const updateData = {
       nome,
       descricao,
@@ -1168,7 +1186,7 @@ router.put("/update/:id", async (req, res) => {
       disponivel,
       temVariacao: temVariacao !== undefined ? !!temVariacao : undefined,
       temTamanhos: temTamanhos !== undefined ? !!temTamanhos : undefined,
-      categoriaId: categoriaId !== undefined ? (Number.isInteger(Number(categoriaId)) ? Number(categoriaId) : undefined) : undefined,
+      categoriaId: resolvedCatId !== undefined ? resolvedCatId : undefined,
       tipoId: tipoId !== undefined ? (Number.isInteger(Number(tipoId)) ? Number(tipoId) : undefined) : undefined,
       groupId: groupId !== undefined ? (Number.isInteger(Number(groupId)) ? Number(groupId) : undefined) : undefined,
       unidadeMedidaId: unidadeMedidaId !== undefined ? (Number.isInteger(Number(unidadeMedidaId)) ? Number(unidadeMedidaId) : undefined) : undefined,
@@ -1288,6 +1306,12 @@ router.put("/:id", async (req, res) => {
     const altCbsAliquota = req.body.cbsAliquota;
     const altIsAliquota = req.body.isAliquota;
     
+    let resolvedCatId = categoriaId !== undefined ? (Number.isInteger(Number(categoriaId)) && Number(categoriaId) > 0 ? Number(categoriaId) : undefined) : undefined;
+    if (!resolvedCatId && categoria && String(categoria).trim()) {
+      const cat = await prisma.categoria.findFirst({ where: { nome: String(categoria).trim() } });
+      if (cat) resolvedCatId = cat.id;
+    }
+
     const updateData = {
       nome,
       descricao,
@@ -1302,7 +1326,7 @@ router.put("/:id", async (req, res) => {
       quantidade: Number(quantidade ?? estoque ?? 0),
       estoqueDeposito: req.body.estoqueDeposito !== undefined ? Number(req.body.estoqueDeposito) : undefined,
       estoqueGeladeira: req.body.estoqueGeladeira !== undefined ? Number(req.body.estoqueGeladeira) : undefined,
-      categoriaId: categoriaId !== undefined ? (Number.isInteger(Number(categoriaId)) ? Number(categoriaId) : undefined) : undefined,
+      categoriaId: resolvedCatId !== undefined ? resolvedCatId : undefined,
       tipoId: tipoId !== undefined ? (Number.isInteger(Number(tipoId)) ? Number(tipoId) : undefined) : undefined,
       groupId: groupId !== undefined ? (Number.isInteger(Number(groupId)) ? Number(groupId) : undefined) : undefined,
       unidadeMedidaId: unidadeMedidaId !== undefined ? (Number.isInteger(Number(unidadeMedidaId)) ? Number(unidadeMedidaId) : undefined) : undefined,

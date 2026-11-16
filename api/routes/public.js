@@ -474,7 +474,12 @@ router.post('/pedido', async (req, res) => {
                 }));
 
                 if (variacaoOpcoes.length > 1) {
-                  const nomesConcatenados = variacaoOpcoes.map(o => `meio ${o.nome}`).join(' / ');
+                  const fractionLabel = variacaoOpcoes.length === 2 ? '1/2' : `1/${variacaoOpcoes.length}`;
+                  const nomesConcatenados = variacaoOpcoes.map(o => {
+                    const clean = String(o.nome || '').replace(/^pizza\s+/i, '').trim();
+                    const titleName = clean ? (clean.charAt(0).toUpperCase() + clean.slice(1)) : (o.nome || '');
+                    return `${fractionLabel} ${titleName}`;
+                  }).join(' / ');
                   nomeFinal = nomesConcatenados + (tamanhoName ? ` (${tamanhoName})` : '');
                 }
               }

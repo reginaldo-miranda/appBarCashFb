@@ -453,7 +453,7 @@ const renderItem = ({ item }) => {
               if (parts.length > 1) {
                 return parts.map((part, idx) => {
                   const cleanPart = part.trim();
-                  const finalName = cleanPart.match(/^meio/i) ? cleanPart : `meio ${cleanPart}`;
+                  const finalName = cleanPart.match(/^(meio|1\/\d+)/i) ? cleanPart : `1/2 ${cleanPart}`;
                   return (
                     <Text key={`part-${idx}`} style={styles.itemTitle}>
                       {idx === 0 ? `${Number(item?.displayQty || 1)}x ` : '    '}{finalName}

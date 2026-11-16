@@ -108,7 +108,7 @@ router.get("/by-category/:categoriaId", async (req, res) => {
     const tipos = await prisma.variationType.findMany({ where: { ativo: true } });
     const filtered = tipos.filter((t) => {
       const arr = Array.isArray(t.categoriasIds) ? t.categoriasIds : [];
-      if (isNum) return arr.includes(catId);
+      if (isNum) return arr.includes(catId) || arr.length === 0;
       return arr.length === 0; // se não fornecer id, retornar tipos gerais
     });
     res.json(filtered.map((t) => ({

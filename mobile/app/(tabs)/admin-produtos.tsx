@@ -126,6 +126,9 @@ export default function AdminProdutosScreen() {
   const [showModalNovoLocal, setShowModalNovoLocal] = useState(false);
   const [novoLocalNome, setNovoLocalNome] = useState('');
   const [novoLocalTipo, setNovoLocalTipo] = useState('GELADEIRA');
+  const [showModalNovaCategoria, setShowModalNovaCategoria] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
+  const [loadingNovaCategoria, setLoadingNovaCategoria] = useState(false);
 
   // Filtros para o SearchAndFilter
   const categoryFilters = [
@@ -522,6 +525,38 @@ export default function AdminProdutosScreen() {
       Alert.alert('Erro', e.response?.data?.error || 'Erro ao cadastrar local.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateNovaCategoria = async () => {
+    const nomeLimpo = novaCategoriaNome.trim();
+    if (!nomeLimpo) {
+      if (Platform.OS === 'web') {
+        window.alert('Informe o nome da categoria.');
+      } else {
+        Alert.alert('Atenção', 'Informe o nome da categoria.');
+      }
+      return;
+    }
+    try {
+      setLoadingNovaCategoria(true);
+      await categoryService.create({ nome: nomeLimpo });
+      await loadCategorias();
+      setFormData((prev: any) => ({
+        ...prev,
+        categoria: nomeLimpo
+      }));
+      setNovaCategoriaNome('');
+      setShowModalNovaCategoria(false);
+    } catch (e: any) {
+      const msg = e.response?.data?.error || 'Erro ao cadastrar categoria.';
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
+    } finally {
+      setLoadingNovaCategoria(false);
     }
   };
 
@@ -1456,21 +1491,50 @@ export default function AdminProdutosScreen() {
 
                               {/* 3. Classificação & Impressão */}
                               <View style={styles.subCard}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                  <Text style={styles.subCardLabel}>Classificação & Impressão</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Text style={styles.subCardLabel}>Classificação & Impressão</Text>
+                                    <TouchableOpacity
+                                      onPress={() => {
+                                        setNovaCategoriaNome('');
+                                        setShowModalNovaCategoria(true);
+                                      }}
+                                      style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        backgroundColor: '#EFF6FF',
+                                        borderColor: '#BFDBFE',
+                                        borderWidth: 1,
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                        borderRadius: 6,
+                                      }}
+                                      activeOpacity={0.7}
+                                    >
+                                      <SafeIcon name="add-circle-outline" size={14} color="#2563EB" fallbackText="+" />
+                                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>
+                                        + Nova Categoria
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
                                   {isCategoriaMissing && <Text style={styles.requiredTag}>Categoria Obrigatória *</Text>}
                                 </View>
 
                                 {/* Categoria */}
-                                <View style={{ marginBottom: 6 }}>
-                                  <Text style={[styles.labelCompact, isCategoriaMissing && styles.labelRequired]}>Categoria *</Text>
-                                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isCategoriaMissing && styles.chipScrollRequired]}>
+                                <View style={{ marginBottom: 10 }}>
+                                  <Text style={[styles.labelCompact, isCategoriaMissing && styles.labelRequired, { marginBottom: 4 }]}>Categoria *</Text>
+                                  <View style={[
+                                    { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+                                    isCategoriaMissing && styles.chipScrollRequired
+                                  ]}>
                                      {(categorias || []).map(cat => (
                                        <TouchableOpacity
                                          key={cat._id}
                                          style={[
                                            styles.chipCompact, 
-                                           formData.categoria === cat.nome && styles.chipActiveCompact
+                                           formData.categoria === cat.nome && styles.chipActiveCompact,
+                                           { marginRight: 0 }
                                          ]}
                                          onPress={() => setFormData({...formData, categoria: cat.nome})}
                                        >
@@ -1479,48 +1543,50 @@ export default function AdminProdutosScreen() {
                                           </Text>
                                        </TouchableOpacity>
                                      ))}
-                                  </ScrollView>
+                                  </View>
                                 </View>
 
-                                {/* Setor, Tipo e Unidade em linha */}
-                                <View style={{ flexDirection: 'row', gap: 6 }}>
-                                  {/* Setor */}
-                                  <View style={{ flex: 1.2, minWidth: 0 }}>
-                                    <Text style={styles.labelCompact}>Setor</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                                      {(setores || []).map((s) => (
-                                        <TouchableOpacity
-                                          key={s.id}
-                                          style={[
-                                            styles.chipCompact, 
-                                            (selectedSetores || []).includes(String(s.id)) && styles.chipActiveCompact
-                                          ]}
-                                          onPress={() => {
-                                            const id = String(s.id);
-                                            setSelectedSetores((prev) => {
-                                              const current = prev || [];
-                                              return current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-                                            });
-                                          }}
-                                        >
-                                          <Text style={[styles.chipTextCompact, (selectedSetores || []).includes(String(s.id)) && styles.chipTextActiveCompact]} numberOfLines={1}>
-                                            {s.nome}
-                                          </Text>
-                                        </TouchableOpacity>
-                                      ))}
-                                    </ScrollView>
+                                {/* Setor (linha própria espaçosa) */}
+                                <View style={{ marginBottom: 10 }}>
+                                  <Text style={[styles.labelCompact, { marginBottom: 4 }]}>Setor (Impressão)</Text>
+                                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                    {(setores || []).map((s) => (
+                                      <TouchableOpacity
+                                        key={s.id}
+                                        style={[
+                                          styles.chipCompact, 
+                                          (selectedSetores || []).includes(String(s.id)) && styles.chipActiveCompact,
+                                          { marginRight: 0 }
+                                        ]}
+                                        onPress={() => {
+                                          const id = String(s.id);
+                                          setSelectedSetores((prev) => {
+                                            const current = prev || [];
+                                            return current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+                                          });
+                                        }}
+                                      >
+                                        <Text style={[styles.chipTextCompact, (selectedSetores || []).includes(String(s.id)) && styles.chipTextActiveCompact]} numberOfLines={1}>
+                                          {s.nome}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    ))}
                                   </View>
+                                </View>
 
+                                {/* Tipo e Unidade dividindo a linha seguinte */}
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
                                   {/* Tipo */}
-                                  <View style={{ flex: 1, minWidth: 0 }}>
-                                    <Text style={styles.labelCompact}>Tipo</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                                  <View style={{ flex: 2, minWidth: 0 }}>
+                                    <Text style={[styles.labelCompact, { marginBottom: 4 }]}>Tipo</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                                       {(tipos || []).map(t => (
                                         <TouchableOpacity
                                           key={t._id}
                                           style={[
                                             styles.chipCompact, 
-                                            formData.tipo === t.nome && styles.chipActiveCompact
+                                            formData.tipo === t.nome && styles.chipActiveCompact,
+                                            { marginRight: 0 }
                                           ]}
                                           onPress={() => setFormData({...formData, tipo: t.nome})}
                                         >
@@ -1529,19 +1595,20 @@ export default function AdminProdutosScreen() {
                                           </Text>
                                         </TouchableOpacity>
                                       ))}
-                                    </ScrollView>
+                                    </View>
                                   </View>
 
                                   {/* Unidade */}
-                                  <View style={{ flex: 0.8, minWidth: 0 }}>
-                                    <Text style={styles.labelCompact}>Unid.</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                                  <View style={{ flex: 1, minWidth: 0 }}>
+                                    <Text style={[styles.labelCompact, { marginBottom: 4 }]}>Unid.</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                                       {(unidades || []).map(u => (
                                         <TouchableOpacity
                                           key={u._id}
                                           style={[
                                             styles.chipCompact, 
-                                            formData.unidade === u.sigla && styles.chipActiveCompact
+                                            formData.unidade === u.sigla && styles.chipActiveCompact,
+                                            { marginRight: 0 }
                                           ]}
                                           onPress={() => setFormData({...formData, unidade: u.sigla})}
                                         >
@@ -1550,7 +1617,7 @@ export default function AdminProdutosScreen() {
                                           </Text>
                                         </TouchableOpacity>
                                       ))}
-                                    </ScrollView>
+                                    </View>
                                   </View>
                                 </View>
                               </View>
@@ -1957,6 +2024,82 @@ export default function AdminProdutosScreen() {
           products={products || []}
           onSuccess={() => loadInitialData()}
         />
+
+        {/* Modal de Cadastro Rápido de Nova Categoria */}
+        <Modal
+          visible={showModalNovaCategoria}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => {
+            if (!loadingNovaCategoria) setShowModalNovaCategoria(false);
+          }}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20, zIndex: 99999 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <SafeIcon name="pricetag" size={20} color="#2563EB" fallbackText="🏷️" />
+                  <Text style={{ fontSize: 17, fontWeight: 'bold', color: '#1E293B' }}>Nova Categoria</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowModalNovaCategoria(false)}
+                  disabled={loadingNovaCategoria}
+                >
+                  <SafeIcon name="close" size={22} color="#64748B" fallbackText="X" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 14 }}>
+                Digite o nome da categoria. Ela será gravada no banco e selecionada automaticamente neste produto.
+              </Text>
+
+              <Text style={[styles.label, { marginBottom: 4 }]}>Nome da Categoria *</Text>
+              <TextInput
+                style={[styles.input, { marginBottom: 18 }]}
+                placeholder="Ex: Sobremesas, Vinhos, Combos"
+                value={novaCategoriaNome}
+                onChangeText={setNovaCategoriaNome}
+                autoFocus={true}
+                onSubmitEditing={handleCreateNovaCategoria}
+                returnKeyType="done"
+                editable={!loadingNovaCategoria}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => setShowModalNovaCategoria(false)}
+                  disabled={loadingNovaCategoria}
+                  style={{ flex: 1, paddingVertical: 11, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748B' }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCreateNovaCategoria}
+                  disabled={loadingNovaCategoria}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 11,
+                    borderRadius: 8,
+                    backgroundColor: loadingNovaCategoria ? '#93C5FD' : '#2563EB',
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  {loadingNovaCategoria ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <SafeIcon name="checkmark" size={16} color="#fff" fallbackText="✓" />
+                      <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#fff' }}>Salvar</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Modal de Cadastro Rápido de Novo Local */}
         <Modal

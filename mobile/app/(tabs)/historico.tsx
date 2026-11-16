@@ -654,70 +654,87 @@ export default function HistoricoScreen() {
 
   const renderSale = ({ item }: { item: Sale }) => {
     const fiscal = isFiscal(item);
+    const dateFormatted = new Date(item.dataVenda).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const typeColor = getTypeColor(item.tipoVenda);
+    const saleIdDisplay = `#${item.numeroComanda || item.nomeComanda || item._id.slice(-6)}`;
+
     return (
       <TouchableOpacity
-        style={[styles.saleCard, { borderLeftColor: getTypeColor(item.tipoVenda) }]}
-        onPress={() => { setSelectedSale(item); setModalVisible(true); }}
+        style={[styles.saleRow, { borderLeftColor: typeColor }]}
+        onPress={() => {
+          setSelectedSale(item);
+          setModalVisible(true);
+        }}
+        activeOpacity={0.7}
       >
-        <View style={styles.saleHeader}>
-          <View style={styles.saleInfo}>
-            <View style={styles.saleNumberRow}>
-              <Text style={styles.saleNumber}>
-                #{item.numeroComanda || item.nomeComanda || item._id.slice(-6)}
-              </Text>
-              {/* Badge Fiscal / Comum */}
-              <View style={[styles.fiscalBadge, fiscal ? styles.fiscalBadgeFiscal : styles.fiscalBadgeComum]}>
-                <Ionicons
-                  name={fiscal ? 'shield-checkmark' : 'document-text'}
-                  size={11}
-                  color="#fff"
-                />
-                <Text style={styles.fiscalBadgeText}>{fiscal ? 'NFC-e' : 'Comum'}</Text>
-              </View>
-            </View>
-            <View style={styles.typeContainer}>
-              <SafeIcon name={getTypeIcon(item.tipoVenda) as any} size={16} color={getTypeColor(item.tipoVenda)} fallbackText="T" />
-              <Text style={[styles.typeText, { color: getTypeColor(item.tipoVenda) }]}>
-                {getTypeText(item.tipoVenda)}
-                {item.mesa?.numero && ` ${item.mesa.numero}`}
-              </Text>
+        {/* Coluna 1: ID / Tipo e Badge Fiscal */}
+        <View style={styles.colSaleId}>
+          <View style={styles.saleNumberRow}>
+            <Text style={styles.saleNumber}>{saleIdDisplay}</Text>
+            <View style={[styles.fiscalBadge, fiscal ? styles.fiscalBadgeFiscal : styles.fiscalBadgeComum]}>
+              <Ionicons
+                name={fiscal ? 'shield-checkmark' : 'document-text'}
+                size={10}
+                color="#fff"
+              />
+              <Text style={styles.fiscalBadgeText}>{fiscal ? 'NFC-e' : 'Comum'}</Text>
             </View>
           </View>
-          <View style={styles.saleAmount}>
-            <Text style={styles.totalText}>R$ {item.total.toFixed(2)}</Text>
-            <Text style={[styles.statusText, { color: item.status === 'finalizada' ? '#4CAF50' : '#F44336' }]}>
-              {item.status === 'finalizada' ? 'Finalizada' : 'Cancelada'}
+          <View style={styles.typeContainer}>
+            <SafeIcon name={getTypeIcon(item.tipoVenda) as any} size={13} color={typeColor} fallbackText="•" />
+            <Text style={[styles.typeText, { color: typeColor }]} numberOfLines={1}>
+              {getTypeText(item.tipoVenda)}{item.mesa?.numero ? ` ${item.mesa.numero}` : ''}
             </Text>
           </View>
         </View>
 
-        <View style={styles.saleDetails}>
-          <View style={styles.detailRow}>
-            <SafeIcon name="person" size={14} color="#666" fallbackText="👤" />
-            <Text style={styles.detailText}>{item.cliente?.nome || 'Cliente não informado'}</Text>
+        {/* Coluna 2: Cliente, Data e Pagamento */}
+        <View style={styles.colSaleCustomer}>
+          <View style={styles.customerRow}>
+            <SafeIcon name="person" size={12} color="#64748B" fallbackText="👤" />
+            <Text style={styles.customerName} numberOfLines={1}>
+              {item.cliente?.nome || 'Cliente não informado'}
+            </Text>
           </View>
-          <View style={styles.detailRow}>
-            <SafeIcon name="time" size={14} color="#666" fallbackText="⏱" />
-            <Text style={styles.detailText}>{new Date(item.dataVenda).toLocaleString('pt-BR')}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <SafeIcon name="card" size={14} color="#666" fallbackText="💳" />
-            <Text style={styles.detailText}>{item.formaPagamento || 'Não informado'}</Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>⏱ {dateFormatted}</Text>
+            {!!item.formaPagamento && (
+              <Text style={styles.metaText}>• 💳 {item.formaPagamento}</Text>
+            )}
           </View>
         </View>
 
-        {/* Botão rápido de reimprimir no card */}
-        {item.status === 'finalizada' && (
-          <TouchableOpacity
-            style={[styles.quickReprintBtn, isFiscal(item) ? styles.quickReprintFiscal : styles.quickReprintComum]}
-            onPress={() => handleReprint(item)}
-          >
-            <Ionicons name="print-outline" size={14} color="#fff" />
-            <Text style={styles.quickReprintText}>
-              Reimprimir {isFiscal(item) ? 'NFC-e' : 'Recibo'}
-            </Text>
-          </TouchableOpacity>
-        )}
+        {/* Coluna 3: Status e Valor Total */}
+        <View style={styles.colSaleTotal}>
+          <Text style={styles.totalText}>R$ {item.total.toFixed(2)}</Text>
+          <Text style={[styles.statusText, { color: item.status === 'finalizada' ? '#16A34A' : '#DC2626' }]}>
+            {item.status === 'finalizada' ? 'Finalizada' : 'Cancelada'}
+          </Text>
+        </View>
+
+        {/* Coluna 4: Botão de Ação Rápida */}
+        <View style={styles.colSaleActions}>
+          {item.status === 'finalizada' ? (
+            <TouchableOpacity
+              style={[styles.quickReprintBtn, fiscal ? styles.quickReprintFiscal : styles.quickReprintComum]}
+              onPress={() => handleReprint(item)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="print-outline" size={13} color="#fff" />
+              <Text style={styles.quickReprintText}>
+                {fiscal ? 'NFC-e' : 'Recibo'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 70 }} />
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -755,59 +772,63 @@ export default function HistoricoScreen() {
     <View style={styles.container}>
       <ScreenIdentifier screenName="Histórico" />
 
-      {/* Estatísticas */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{totalSales}</Text>
-          <Text style={styles.statLabel}>Vendas</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>R$ {totalRevenue.toFixed(2)}</Text>
-          <Text style={styles.statLabel}>Faturamento</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: '#2e7d32' }]}>{totalFiscais}</Text>
-          <Text style={styles.statLabel}>Com NFC-e</Text>
-        </View>
-      </View>
+      {/* Conteúdo Centralizado e Responsivo */}
+      <View style={styles.contentWrapper}>
+        {/* Barra de Topo Compacta Integrada: Estatísticas + Período */}
+        <View style={styles.topDashboardCard}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{totalSales}</Text>
+              <Text style={styles.statLabel}>Vendas</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: '#0F172A' }]}>R$ {totalRevenue.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>Faturamento</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: '#16A34A' }]}>{totalFiscais}</Text>
+              <Text style={styles.statLabel}>Com NFC-e</Text>
+            </View>
+          </View>
 
-      {/* Filtros de Data */}
-      <View style={styles.filtersWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFiltersContent} style={styles.dateFiltersContainer}>
-          {renderDateFilterButton('today', 'Hoje')}
-          {renderDateFilterButton('week', 'Semana')}
-          {renderDateFilterButton('month', 'Mês')}
-          {renderDateFilterButton('all', 'Todos')}
-        </ScrollView>
-      </View>
+          <View style={styles.dateFiltersRow}>
+            {renderDateFilterButton('today', 'Hoje')}
+            {renderDateFilterButton('week', 'Semana')}
+            {renderDateFilterButton('month', 'Mês')}
+            {renderDateFilterButton('all', 'Todos')}
+          </View>
+        </View>
 
-      {/* Busca e Filtros de Tipo */}
-      <View style={styles.searchWrapper}>
-        <SearchAndFilter
-          searchText={searchText}
-          onSearchChange={setSearchText}
-          searchPlaceholder="Buscar por número, cliente, CPF..."
-          filters={typeFilters}
-          selectedFilter={typeFilter}
-          onFilterChange={(k) => setTypeFilter(k as FilterType)}
+        {/* Busca e Filtros de Tipo */}
+        <View style={styles.searchWrapper}>
+          <SearchAndFilter
+            searchText={searchText}
+            onSearchChange={setSearchText}
+            searchPlaceholder="Buscar por número, cliente, CPF..."
+            filters={typeFilters}
+            selectedFilter={typeFilter}
+            onFilterChange={(k) => setTypeFilter(k as FilterType)}
+          />
+        </View>
+
+        {/* Lista de Vendas */}
+        <FlatList
+          data={filteredSales}
+          renderItem={renderSale}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <SafeIcon name="document-text-outline" size={64} color="#CBD5E1" fallbackText="doc" />
+              <Text style={styles.emptyText}>Nenhuma venda encontrada</Text>
+            </View>
+          }
         />
       </View>
-
-      {/* Lista de Vendas */}
-      <FlatList
-        data={filteredSales}
-        renderItem={renderSale}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <SafeIcon name="document-text-outline" size={64} color="#ccc" fallbackText="doc" />
-            <Text style={styles.emptyText}>Nenhuma venda encontrada</Text>
-          </View>
-        }
-      />
 
       {/* ── Modal de Detalhes ─────────────────────────────────────────────── */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
@@ -1080,75 +1101,113 @@ export default function HistoricoScreen() {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-
-  // Estatísticas
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    justifyContent: 'space-around',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  contentWrapper: {
+    flex: 1,
+    maxWidth: 1040,
+    width: '100%',
+    alignSelf: 'center',
+    paddingTop: 10,
   },
-  statItem: { alignItems: 'center' },
-  statNumber: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  statLabel: { fontSize: 12, color: '#666', marginTop: 4 },
+
+  // Barra de Topo Compacta Integrada
+  topDashboardCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  statItem: { alignItems: 'flex-start' },
+  statNumber: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+  statLabel: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E2E8F0',
+  },
 
   // Filtros data
-  filtersWrapper: {
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    minHeight: 60,
+  dateFiltersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  dateFiltersContainer: { paddingHorizontal: 16 },
-  dateFiltersContent: { alignItems: 'center', paddingVertical: 4 },
   dateFilterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
   },
-  activeDateFilterButton: { backgroundColor: '#2196F3' },
-  dateFilterButtonText: { fontSize: 14, color: '#666' },
-  activeDateFilterButtonText: { color: '#fff', fontWeight: 'bold' },
+  activeDateFilterButton: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  dateFilterButtonText: { fontSize: 12, color: '#475569', fontWeight: '600' },
+  activeDateFilterButtonText: { color: '#FFFFFF', fontWeight: '700' },
 
   // Busca
-  searchWrapper: { marginTop: 8, zIndex: 2 },
+  searchWrapper: { marginHorizontal: 16, marginBottom: 8, zIndex: 2 },
 
   // Lista
   listContainer: { paddingHorizontal: 16, paddingBottom: 100 },
 
-  // Card de venda
-  saleCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  // Linha de venda compacta
+  saleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 8,
     borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  saleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  saleInfo: { flex: 1 },
-  saleNumberRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  saleNumber: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  colSaleId: {
+    minWidth: 120,
+    gap: 3,
+  },
+  saleNumberRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  saleNumber: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
 
   // Badge fiscal
   fiscalBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   fiscalBadgeLarge: {
     flexDirection: 'row',
@@ -1158,41 +1217,69 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 12,
   },
-  fiscalBadgeFiscal: { backgroundColor: '#2e7d32' },
-  fiscalBadgeComum: { backgroundColor: '#1565c0' },
-  fiscalBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  fiscalBadgeFiscal: { backgroundColor: '#16A34A' },
+  fiscalBadgeComum: { backgroundColor: '#2563EB' },
+  fiscalBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   fiscalBadgeLargeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
 
-  typeContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  typeText: { fontSize: 14, fontWeight: '500', marginLeft: 4 },
-  saleAmount: { alignItems: 'flex-end' },
-  totalText: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  statusText: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-  saleDetails: { gap: 6 },
-  detailRow: { flexDirection: 'row', alignItems: 'center' },
-  detailText: { fontSize: 12, color: '#666', marginLeft: 6 },
+  typeContainer: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  typeText: { fontSize: 12, fontWeight: '600' },
 
-  // Botão rápido no card
+  colSaleCustomer: {
+    flex: 2,
+    minWidth: 180,
+    gap: 2,
+  },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  customerName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  metaText: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+
+  colSaleTotal: {
+    minWidth: 90,
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  totalText: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  statusText: { fontSize: 11, fontWeight: '600' },
+
+  colSaleActions: {
+    minWidth: 85,
+    alignItems: 'flex-end',
+  },
   quickReprintBtn: {
-    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
   },
-  quickReprintFiscal: { backgroundColor: '#2e7d32' },
-  quickReprintComum: { backgroundColor: '#1565c0' },
-  quickReprintText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  quickReprintFiscal: { backgroundColor: '#16A34A' },
+  quickReprintComum: { backgroundColor: '#2563EB' },
+  quickReprintText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   // Vazio
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 16, color: '#666', marginTop: 16 },
 
-  // Modal
   modalContainer: { flex: 1, backgroundColor: '#fff' },
   modalHeader: {
     flexDirection: 'row',

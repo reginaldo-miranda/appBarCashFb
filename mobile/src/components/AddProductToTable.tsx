@@ -329,66 +329,23 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
   const renderSaleItem = ({ item, customUpdateHandler }: { item: CartItem, customUpdateHandler?: any }) => (
     <View style={styles.saleItem}>
       <View style={styles.saleItemLeft}>
-        {item.variacao && (item.variacao.regraPreco === 'mais_caro' || item.variacao.regraPreco === 'media') ? (
-          <View>
-            {(() => {
-               // Logic to ensure both halves are displayed, similar to TabletCozinhaScreen
-               const options = Array.isArray(item.variacao.opcoes) ? [...item.variacao.opcoes] : [];
-               
-               // Clean the main name to check if it exists in options
-               const rawNameClean = item.nomeProduto.replace(/^meio\s+/i, '').trim().toLowerCase();
-               const hasMainInOptions = options.some(op => {
-                  const opName = String(op.nome || '').replace(/^meio\s+/i, '').trim().toLowerCase();
-                  return opName === rawNameClean;
-               });
-               
-               // Construct the list of items to display
-               const itemsToDisplay = [];
-               
-               // If the main product name isn't in options, add it as the first "half"
-               if (!hasMainInOptions && options.length > 0) {
-                 const mainName = item.nomeProduto.match(/^meio/i) ? item.nomeProduto : `meio ${item.nomeProduto}`;
-                 itemsToDisplay.push(mainName);
-               } else if (options.length <= 1 && !hasMainInOptions) {
-                  // Fallback for single item or weird state: show main product as half if applicable
-                   const mainName = item.nomeProduto.match(/^meio/i) ? item.nomeProduto : `meio ${item.nomeProduto}`;
-                   itemsToDisplay.push(mainName);
-               }
-
-               // Add the rest of the options
-               options.forEach(o => {
-                  const name = o.nome.match(/^meio/i) ? o.nome : `meio ${o.nome}`;
-                  itemsToDisplay.push(name);
-               });
-
-              return itemsToDisplay.map((name, idx) => (
-                  <Text key={idx} style={[styles.saleItemName, (item as any).status === 'pago' && { color: '#4CAF50' }]}>
-                    {name} {(item as any).status === 'pago' ? '(PAGO)' : ''}
-                  </Text>
-              ));
-            })()}
+        <Text style={[styles.saleItemName, (item as any).status === 'pago' && { color: '#4CAF50' }]}>
+          {item.nomeProduto} {(item as any).status === 'pago' ? '(PAGO)' : ''}
+        </Text>
+        {item.variacao && item.variacao.regraPreco === 'fixo' && (
+          <View style={{ marginTop: 2 }}>
+            {(Array.isArray(item.variacao.opcoes) ? item.variacao.opcoes : []).map((o, idx) => (
+              <Text key={idx} style={{ fontSize: 13, color: '#555', marginLeft: 0 }}>
+                {o.nome}
+              </Text>
+            ))}
           </View>
-        ) : (
-          <>
-            <Text style={[styles.saleItemName, (item as any).status === 'pago' && { color: '#4CAF50' }]}>
-              {item.nomeProduto} {(item as any).status === 'pago' ? '(PAGO)' : ''}
-            </Text>
-            {item.variacao && (
-              <View style={{ marginTop: 2 }}>
-                {(Array.isArray(item.variacao.opcoes) ? item.variacao.opcoes : []).map((o, idx) => (
-                  <Text key={idx} style={{ fontSize: 13, color: '#555', marginLeft: 0 }}>
-                    {o.nome}
-                  </Text>
-                ))}
-              </View>
-            )}
+        )}
             {!!(item as any)?.observacoes && (
               <View style={styles.obsBadge}>
                 <Text style={styles.obsBadgeText}>📝 {(item as any).observacoes}</Text>
               </View>
             )}
-          </>
-        )}
       </View>
       
       <View style={styles.saleItemRight}>
