@@ -481,13 +481,10 @@ class NfceService {
             gCBS.up();
         }
 
-        // ── IS (Imposto Seletivo) — GRUPO SEPARADO, opcional (só se > 0) ──
-        if (reformaAtiva && (prodIsAliq > 0 || vISItem > 0)) {
-            const isNode = imposto.ele('IS');
-            isNode.ele('vBC').txt(vBCItem.toFixed(2)).up();
-            isNode.ele('pIS').txt(prodIsAliq.toFixed(4)).up();
-            isNode.ele('vIS').txt(vISItem.toFixed(2)).up();
-        }
+        // ── IS (Imposto Seletivo) ──
+        // Em 2026 (fase de transição LC 214/2025), o Imposto Seletivo NÃO está em vigor
+        // e o envio da tag gera Rejeição 225 (Falha de Schema XML) na SEFAZ. Vigência a partir de 2027.
+        // Portanto, a tag <IS> fica desabilitada na emissão de 2026.
     });
 
     // 4. Totais
