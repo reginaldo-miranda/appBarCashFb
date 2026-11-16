@@ -11,6 +11,7 @@ import {
   Alert,
   Linking,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api, { productService } from '../services/api';
@@ -125,6 +126,30 @@ export default function BulkFiscalModal({
     }
   }, [selectedCat, visible, products]);
 
+  // Helpers compatíveis com Web e Mobile
+  const showAlert = (title: string, msg: string) => {
+    if (Platform.OS === 'web') {
+      // @ts-ignore
+      window.alert(`${title}\n\n${msg}`);
+    } else {
+      Alert.alert(title, msg);
+    }
+  };
+
+  const showConfirm = (title: string, msg: string, onConfirm: () => void) => {
+    if (Platform.OS === 'web') {
+      // @ts-ignore
+      if (window.confirm(`${title}\n\n${msg}`)) {
+        onConfirm();
+      }
+    } else {
+      Alert.alert(title, msg, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Confirmar e Aplicar', onPress: onConfirm },
+      ]);
+    }
+  };
+
   const handlePuxarConfigReforma = async () => {
     try {
       setLoadingConfigReforma(true);
@@ -143,7 +168,7 @@ export default function BulkFiscalModal({
         setTimeout(() => setPuxadoFeedback(false), 3000);
       }
     } catch (e: any) {
-      Alert.alert('Erro', 'Não foi possível carregar as configurações da Reforma Tributária.');
+      showAlert('Erro', 'Não foi possível carregar as configurações da Reforma Tributária.');
     } finally {
       setLoadingConfigReforma(false);
     }
@@ -166,74 +191,81 @@ export default function BulkFiscalModal({
   const handleOpenCosmos = () => {
     const term = selectedCat ? encodeURIComponent(selectedCat) : '';
     const url = term ? `https://cosmos.bluesoft.com.br/pesquisa?q=${term}` : 'https://cosmos.bluesoft.com.br';
-    Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o Cosmos Bluesoft'));
+    if (Platform.OS === 'web') {
+      // @ts-ignore
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url).catch(() => showAlert('Erro', 'Não foi possível abrir o Cosmos Bluesoft'));
+    }
   };
 
   const handleOpenGoogle = () => {
     const term = selectedCat ? encodeURIComponent(`NCM ${selectedCat}`) : 'tabela NCM produtos';
-    Linking.openURL(`https://www.google.com/search?q=${term}`).catch(() => Alert.alert('Erro', 'Não foi possível abrir a busca do Google'));
+    const url = `https://www.google.com/search?q=${term}`;
+    if (Platform.OS === 'web') {
+      // @ts-ignore
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url).catch(() => showAlert('Erro', 'Não foi possível abrir a busca do Google'));
+    }
   };
 
   const handleApply = async () => {
     if (!selectedCat) {
-      Alert.alert('Atenção', 'Selecione uma categoria.');
+      showAlert('Atenção', 'Selecione uma categoria.');
       return;
     }
 
     const cleanNcm = ncm.replace(/\D/g, '');
     if (!cleanNcm || cleanNcm.length !== 8) {
-      Alert.alert('Atenção', 'Informe um NCM válido de 8 dígitos para aplicar em massa.');
+      showAlert('Atenção', 'Informe um NCM válido de 8 dígitos para aplicar em massa.');
       return;
     }
 
     if (targetCount === 0) {
-      Alert.alert('Aviso', 'Nenhum produto correspondente encontrado para atualizar nesta categoria.');
+      showAlert('Aviso', 'Nenhum produto correspondente encontrado para atualizar nesta categoria.');
       return;
     }
 
-    Alert.alert(
+    const executeApply = async () => {
+      setLoading(true);
+      try {
+        const payload = {
+          categoriaNome: selectedCat,
+          onlyMissingFiscal,
+          ncm: cleanNcm,
+          cest: cest.replace(/\D/g, ''),
+          cfop: cfop.replace(/\D/g, '') || '5102',
+          csosn: csosn ? String(csosn) : '102',
+          origem: origem !== '' ? Number(origem) : 0,
+          ibsCst: ibsCst ? ibsCst.replace(/\D/g, '') : null,
+          ibsClassTrib: ibsClassTrib ? ibsClassTrib.replace(/\D/g, '') : null,
+          ibsAliquota: ibsAliquota !== '' ? parseFloat(ibsAliquota.replace(',', '.')) : null,
+          cbsCst: cbsCst ? cbsCst.replace(/\D/g, '') : null,
+          cbsClassTrib: cbsClassTrib ? cbsClassTrib.replace(/\D/g, '') : null,
+          cbsAliquota: cbsAliquota !== '' ? parseFloat(cbsAliquota.replace(',', '.')) : null,
+          isAliquota: isAliquota !== '' ? parseFloat(isAliquota.replace(',', '.')) : null,
+        };
+
+        const resp = await productService.bulkUpdateFiscal(payload);
+        showAlert(
+          'Sucesso!',
+          `${resp.data?.count || targetCount} produtos da categoria "${selectedCat}" foram atualizados com sucesso.`
+        );
+        onSuccess();
+        onClose();
+      } catch (err: any) {
+        console.error('Erro ao aplicar fiscal em massa:', err);
+        showAlert('Erro', err.response?.data?.error || 'Falha ao atualizar produtos em massa');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    showConfirm(
       'Confirmar Atualização em Massa',
       `Deseja aplicar estes dados fiscais a ${targetCount} produto(s) da categoria "${selectedCat}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar e Aplicar',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              const payload = {
-                categoriaNome: selectedCat,
-                onlyMissingFiscal,
-                ncm: cleanNcm,
-                cest: cest.replace(/\D/g, ''),
-                cfop: cfop.replace(/\D/g, '') || '5102',
-                csosn: csosn ? String(csosn) : '102',
-                origem: origem !== '' ? Number(origem) : 0,
-                ibsCst: ibsCst ? ibsCst.replace(/\D/g, '') : null,
-                ibsClassTrib: ibsClassTrib ? ibsClassTrib.replace(/\D/g, '') : null,
-                ibsAliquota: ibsAliquota !== '' ? parseFloat(ibsAliquota.replace(',', '.')) : null,
-                cbsCst: cbsCst ? cbsCst.replace(/\D/g, '') : null,
-                cbsClassTrib: cbsClassTrib ? cbsClassTrib.replace(/\D/g, '') : null,
-                cbsAliquota: cbsAliquota !== '' ? parseFloat(cbsAliquota.replace(',', '.')) : null,
-                isAliquota: isAliquota !== '' ? parseFloat(isAliquota.replace(',', '.')) : null,
-              };
-
-              const resp = await productService.bulkUpdateFiscal(payload);
-              Alert.alert(
-                'Sucesso!',
-                `${resp.data?.count || targetCount} produtos da categoria "${selectedCat}" foram atualizados com sucesso.`
-              );
-              onSuccess();
-              onClose();
-            } catch (err: any) {
-              console.error('Erro ao aplicar fiscal em massa:', err);
-              Alert.alert('Erro', err.response?.data?.error || 'Falha ao atualizar produtos em massa');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
+      executeApply
     );
   };
 
