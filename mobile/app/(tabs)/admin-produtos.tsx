@@ -818,7 +818,7 @@ export default function AdminProdutosScreen() {
           ) : null}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {/* Botão Novo Produto em destaque no topo */}
           <TouchableOpacity 
             style={[styles.novoProdutoHeaderBtn, !isLargeScreen && { paddingHorizontal: 10, paddingVertical: 7 }]}
