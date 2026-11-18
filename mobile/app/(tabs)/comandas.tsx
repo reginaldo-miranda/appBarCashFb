@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, ActivityIndicator, Modal, Platform, Dimensions, TextInput, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, ActivityIndicator, Modal, Platform, Dimensions, TextInput, Linking, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import CriarComandaModal from '../../src/components/CriarComandaModal';
@@ -85,6 +85,8 @@ function parseTimeToMs(timeStr: string) {
 }
 
 export default function ComandasAbertasScreen() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const [modalVisible, setModalVisible] = useState(false);
   // Estados de modal de produtos removidos após migração para SaleScreen
   // const [produtosModalVisible, setProdutosModalVisible] = useState(false);
@@ -774,17 +776,20 @@ useEffect(() => {
         filters={statusFilters}
         selectedFilter={selectedFilter}
         onFilterChange={handleFilterChange}
+        style={isMobile ? { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 2 } : undefined}
       />
       
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: Platform.OS !== 'web' && Dimensions.get('window').width < 768 ? 16 : 0 }}>
-          <TouchableOpacity onPress={() => router.push('/')} accessibilityLabel="Voltar para Home" style={{ marginRight: 12 }}>
-            <SafeIcon name="arrow-back" size={Platform.OS !== 'web' && Dimensions.get('window').width < 768 ? 20 : 24} color="#2196F3" fallbackText="←" />
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => router.push('/')} accessibilityLabel="Voltar para Home" style={{ marginRight: isMobile ? 8 : 12 }}>
+            <SafeIcon name="arrow-back" size={isMobile ? 20 : 24} color="#2196F3" fallbackText="←" />
           </TouchableOpacity>
-          <Text style={[styles.title, Platform.OS !== 'web' && Dimensions.get('window').width < 768 && { fontSize: 18 }]}>Comandas</Text>
+          <Text style={[styles.title, isMobile && styles.titleMobile]}>
+            {isMobile ? `Comandas (${filteredComandas.length})` : 'Comandas'}
+          </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {Platform.OS === 'web' && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 8 : 10 }}>
+          {Platform.OS === 'web' && !isMobile && (
             <TouchableOpacity
               style={{
                 width: 38,
@@ -800,8 +805,8 @@ useEffect(() => {
               <SafeIcon name="qr-code" size={18} color="#fff" fallbackText="📱" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.button} onPress={handleOpenModal}>
-            <Text style={styles.buttonText}>Nova Comanda</Text>
+          <TouchableOpacity style={[styles.button, isMobile && styles.buttonMobile]} onPress={handleOpenModal}>
+            <Text style={[styles.buttonText, isMobile && styles.buttonTextMobile]}>+ Nova Comanda</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -824,21 +829,22 @@ useEffect(() => {
             return (
             <View style={[
                   styles.comandaItem,
+                  isMobile && styles.comandaItemMobile,
                   item.status === 'aberta' && comandaIdleStatus[item._id] && { backgroundColor: comandaIdleStatus[item._id] }
                  ]}>
               <TouchableOpacity 
-                style={styles.comandaContent}
+                style={[styles.comandaContent, isMobile && styles.comandaContentMobile]}
                 onPress={() => handleOpenProdutosModal(item)}
               >
                 <View style={styles.comandaInfo}>
-                  <View style={styles.comandaHeader}>
+                  <View style={[styles.comandaHeader, isMobile && { marginBottom: 4 }]}>
                     <TouchableOpacity onPress={() => handleOpenReceipt(item)}>
-                        <Text style={[styles.comandaNome, { textDecorationLine: 'underline', color: '#2196F3' }]}>
+                        <Text style={[styles.comandaNome, isMobile && { fontSize: 16 }, { textDecorationLine: 'underline', color: '#2196F3' }]}>
                             {item.nomeComanda || item.numeroComanda || 'Sem nome'}
                         </Text>
                     </TouchableOpacity>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                      <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+                    <View style={[styles.statusBadge, isMobile && { paddingVertical: 2, paddingHorizontal: 6 }, { backgroundColor: getStatusColor(item.status) }]}>
+                      <Text style={[styles.statusText, isMobile && { fontSize: 11 }]}>{getStatusText(item.status)}</Text>
                     </View>
                   </View>
                   {(() => {
@@ -855,7 +861,7 @@ useEffect(() => {
                           borderColor: isNovo ? '#FF8C00' : '#4CAF50',
                           borderRadius: 6,
                           paddingHorizontal: 8,
-                          paddingVertical: 4,
+                          paddingVertical: 3,
                           marginBottom: 4,
                         }}>
                           <Text style={{ fontSize: 11, fontWeight: 'bold', color: isNovo ? '#E65100' : '#2E7D32' }}>
@@ -866,14 +872,34 @@ useEffect(() => {
                     }
                     return null;
                   })()}
-                  <Text style={styles.comandaFuncionario}>Funcionário: {item.funcionario?.nome || 'Não definido'}</Text>
-                  {item.cliente?.nome && (
-                    <Text style={styles.comandaCliente}>Cliente: {item.cliente.nome}</Text>
+
+                  {isMobile ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
+                      {item.cliente?.nome && (
+                        <Text style={{ fontSize: 13, color: '#333', fontWeight: 'bold', marginRight: 6 }}>
+                          👤 {item.cliente.nome}
+                        </Text>
+                      )}
+                      <Text style={{ fontSize: 12, color: '#666', marginRight: 6 }}>
+                        • {item.funcionario?.nome || 'Atendente'}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#888' }}>
+                        • {item.itens?.length || 0} itens
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.comandaFuncionario}>Funcionário: {item.funcionario?.nome || 'Não definido'}</Text>
+                      {item.cliente?.nome && (
+                        <Text style={styles.comandaCliente}>Cliente: {item.cliente.nome}</Text>
+                      )}
+                      <Text style={styles.comandaItens}>{item.itens?.length || 0} itens</Text>
+                    </>
                   )}
-                  <Text style={styles.comandaItens}>{item.itens?.length || 0} itens</Text>
                 </View>
-                <View style={styles.comandaTotal}>
-                  <Text style={styles.comandaValor}>R$ {formatMoney(calcSaleTotal(item))}</Text>
+
+                <View style={[styles.comandaTotal, isMobile && { marginLeft: 8 }]}>
+                  <Text style={[styles.comandaValor, isMobile && { fontSize: 17 }]}>R$ {formatMoney(calcSaleTotal(item))}</Text>
                     {(() => {
                         const total = calcSaleTotal(item);
                         const paid = calcSalePaid(item);
@@ -896,9 +922,9 @@ useEffect(() => {
               
               {/* Botão de fechar comanda - só aparece se a comanda estiver aberta */}
               {item.status === 'aberta' && (
-                <View style={{ flexDirection: 'row', paddingHorizontal: 8, paddingBottom: 8 }}>
+                <View style={[{ flexDirection: 'row', paddingHorizontal: 8, paddingBottom: 8 }, isMobile && { paddingHorizontal: 6, paddingBottom: 6 }]}>
                   <TouchableOpacity 
-                    style={[styles.fecharButton, { backgroundColor: '#9C27B0', flex: 1, margin: 4 }, (item.itens?.length || 0) === 0 && { opacity: 0.6 }]}
+                    style={[styles.fecharButton, isMobile && styles.fecharButtonMobile, { backgroundColor: '#9C27B0', flex: 1.1, margin: 3 }, (item.itens?.length || 0) === 0 && { opacity: 0.6 }]}
                     onPress={() => {
                       console.log('🔴 BOTÃO FECHAR COMANDA CLICADO!', item);
                       fecharModalFecharComanda(item);
@@ -906,29 +932,29 @@ useEffect(() => {
                     disabled={(item.itens?.length || 0) === 0}
                   >
                     <View style={{ marginRight: 4 }}>
-                      <SafeIcon name="close-circle" size={16} color="#fff" fallbackText="×" />
+                      <SafeIcon name="close-circle" size={isMobile ? 14 : 16} color="#fff" fallbackText="×" />
                     </View>
-                    <Text style={styles.fecharButtonText}>Fechar</Text>
+                    <Text style={[styles.fecharButtonText, isMobile && styles.fecharButtonTextMobile]}>Fechar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={[styles.fecharButton, { backgroundColor: '#FF8C00', flex: 1, margin: 4 }]}
+                    style={[styles.fecharButton, isMobile && styles.fecharButtonMobile, { backgroundColor: '#FF8C00', flex: 1, margin: 3 }]}
                     onPress={() => abrirQrCodeComanda(item)}
                   >
                     <View style={{ marginRight: 4 }}>
-                      <SafeIcon name="qr-code" size={16} color="#fff" fallbackText="QR" />
+                      <SafeIcon name="qr-code" size={isMobile ? 14 : 16} color="#fff" fallbackText="QR" />
                     </View>
-                    <Text style={styles.fecharButtonText}>QR Code</Text>
+                    <Text style={[styles.fecharButtonText, isMobile && styles.fecharButtonTextMobile]}>QR Code</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={[styles.fecharButton, { backgroundColor: '#F44336', flex: 1, margin: 4 }]}
+                    style={[styles.fecharButton, isMobile && styles.fecharButtonMobile, { backgroundColor: '#F44336', flex: 1, margin: 3 }]}
                     onPress={() => iniciarCancelamentoComanda(item)}
                   >
                     <View style={{ marginRight: 4 }}>
-                      <SafeIcon name="trash" size={16} color="#fff" fallbackText="🗑" />
+                      <SafeIcon name="trash" size={isMobile ? 14 : 16} color="#fff" fallbackText="🗑" />
                     </View>
-                    <Text style={styles.fecharButtonText}>Cancelar</Text>
+                    <Text style={[styles.fecharButtonText, isMobile && styles.fecharButtonTextMobile]}>Cancelar</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -1334,10 +1360,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 4,
   },
+  headerMobile: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  titleMobile: {
+    fontSize: 16,
   },
   button: {
     backgroundColor: '#2196F3',
@@ -1345,17 +1378,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
   },
+  buttonMobile: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
+  buttonTextMobile: {
+    fontSize: 13,
+  },
   list: {
     flex: 1,
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: 12,
+    paddingBottom: 110,
   },
   comandaItem: {
     backgroundColor: 'white',
@@ -1369,11 +1410,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  comandaItemMobile: {
+    borderRadius: 8,
+    marginBottom: 8,
+  },
   comandaContent: {
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     flex: 1,
+  },
+  comandaContentMobile: {
+    padding: 10,
+    paddingBottom: 6,
   },
   fecharButton: {
     backgroundColor: '#FF0000',
@@ -1385,10 +1434,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
   },
+  fecharButtonMobile: {
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+    borderRadius: 6,
+    margin: 2,
+  },
   fecharButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  fecharButtonTextMobile: {
+    fontSize: 12,
   },
   comandaInfo: {
     flex: 1,

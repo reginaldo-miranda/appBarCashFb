@@ -5,6 +5,7 @@ import { AuthProvider } from "../src/contexts/AuthContext";
 import { ProductProvider } from "../src/contexts/ProductContext";
 
 import { SafeAreaView } from "react-native-safe-area-context";
+import VoiceAssistantButton from "../src/components/VoiceAssistantButton";
 
 // Versão ultra-simplificada para garantir que o app carregue
 export default function RootLayout() {
@@ -64,6 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="cardapio/comanda/[comandaNome]" options={{ headerShown: false }} />
             <Stack.Screen name="TestScreen" options={{ title: 'Testes e Diagnóstico' }} />
           </Stack>
+          <VoiceAssistantButton />
         </SafeAreaView>
       </ProductProvider>
     </AuthProvider>

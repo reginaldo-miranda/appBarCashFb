@@ -27,7 +27,9 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
   const [isOpen, setIsOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-320)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { width } = Dimensions.get('window');
   const isWeb = Platform.OS === 'web';
+  const isDesktopWeb = isWeb && width >= 768;
   const closeTimeoutRef = useRef<any>(null);
 
   const openMenu = () => {
@@ -187,7 +189,7 @@ export default function SidebarMenu({ isOpen: externalIsOpen, onClose }: Sidebar
   return (
     <>
       {/* Gatilho invisível / discreto na borda esquerda no Desktop (Web) */}
-      {isWeb && (
+      {isDesktopWeb && (
         <View
           style={styles.hoverTriggerArea}
           // @ts-ignore - Propriedades React Native Web para hover

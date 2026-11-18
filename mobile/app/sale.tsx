@@ -1041,6 +1041,10 @@ export default function SaleScreen() {
       if (obsTrimmed) {
         itemData.observacoes = obsTrimmed;
       }
+      if (product.precoVenda !== undefined && product.precoVenda !== null) {
+        itemData.precoVenda = Number(product.precoVenda);
+        itemData.precoUnitario = Number(product.precoVenda);
+      }
       const clientMode = await AsyncStorage.getItem(STORAGE_KEYS.CLIENT_MODE);
       if (String(clientMode).toLowerCase() === 'tablet') {
         itemData.origem = 'tablet';

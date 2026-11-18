@@ -32,6 +32,13 @@ app.listen(PORT, () => {
 import dotenv from "dotenv";
 dotenv.config();
 
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ [Process] Exceção não tratada capturada:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ [Process] Promessa rejeitada não tratada capturada:', reason?.message || reason);
+});
+
 import express from "express";
 import cors from "cors";
 import os from "os";
@@ -66,6 +73,7 @@ import idleTimeConfigRoutes from "./routes/idleTimeConfig.js";
 import roleRoutes from "./routes/roles.js";
 import configRoutes from "./routes/config.js";
 import stockRoutes from "./routes/stock.js";
+import voiceRoutes from "./routes/voice.js";
 import { stopTunnel } from "./services/TunnelService.js";
 
 // dotenv configured at top
@@ -347,6 +355,7 @@ app.use("/api/idle-time-config", authenticate, idleTimeConfigRoutes);
 app.use("/api/roles", authenticate, roleRoutes); 
 app.use("/api/config", authenticate, configRoutes); // FIM ROTAS API
 app.use("/api/stock", authenticate, stockRoutes);
+app.use("/api/voice", authenticate, voiceRoutes);
 
 // Tratamento de 404 para rotas da API que não existem
 app.all('/api/*', (req, res) => {

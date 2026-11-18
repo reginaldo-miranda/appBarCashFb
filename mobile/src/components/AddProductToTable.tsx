@@ -52,6 +52,7 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
   const [obsModalVisible, setObsModalVisible] = useState(false);
   const [selectedProductForObs, setSelectedProductForObs] = useState<Product | null>(null);
   const [itemObservation, setItemObservation] = useState('');
+  const [itemCustomPrice, setItemCustomPrice] = useState<string>('');
   const isMobile = screenWidth < 768 || Platform.OS !== 'web';
 
   useEffect(() => {
@@ -249,6 +250,7 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
 
     setSelectedProductForObs(product);
     setItemObservation('');
+    setItemCustomPrice(product?.precoVenda ? Number(product.precoVenda).toFixed(2) : '0.00');
     setObsModalVisible(true);
   };
 
@@ -259,11 +261,22 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
     setSelectedProductForObs(null);
     setItemObservation('');
 
+    // Preço customizado (permite alterar valor do item no balcão/mesa)
+    const parsedPrice = parseFloat(String(itemCustomPrice).replace(',', '.'));
+    const finalPrice = (!isNaN(parsedPrice) && parsedPrice >= 0)
+      ? parsedPrice
+      : Number(prod.precoVenda || 0);
+
+    const prodToSubmit = {
+      ...prod,
+      precoVenda: finalPrice
+    };
+
     try {
       const pid = (prod as any)?._id ?? (prod as any)?.id ?? String(prod?.nome || 'p');
       if (addingId && String(addingId) === String(pid)) return;
       setAddingId(pid);
-      onAddProduct(prod, (obs || '').trim() || undefined);
+      onAddProduct(prodToSubmit, (obs || '').trim() || undefined);
       setTimeout(() => setAddingId(null), 300);
       console.log('✅ Produto adicionado com sucesso');
     } catch (error) {
@@ -504,11 +517,19 @@ const AddProductToTable: React.FC<AddProductToTableProps> = ({
                 <Text style={styles.obsModalTitle}>
                   {selectedProductForObs?.nome || 'Adicionar Produto'}
                 </Text>
-                <Text style={styles.obsModalSubtitle}>
-                  {selectedProductForObs?.precoVenda
-                    ? `R$ ${Number(selectedProductForObs.precoVenda).toFixed(2)}`
-                    : ''}
-                </Text>
+                <View style={styles.obsPriceRow}>
+                  <Text style={styles.obsPricePrefix}>R$ </Text>
+                  <TextInput
+                    style={styles.obsPriceInput}
+                    value={itemCustomPrice}
+                    onChangeText={setItemCustomPrice}
+                    keyboardType="numeric"
+                    placeholder="0.00"
+                    placeholderTextColor="#10B981"
+                    selectTextOnFocus={true}
+                  />
+                  <Ionicons name="pencil-outline" size={14} color="#10B981" style={{ marginLeft: 6 }} />
+                </View>
               </View>
               <TouchableOpacity
                 onPress={() => setObsModalVisible(false)}
@@ -823,6 +844,31 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontWeight: '600',
     marginTop: 2,
+  },
+  obsPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+  },
+  obsPricePrefix: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: 'bold',
+  },
+  obsPriceInput: {
+    fontSize: 14,
+    color: '#047857',
+    fontWeight: 'bold',
+    minWidth: 55,
+    padding: 0,
+    margin: 0,
   },
   obsCloseButton: {
     padding: 4,

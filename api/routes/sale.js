@@ -575,7 +575,10 @@ router.get('/:id', async (req, res) => {
 
     // Lógica para tamanho (Size)
     const tamanhoName = req.body?.tamanho || null;
-    let precoBase = Number(produto.precoVenda);
+    const precoCustomizado = req.body?.precoUnitario ?? req.body?.precoVenda;
+    let precoBase = (precoCustomizado !== undefined && precoCustomizado !== null && !isNaN(Number(precoCustomizado)))
+      ? Number(precoCustomizado)
+      : Number(produto.precoVenda);
     let nomeFinal = produto.nome;
 
     if (tamanhoName) {
@@ -601,8 +604,9 @@ router.get('/:id', async (req, res) => {
           // Isso evita mesclar um produto simples com um que já tem variação
           const hasNoVariation = !i.variacaoTipo && (!i.variacaoOpcoes || (Array.isArray(i.variacaoOpcoes) && i.variacaoOpcoes.length === 0));
           const sameObs = (i.observacoes || null) === obsItem;
+          const samePrice = Math.abs(Number(i.precoUnitario) - Number(precoBase)) < 0.001;
           
-          return sameProduct && hasNoVariation && sameObs;
+          return sameProduct && hasNoVariation && sameObs && samePrice;
       })
       : null;
       

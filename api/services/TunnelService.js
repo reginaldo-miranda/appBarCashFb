@@ -73,7 +73,7 @@ export async function startTunnel(port = process.env.PORT || 4000) {
       const targetLocal = `http://127.0.0.1:${port}`;
       console.log(`🌐 [TunnelService] Iniciando túnel HTTPS para ${targetLocal}...`);
 
-      const proc = spawn(bin, ['tunnel', '--url', targetLocal, '--no-autoupdate'], {
+      const proc = spawn(bin, ['tunnel', '--url', targetLocal, '--protocol', 'http2', '--no-autoupdate'], {
         windowsHide: true,
       });
       tunnelProc = proc;
