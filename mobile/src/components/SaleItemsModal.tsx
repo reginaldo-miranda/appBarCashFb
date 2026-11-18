@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CartItem } from '../types/index';
@@ -16,7 +16,12 @@ interface SaleItemsModalProps {
 }
 
 const SaleItemsModal: React.FC<SaleItemsModalProps> = ({ visible, items, total, onClose, onAddItems, onIncrementItem, onDecrementItem, onRemoveItem, onFinalize }) => {
-  // ... (renderItem remains same)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    item: CartItem;
+    type: 'decrement' | 'remove';
+    message: string;
+  } | null>(null);
+
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemRow}>
       <View style={styles.itemLeft}>
@@ -33,7 +38,19 @@ const SaleItemsModal: React.FC<SaleItemsModalProps> = ({ visible, items, total, 
       </View>
       <View style={styles.itemRight}>
         <View style={styles.itemActions}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => onDecrementItem(item)}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={() => {
+              const isRemoving = (item?.quantidade ?? 0) <= 1;
+              setConfirmDialog({
+                item,
+                type: 'decrement',
+                message: isRemoving 
+                  ? `Deseja remover ${item?.nomeProduto || 'este produto'} da venda?`
+                  : `Deseja diminuir a quantidade de ${item?.nomeProduto || 'este produto'}?`
+              });
+            }}
+          >
             <Ionicons name="remove" size={20} color="#333" />
           </TouchableOpacity>
           <Text style={styles.itemQuantity}>{item.quantidade}</Text>
@@ -44,7 +61,13 @@ const SaleItemsModal: React.FC<SaleItemsModalProps> = ({ visible, items, total, 
         <Text style={styles.itemSubtotal}>R$ {item.subtotal?.toFixed(2)}</Text>
         <TouchableOpacity
            style={styles.trashButton}
-           onPress={() => onRemoveItem(item)}
+           onPress={() => {
+             setConfirmDialog({
+               item,
+               type: 'remove',
+               message: `Deseja remover ${item?.nomeProduto || 'este produto'} da venda?`
+             });
+           }}
          >
            <Ionicons name="trash-outline" size={20} color="#b00020" />
          </TouchableOpacity>
@@ -98,6 +121,41 @@ const SaleItemsModal: React.FC<SaleItemsModalProps> = ({ visible, items, total, 
             <Text style={styles.footerButtonTextClose}>Fechar</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Modal de Confirmação Visual (100% compatível com Safari iOS e Android) */}
+        {confirmDialog && (
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmCard}>
+              <View style={styles.confirmIconWrap}>
+                <Ionicons name="alert-circle" size={32} color="#D32F2F" />
+              </View>
+              <Text style={styles.confirmTitle}>Confirmar</Text>
+              <Text style={styles.confirmMessage}>{confirmDialog.message}</Text>
+              <View style={styles.confirmActions}>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, styles.confirmBtnCancel]}
+                  onPress={() => setConfirmDialog(null)}
+                >
+                  <Text style={styles.confirmBtnCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, styles.confirmBtnConfirm]}
+                  onPress={() => {
+                    const action = confirmDialog;
+                    setConfirmDialog(null);
+                    if (action.type === 'decrement') {
+                      onDecrementItem(action.item);
+                    } else {
+                      onRemoveItem(action.item);
+                    }
+                  }}
+                >
+                  <Text style={styles.confirmBtnConfirmText}>Sim, Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -254,6 +312,79 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: 20,
+  },
+  confirmCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 20,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  confirmIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFEBEE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212121',
+    marginBottom: 6,
+  },
+  confirmMessage: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnCancel: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  confirmBtnCancelText: {
+    color: '#616161',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  confirmBtnConfirm: {
+    backgroundColor: '#D32F2F',
+  },
+  confirmBtnConfirmText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
 

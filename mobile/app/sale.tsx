@@ -1445,14 +1445,16 @@ export default function SaleScreen() {
     }
   };
 
-  const removeFromCart = async (item: CartItem) => {
+  const removeFromCart = async (item: CartItem, skipConfirm: boolean = false) => {
     if (!sale || !item?.produto?._id) {
       Alert.alert('Erro', 'Venda não encontrada ou item inválido.');
       return;
     }
 
-    const confirmed = await confirmRemoveAlert(`${item.nomeProduto} do carrinho`);
-    if (!confirmed) return;
+    if (!skipConfirm) {
+      const confirmed = await confirmRemoveAlert(`${item.nomeProduto} do carrinho`);
+      if (!confirmed) return;
+    }
 
     const produtoId = item.produto._id;
 
@@ -1889,24 +1891,9 @@ export default function SaleScreen() {
           onIncrementItem={(item) => updateCartItem(item, item.quantidade + 1)}
           onDecrementItem={(item) => {
             const nextQty = Math.max((item?.quantidade ?? 0) - 1, 0);
-            const msg = nextQty <= 0
-              ? `Zerar quantidade e remover ${item?.nomeProduto}?`
-              : `Diminuir quantidade de ${item?.nomeProduto}?`;
-            if ((typeof window !== 'undefined') && (Platform as any)?.OS === 'web' && typeof (window as any).confirm === 'function') {
-              const ok = (window as any).confirm(msg);
-              if (ok) updateCartItem(item, nextQty);
-            } else {
-              Alert.alert(
-                'Confirmar',
-                msg,
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'OK', style: 'destructive', onPress: () => updateCartItem(item, nextQty) },
-                ]
-              );
-            }
+            updateCartItem(item, nextQty);
           }}
-          onRemoveItem={removeFromCart}
+          onRemoveItem={(item) => removeFromCart(item, true)}
           onFinalize={() => {
             setItemsModalVisible(false);
             setTimeout(() => setModalVisible(true), 100);

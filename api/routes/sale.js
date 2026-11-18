@@ -827,7 +827,11 @@ router.delete('/:id/item/:produtoId', async (req, res) => {
       return res.status(400).json({ error: 'Não é possível remover itens de uma venda finalizada' });
     }
 
-    let item = venda.itens.find(i => i.productId === prodId);
+    const itemId = req.body?.itemId ? Number(req.body.itemId) : null;
+    let item = itemId ? venda.itens.find(i => i.id === itemId) : venda.itens.find(i => i.productId === prodId);
+    if (!item && itemId) {
+      item = venda.itens.find(i => i.productId === prodId);
+    }
     if (origem === 'tablet') {
       const tabletItens = venda.itens.filter(i => i.productId === prodId && String(i.origem || '') === 'tablet');
       if (tabletItens.length > 0) {
