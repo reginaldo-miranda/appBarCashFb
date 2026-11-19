@@ -80,7 +80,7 @@ Write-Host "Gerando Build de Produção Web do Frontend (Expo)..." -ForegroundCo
 $MobilePath = Join-Path -Path $ProjectRoot -ChildPath "mobile"
 Push-Location $MobilePath
 try {
-    npx expo export -p web
+    node ./node_modules/expo/bin/cli export -p web
 } finally {
     Pop-Location
 }
@@ -116,11 +116,6 @@ $EnvContent | Out-File -FilePath (Join-Path -Path $ApiDest -ChildPath ".env") -E
 Write-Host "Instalando dependencias de producao na API..." -ForegroundColor Green
 Push-Location $ApiDest
 try {
-    # Copiar .env se existir
-    if (Test-Path "$ProjectRoot/api/.env") {
-        Copy-Item -Path "$ProjectRoot/api/.env" -Destination "$BuildDir/api/" -Force
-    }
-    
     Write-Host "Instalando dependencias de producao na API..." -ForegroundColor Yellow
     npm install --omit=dev
     
