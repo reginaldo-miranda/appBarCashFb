@@ -167,3 +167,6 @@ xml_nfce/
 
 api/backups/
 api/debug_log.txt
+
+# Uploads locais de produtos e midias geradas dinamicamente
+api/uploads/
