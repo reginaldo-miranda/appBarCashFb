@@ -151,7 +151,7 @@ export default function AdminFuncionariosScreen() {
     try {
       const empId = employee.id || employee._id;
       await employeeService.delete(empId);
-      if (Platform.OS === 'web') {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.alert('Funcionário excluído com sucesso');
       } else {
         Alert.alert('Sucesso', 'Funcionário excluído com sucesso');
@@ -160,7 +160,7 @@ export default function AdminFuncionariosScreen() {
     } catch (error: any) {
       console.error('Erro ao excluir funcionário:', error);
       const msg = error?.response?.data?.error || error?.message || 'Erro ao excluir funcionário';
-      if (Platform.OS === 'web') {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.alert(msg);
       } else {
         Alert.alert('Atenção', msg);
@@ -169,7 +169,7 @@ export default function AdminFuncionariosScreen() {
   };
 
   const handleDeleteEmployee = (employee: Employee) => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       if (window.confirm(`Deseja realmente excluir o funcionário "${employee.nome}"?`)) {
         executeDeleteEmployee(employee);
       }
