@@ -200,6 +200,10 @@ export default function AdminProdutosScreen() {
   });
 
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [searchingWebImages, setSearchingWebImages] = useState(false);
+  const [downloadingWebImage, setDownloadingWebImage] = useState(false);
+  const [webImageResults, setWebImageResults] = useState<{ title: string; url: string; thumbnail: string }[]>([]);
+  const [selectedWebImageUrl, setSelectedWebImageUrl] = useState<string | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [tamanhos, setTamanhos] = useState<{ id?: number; nome: string; preco: string }[]>([]);
   const [showNcmMenu, setShowNcmMenu] = useState(false);
@@ -395,6 +399,45 @@ export default function AdminProdutosScreen() {
       } finally {
         setUploadingImage(false);
       }
+    }
+  };
+
+  const handleSearchWebImages = async () => {
+    const nomeLimpo = (formData.nome || '').trim();
+    if (nomeLimpo.length < 2) {
+      Alert.alert('Aviso', 'Preencha ao menos o nome do produto para buscar fotos.');
+      return;
+    }
+
+    try {
+      setSearchingWebImages(true);
+      const res = await productService.searchWebImages(nomeLimpo, formData.categoria);
+      const found = Array.isArray(res.data?.images) ? res.data.images : [];
+      setWebImageResults(found);
+      if (found.length === 0) {
+        Alert.alert('Busca de Fotos', `Nenhuma foto foi encontrada para "${nomeLimpo}". Tente refinar o nome do produto.`);
+      }
+    } catch (err: any) {
+      console.warn('Erro ao buscar foto na web:', err);
+      Alert.alert('Erro', 'Não foi possível buscar fotos na web no momento.');
+    } finally {
+      setSearchingWebImages(false);
+    }
+  };
+
+  const handleSelectWebImage = async (imageUrl: string, thumbnailUrl?: string) => {
+    try {
+      setSelectedWebImageUrl(imageUrl);
+      setDownloadingWebImage(true);
+      const res = await productService.downloadExternalImage(imageUrl, thumbnailUrl);
+      if (res.data?.imageUrl) {
+        setFormData((prev: any) => ({ ...prev, imagem: res.data.imageUrl }));
+      }
+    } catch (err: any) {
+      console.warn('Erro ao salvar foto da web localmente:', err);
+      setFormData((prev: any) => ({ ...prev, imagem: imageUrl }));
+    } finally {
+      setDownloadingWebImage(false);
     }
   };
 
@@ -678,6 +721,8 @@ export default function AdminProdutosScreen() {
     });
     setShowNcmMenu(false);
     setShowReformaTributaria(false);
+    setWebImageResults([]);
+    setSelectedWebImageUrl(null);
     if (Array.isArray((product as any).tamanhos) && (product as any).tamanhos.length > 0) {
       setTamanhos((product as any).tamanhos.map((t: any) => ({
         id: t.id,
@@ -725,6 +770,8 @@ export default function AdminProdutosScreen() {
   const resetForm = () => {
     setShowNcmMenu(false);
     setShowReformaTributaria(false);
+    setWebImageResults([]);
+    setSelectedWebImageUrl(null);
     setFormData({
       nome: '',
       descricao: '',
@@ -757,6 +804,8 @@ export default function AdminProdutosScreen() {
     });
     setEditingProduct(null);
     setSelectedSetores([]);
+    setWebImageResults([]);
+    setSelectedWebImageUrl(null);
   };
 
   const getFilteredAndSortedProducts = () => {
@@ -1359,6 +1408,87 @@ export default function AdminProdutosScreen() {
                                     </View>
                                   </View>
                                 </View>
+
+                                  {/* Puxar Foto da Web (igual à tela de Cadastro Inteligente) */}
+                                  <View style={styles.webPhotoSection}>
+                                    <View style={styles.webPhotoHeaderRow}>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                        <Ionicons name="globe-outline" size={13} color="#0284C7" />
+                                        <Text style={styles.webPhotoSectionTitle}>Fotos da Internet (Google / Web)</Text>
+                                      </View>
+
+                                      <TouchableOpacity
+                                        style={[styles.webSearchBtn, (searchingWebImages || downloadingWebImage) && { opacity: 0.7 }]}
+                                        onPress={handleSearchWebImages}
+                                        disabled={searchingWebImages || downloadingWebImage}
+                                        activeOpacity={0.7}
+                                      >
+                                        {searchingWebImages ? (
+                                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                            <ActivityIndicator size="small" color="#0284C7" />
+                                            <Text style={styles.webSearchBtnText}>Buscando...</Text>
+                                          </View>
+                                        ) : (
+                                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                            <Ionicons name="search" size={12} color="#0284C7" />
+                                            <Text style={styles.webSearchBtnText}>Buscar Foto na Web</Text>
+                                          </View>
+                                        )}
+                                      </TouchableOpacity>
+                                    </View>
+
+                                    {/* Miniaturas de fotos encontradas */}
+                                    {searchingWebImages ? (
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
+                                        <ActivityIndicator size="small" color="#0284C7" />
+                                        <Text style={{ fontSize: 11, color: '#0284C7', fontStyle: 'italic' }}>
+                                          Buscando fotos no Google / Bing...
+                                        </Text>
+                                      </View>
+                                    ) : webImageResults.length > 0 ? (
+                                      <View style={{ marginTop: 6 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                          {webImageResults.map((img, idx) => {
+                                            const isSelected = selectedWebImageUrl === img.url || formData.imagem === img.url;
+                                            return (
+                                              <TouchableOpacity
+                                                key={img.url || idx}
+                                                style={[
+                                                  styles.webThumbBox,
+                                                  isSelected && styles.webThumbBoxSelected,
+                                                  downloadingWebImage && { opacity: 0.6 }
+                                                ]}
+                                                onPress={() => handleSelectWebImage(img.url, img.thumbnail)}
+                                                disabled={downloadingWebImage}
+                                                activeOpacity={0.8}
+                                              >
+                                                <Image source={{ uri: img.thumbnail || img.url }} style={styles.webThumbImage} />
+                                                {isSelected && (
+                                                  <View style={styles.webThumbSelectedBadge}>
+                                                    <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                                                  </View>
+                                                )}
+                                              </TouchableOpacity>
+                                            );
+                                          })}
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                          <Ionicons
+                                            name={downloadingWebImage ? "sync-outline" : formData.imagem ? "checkmark-circle" : "information-circle-outline"}
+                                            size={13}
+                                            color={downloadingWebImage ? "#0284C7" : formData.imagem ? "#10B981" : "#64748B"}
+                                          />
+                                          <Text style={{ fontSize: 11, color: downloadingWebImage ? "#0284C7" : formData.imagem ? "#047857" : "#64748B", fontWeight: formData.imagem ? '600' : 'normal' }}>
+                                            {downloadingWebImage
+                                              ? 'Baixando e vinculando foto ao produto...'
+                                              : formData.imagem
+                                              ? '✓ Foto salva no servidor e vinculada ao produto!'
+                                              : 'Clique na foto desejada para salvar no produto'}
+                                          </Text>
+                                        </View>
+                                      </View>
+                                    ) : null}
+                                  </View>
                               </View>
 
                               {/* 2. Preços (Custo e Venda lado a lado) */}
@@ -3319,5 +3449,68 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 6,
     lineHeight: 15,
+  },
+  webPhotoSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  webPhotoHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  webPhotoSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  webSearchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  webSearchBtnText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0284C7',
+  },
+  webThumbBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+    padding: 2,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  webThumbBoxSelected: {
+    borderColor: '#10B981',
+    borderWidth: 2,
+  },
+  webThumbImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 4,
+    resizeMode: 'contain',
+  },
+  webThumbSelectedBadge: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    backgroundColor: '#10B981',
+    borderRadius: 6,
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

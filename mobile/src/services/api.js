@@ -451,6 +451,7 @@ export const productService = {
   createBulk: (products) => api.post('/product/bulk-create', { products }),
   bulkUpdateFiscal: (data) => api.put('/product/bulk-update-fiscal', data),
   searchWebImages: (q, categoria) => api.get(`/product/search-web-images?q=${encodeURIComponent(q)}&categoria=${encodeURIComponent(categoria || '')}`),
+  downloadExternalImage: (imageUrl, thumbnailUrl) => api.post('/product/download-external-image', { imageUrl, thumbnailUrl }),
   smartBatchCreate: (data) => api.post('/product/smart-batch-create', data),
   update: (id, data) => api.put(`/product/update/${id}`, data),
   delete: (id) => api.delete(`/product/delete/${id}`),

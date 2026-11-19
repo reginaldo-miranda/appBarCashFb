@@ -118,6 +118,87 @@ export default function AdminConfiguracoesScreen() {
     defaultIsAliquota: '0.00',
   });
 
+  // States para Limpeza de Movimentações / Reset da Base
+  const [modalResetVisible, setModalResetVisible] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetUsername, setResetUsername] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmWord, setResetConfirmWord] = useState('');
+  const [resetOptions, setResetOptions] = useState({
+    sales: true,
+    caixa: true,
+    stockMovements: true,
+    zeroProductStock: false,
+    nfce: true,
+    logs: true,
+    customers: false,
+  });
+
+  const handleAbrirResetModal = () => {
+    setResetUsername(user?.email || user?.nome || '');
+    setResetPassword('');
+    setResetConfirmWord('');
+    setModalResetVisible(true);
+  };
+
+  const handleExecuteReset = async () => {
+    if (resetConfirmWord.trim().toUpperCase() !== 'ZERAR') {
+      if (Platform.OS === 'web') window.alert('Digite a palavra ZERAR para confirmar.');
+      else Alert.alert('Atenção', 'Digite a palavra ZERAR para confirmar.');
+      return;
+    }
+    if (!resetUsername.trim() || !resetPassword.trim()) {
+      if (Platform.OS === 'web') window.alert('Informe o usuário e a senha do administrador.');
+      else Alert.alert('Atenção', 'Informe o usuário e a senha do administrador.');
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const ok = window.confirm('Atenção: Um backup completo será salvo e baixado no seu navegador, e as movimentações selecionadas serão apagadas permanentemente.\\n\\nDeseja continuar?');
+      if (!ok) return;
+    }
+
+    try {
+      setResetLoading(true);
+      const res = await api.post('/system/reset-movements', {
+        username: resetUsername.trim(),
+        password: resetPassword,
+        confirmWord: resetConfirmWord.trim().toUpperCase(),
+        options: resetOptions,
+      });
+
+      const data = res.data;
+      if (data.downloadUrl && Platform.OS === 'web' && typeof window !== 'undefined') {
+        const fullUrl = `${api.defaults.baseURL || ''}${data.downloadUrl}`.replace(/\/api\/api\//, '/api/');
+        try {
+          const link = document.createElement('a');
+          link.href = fullUrl;
+          link.setAttribute('download', data.backupFilename);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (dlErr) {
+          console.warn('Erro ao disparar download automático:', dlErr);
+        }
+      }
+
+      const msgSucesso = `Limpeza concluída com sucesso!\\n\\nBackup salvo: ${data.backupFilename}\\nOperação executada por: ${data.adminNome}`;
+      if (Platform.OS === 'web') window.alert(msgSucesso);
+      else Alert.alert('Sucesso', msgSucesso);
+
+      setModalResetVisible(false);
+      setResetConfirmWord('');
+      setResetPassword('');
+    } catch (err: any) {
+      console.error('Erro ao executar limpeza:', err);
+      const msg = err?.response?.data?.error || err?.message || 'Erro ao processar limpeza da base.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Erro', msg);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -939,6 +1020,28 @@ export default function AdminConfiguracoesScreen() {
           </View>
         </View>
 
+        {/* ─── Seção: Zona de Manutenção / Reset da Base ─── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: '#DC2626' }]}>Zona de Manutenção / Reset da Base</Text>
+          <View style={[styles.settingsCard, { borderColor: '#FECACA', borderWidth: 1.5 }]}>
+            <TouchableOpacity
+              style={[styles.settingItem, { borderLeftWidth: 4, borderLeftColor: '#DC2626' }]}
+              onPress={handleAbrirResetModal}
+            >
+              <View style={styles.settingContent}>
+                <SafeIcon name="warning" size={24} color="#DC2626" fallbackText="⚠️" />
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingTitle, { color: '#DC2626' }]}>Limpeza de Dados de Teste / Reset</Text>
+                  <Text style={styles.settingDescription}>
+                    Apagar movimentações (vendas, caixas, notas, logs) com backup automático prévio e proteção por senha
+                  </Text>
+                </View>
+              </View>
+              <SafeIcon name="chevron-forward" size={20} color="#DC2626" fallbackText="›" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
       </ScrollView>
 
       {/* Modal de Controle de Contingência */}
@@ -1736,6 +1839,199 @@ export default function AdminConfiguracoesScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Modal de Limpeza de Movimentações / Reset da Base */}
+      <Modal
+        visible={modalResetVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => !resetLoading && setModalResetVisible(false)}
+      >
+        <View style={resetStyles.modalOverlay}>
+          <View style={resetStyles.modalContainer}>
+            {/* Header */}
+            <View style={resetStyles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <SafeIcon name="warning" size={24} color="#DC2626" fallbackText="⚠️" />
+                <Text style={resetStyles.modalTitle}>Limpeza de Movimentações da Base</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => !resetLoading && setModalResetVisible(false)}
+                disabled={resetLoading}
+                style={{ padding: 4 }}
+              >
+                <SafeIcon name="close" size={24} color="#666" fallbackText="✕" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={resetStyles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Aviso de Segurança */}
+              <View style={resetStyles.warningBox}>
+                <SafeIcon name="shield-checkmark" size={22} color="#DC2626" fallbackText="🛡️" />
+                <Text style={resetStyles.warningText}>
+                  Esta rotina apaga apenas as movimentações selecionadas para iniciar a operação real do bar/restaurante.
+                  {'\n\n'}
+                  <Text style={{ fontWeight: 'bold' }}>PRESERVADOS:</Text> Produtos, Categorias, Setores, Funcionários, Perfis, Mesas cadastradas e Configurações da Empresa continuarão 100% intactos.
+                </Text>
+              </View>
+
+              {/* Seletor de Bases para Apagar */}
+              <Text style={resetStyles.sectionHeader}>1. Selecione o que deseja apagar:</Text>
+
+              <View style={resetStyles.optionRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={resetStyles.optionTitle}>Vendas e Comandas</Text>
+                  <Text style={resetStyles.optionDesc}>Apaga histórico de vendas, itens lançados e desocupa todas as mesas.</Text>
+                </View>
+                <Switch
+                  value={resetOptions.sales}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, sales: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              <View style={resetStyles.optionRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={resetStyles.optionTitle}>Caixas e Movimentações Financeiras</Text>
+                  <Text style={resetStyles.optionDesc}>Apaga histórico de abertura, fechamento e sangrias/suprimentos de caixa.</Text>
+                </View>
+                <Switch
+                  value={resetOptions.caixa}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, caixa: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              <View style={resetStyles.optionRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={resetStyles.optionTitle}>Histórico de Movimentações de Estoque</Text>
+                  <Text style={resetStyles.optionDesc}>Apaga registros de entradas, saídas e movimentações no estoque.</Text>
+                </View>
+                <Switch
+                  value={resetOptions.stockMovements}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, stockMovements: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              <View style={[resetStyles.optionRow, { backgroundColor: '#FEF2F2' }]}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[resetStyles.optionTitle, { color: '#B91C1C' }]}>Zerar Saldo Atual de Estoque dos Produtos</Text>
+                  <Text style={resetStyles.optionDesc}>Zera as quantidades em estoque de todos os produtos para recontagem do zero (padrão: NÃO).</Text>
+                </View>
+                <Switch
+                  value={resetOptions.zeroProductStock}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, zeroProductStock: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              <View style={resetStyles.optionRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={resetStyles.optionTitle}>Histórico de Notas Fiscais (NFC-e)</Text>
+                  <Text style={resetStyles.optionDesc}>Apaga histórico de notas emitidas e eventos fiscais locais.</Text>
+                </View>
+                <Switch
+                  value={resetOptions.nfce}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, nfce: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              <View style={resetStyles.optionRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={resetStyles.optionTitle}>Filas de Impressão e Logs WhatsApp</Text>
+                  <Text style={resetStyles.optionDesc}>Apaga histórico de pedidos impressos na cozinha e mensagens enviadas.</Text>
+                </View>
+                <Switch
+                  value={resetOptions.logs}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, logs: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              <View style={resetStyles.optionRow}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={resetStyles.optionTitle}>Clientes Cadastrados</Text>
+                  <Text style={resetStyles.optionDesc}>Apaga cadastro de clientes (opcional, recomendado manter desmarcado).</Text>
+                </View>
+                <Switch
+                  value={resetOptions.customers}
+                  onValueChange={(val) => setResetOptions({ ...resetOptions, customers: val })}
+                  trackColor={{ false: '#ccc', true: '#EF4444' }}
+                />
+              </View>
+
+              {/* Autenticação e Confirmação */}
+              <Text style={resetStyles.sectionHeader}>2. Autenticação e Confirmação Obrigatória:</Text>
+
+              <View style={resetStyles.authBox}>
+                <Text style={resetStyles.inputLabel}>Usuário ou Email do Administrador:</Text>
+                <TextInput
+                  style={resetStyles.input}
+                  value={resetUsername}
+                  onChangeText={setResetUsername}
+                  placeholder="Ex: admin ou admin@barapp.com"
+                  autoCapitalize="none"
+                />
+
+                <Text style={resetStyles.inputLabel}>Senha do Administrador:</Text>
+                <TextInput
+                  style={resetStyles.input}
+                  value={resetPassword}
+                  onChangeText={setResetPassword}
+                  placeholder="Digite a senha de administrador"
+                  secureTextEntry
+                />
+
+                <Text style={[resetStyles.inputLabel, { color: '#B91C1C' }]}>
+                  Digite exatamente a palavra <Text style={{ fontWeight: 'bold' }}>ZERAR</Text> para confirmar:
+                </Text>
+                <TextInput
+                  style={[resetStyles.input, { borderColor: '#EF4444', fontWeight: 'bold', letterSpacing: 2 }]}
+                  value={resetConfirmWord}
+                  onChangeText={setResetConfirmWord}
+                  placeholder="ZERAR"
+                  autoCapitalize="characters"
+                />
+
+                <View style={resetStyles.backupNotice}>
+                  <SafeIcon name="cloud-download" size={20} color="#1565C0" fallbackText="💾" />
+                  <Text style={resetStyles.backupNoticeText}>
+                    Antes de qualquer exclusão, um backup completo (.sql) será salvo no servidor e baixado automaticamente no seu navegador.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Botão de Execução */}
+              <TouchableOpacity
+                style={[
+                  resetStyles.executeBtn,
+                  (resetConfirmWord.trim().toUpperCase() !== 'ZERAR' || !resetUsername.trim() || !resetPassword.trim() || resetLoading)
+                    ? { backgroundColor: '#FCA5A5', opacity: 0.7 }
+                    : { backgroundColor: '#DC2626' }
+                ]}
+                onPress={handleExecuteReset}
+                disabled={resetConfirmWord.trim().toUpperCase() !== 'ZERAR' || !resetUsername.trim() || !resetPassword.trim() || resetLoading}
+              >
+                {resetLoading ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <ActivityIndicator color="#fff" />
+                    <Text style={resetStyles.executeBtnText}>Gerando Backup & Limpando...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <SafeIcon name="trash" size={20} color="#fff" fallbackText="🗑️" />
+                    <Text style={resetStyles.executeBtnText}>Executar Limpeza Segura & Baixar Backup</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2307,5 +2603,145 @@ const contingenciaStyles = StyleSheet.create({
     fontSize: 12,
     color: '#1565C0',
     lineHeight: 17,
+  },
+});
+
+const resetStyles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 680,
+    maxHeight: '90%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FEF2F2',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#991B1B',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
+    padding: 14,
+    gap: 12,
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#7F1D1D',
+    lineHeight: 18,
+  },
+  sectionHeader: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  optionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  optionDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  authBox: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+  },
+  backupNotice: {
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 8,
+    padding: 12,
+    gap: 10,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  backupNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1E40AF',
+    lineHeight: 16,
+  },
+  executeBtn: {
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  executeBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });

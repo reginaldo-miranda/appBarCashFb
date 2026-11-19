@@ -94,12 +94,63 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ error: "ID de funcionário inválido" });
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id },
+    });
+
+    if (!employee) {
+      return res.status(404).json({ error: "Funcionário não encontrado" });
+    }
+
+    // Verificar se o funcionário possui vendas vinculadas
+    const totalVendas = await prisma.sale.count({
+      where: {
+        OR: [
+          { funcionarioId: id },
+          { funcionarioAberturaId: id },
+          { responsavelFuncionarioId: id },
+          { entregadorId: id },
+        ],
+      },
+    });
+
+    if (totalVendas > 0) {
+      return res.status(400).json({
+        error: "Não é possível excluir este funcionário pois ele possui vendas associadas. Recomendamos inativá-lo.",
+      });
+    }
+
+    // Verificar se possui registros de caixa vinculados
+    const totalCaixas = await prisma.caixa.count({
+      where: {
+        OR: [
+          { funcionarioAberturaId: id },
+          { funcionarioFechamentoId: id },
+        ],
+      },
+    });
+
+    if (totalCaixas > 0) {
+      return res.status(400).json({
+        error: "Não é possível excluir este funcionário pois ele possui registros de abertura ou fechamento de caixa. Recomendamos inativá-lo.",
+      });
+    }
+
     await prisma.employee.delete({ where: { id } });
     res.json({ message: "Funcionário deletado com sucesso" });
   } catch (error) {
-    console.error(error);
+    console.error("Erro ao deletar funcionário:", error);
     if (error.code === "P2025") {
       return res.status(404).json({ error: "Funcionário não encontrado" });
+    }
+    if (error.code === "P2003") {
+      return res.status(400).json({
+        error: "Não é possível excluir este funcionário pois existem registros vinculados a ele no sistema.",
+      });
     }
     res.status(500).json({ error: "Erro ao deletar funcionário" });
   }

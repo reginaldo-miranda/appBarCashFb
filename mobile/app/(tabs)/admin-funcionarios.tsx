@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Switch,
+  Platform,
 } from 'react-native';
 // Removido: import { Ionicons } from '@expo/vector-icons';
 import { employeeService, roleService } from '../../src/services/api';
@@ -146,28 +147,46 @@ export default function AdminFuncionariosScreen() {
     setModalVisible(true);
   };
 
+  const executeDeleteEmployee = async (employee: Employee) => {
+    try {
+      const empId = employee.id || employee._id;
+      await employeeService.delete(empId);
+      if (Platform.OS === 'web') {
+        window.alert('Funcionário excluído com sucesso');
+      } else {
+        Alert.alert('Sucesso', 'Funcionário excluído com sucesso');
+      }
+      loadEmployees();
+    } catch (error: any) {
+      console.error('Erro ao excluir funcionário:', error);
+      const msg = error?.response?.data?.error || error?.message || 'Erro ao excluir funcionário';
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert('Atenção', msg);
+      }
+    }
+  };
+
   const handleDeleteEmployee = (employee: Employee) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      `Deseja realmente excluir o funcionário "${employee.nome}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await employeeService.delete(employee._id);
-              Alert.alert('Sucesso', 'Funcionário excluído com sucesso');
-              loadEmployees();
-            } catch (error: any) {
-              console.error('Erro ao excluir funcionário:', error);
-              Alert.alert('Erro', 'Erro ao excluir funcionário');
-            }
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Deseja realmente excluir o funcionário "${employee.nome}"?`)) {
+        executeDeleteEmployee(employee);
+      }
+    } else {
+      Alert.alert(
+        'Confirmar Exclusão',
+        `Deseja realmente excluir o funcionário "${employee.nome}"?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: () => executeDeleteEmployee(employee),
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const resetForm = () => {

@@ -55,6 +55,65 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
   }
 });
 
+// Download de imagem externa (da busca web) para o servidor local
+router.post('/download-external-image', async (req, res) => {
+  try {
+    const { imageUrl, thumbnailUrl } = req.body;
+    if (!imageUrl && !thumbnailUrl) {
+      return res.status(400).json({ error: 'Nenhuma URL de imagem foi informada.' });
+    }
+
+    const downloadCandidates = [];
+    if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+      downloadCandidates.push(imageUrl);
+    }
+    if (thumbnailUrl && (thumbnailUrl.startsWith('http://') || thumbnailUrl.startsWith('https://')) && thumbnailUrl !== imageUrl) {
+      downloadCandidates.push(thumbnailUrl);
+    }
+
+    let localImagePath = null;
+    let savedFilename = null;
+
+    for (const candidateUrl of downloadCandidates) {
+      try {
+        const imgRes = await fetch(candidateUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+          },
+          signal: AbortSignal.timeout(8000)
+        });
+        if (imgRes.ok) {
+          const buffer = Buffer.from(await imgRes.arrayBuffer());
+          if (buffer.length > 500) {
+            const ext = '.jpg';
+            savedFilename = `prod-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+            const filepath = path.join(uploadDir, savedFilename);
+            fs.writeFileSync(filepath, buffer);
+            localImagePath = `/uploads/products/${savedFilename}`;
+            break;
+          }
+        }
+      } catch (e) {
+        console.warn('[downloadExternalImage] Falha no download de:', candidateUrl, e.message);
+      }
+    }
+
+    if (!localImagePath) {
+      localImagePath = imageUrl || thumbnailUrl;
+    }
+
+    res.json({
+      success: true,
+      imageUrl: localImagePath,
+      filename: savedFilename
+    });
+  } catch (error) {
+    console.error('[DownloadFotoWeb] Erro ao baixar foto:', error);
+    res.status(500).json({ error: error.message || 'Erro ao processar imagem da web' });
+  }
+});
+
 // Helper de compatibilidade: normaliza decimais e adiciona _id
 // Helper de compatibilidade: normaliza decimais e adiciona _id
 const mapProduct = (p) => {

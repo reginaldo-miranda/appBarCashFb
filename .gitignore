@@ -164,3 +164,6 @@ api/debug_*.xml
 api/debug_log.txt
 xml_nfce/
 
+
+api/backups/
+api/debug_log.txt
