@@ -18,6 +18,7 @@ import PixModal from '../../src/components/PixModal';
 import CashbackPromptModal from '../../src/components/CashbackPromptModal';
 import { SafeIcon } from '../../components/SafeIcon';
 import QRCode from 'react-native-qrcode-svg';
+import { getSoftIdleCardStyle } from '../../src/utils/idleColor';
 
 function obterIpLanCardapio() {
   try {
@@ -276,16 +277,30 @@ export default function ComandasAbertasScreen() {
   };
   const formatMoney = (v: any): string => toNum(v).toFixed(2);
 
-  useEffect(() => {
-    loadStatusFilters();
+  const [idleTick, setIdleTick] = useState(0);
+
+  const loadIdleConfig = useCallback(() => {
     idleTimeConfigService.get().then(res => {
-        let d = res.data;
-        if (d && typeof d.estagios === 'string') {
-            try { d.estagios = JSON.parse(d.estagios); } catch {}
-        }
-        setIdleConfig(d);
+      let d = res.data;
+      if (d && typeof d.estagios === 'string') {
+        try { d.estagios = JSON.parse(d.estagios); } catch {}
+      }
+      setIdleConfig(d);
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadStatusFilters();
+    loadIdleConfig();
+    const timer = setInterval(() => setIdleTick((t) => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, [loadIdleConfig]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadIdleConfig();
+    }, [loadIdleConfig])
+  );
 
   useEffect(() => {
     if (!idleConfig || !idleConfig.ativo) {
@@ -319,7 +334,7 @@ export default function ComandasAbertasScreen() {
       }
     });
     setComandaIdleStatus(newStatus);
-  }, [comandas, idleConfig]);
+  }, [comandas, idleConfig, idleTick]);
 
   useEffect(() => {
     const w = Dimensions.get('window').width;
@@ -830,7 +845,7 @@ useEffect(() => {
             <View style={[
                   styles.comandaItem,
                   isMobile && styles.comandaItemMobile,
-                  item.status === 'aberta' && comandaIdleStatus[item._id] && { backgroundColor: comandaIdleStatus[item._id] }
+                  item.status === 'aberta' && comandaIdleStatus[item._id] && getSoftIdleCardStyle(comandaIdleStatus[item._id])
                  ]}>
               <TouchableOpacity 
                 style={[styles.comandaContent, isMobile && styles.comandaContentMobile]}

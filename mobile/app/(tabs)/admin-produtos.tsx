@@ -32,6 +32,7 @@ import { testApiConnection, getCurrentBaseUrl } from '../../src/services/api';
 import BulkProductModal from '../../src/components/BulkProductModal';
 import BulkFiscalModal from '../../src/components/BulkFiscalModal';
 import SmartBatchProductModal from '../../src/components/SmartBatchProductModal';
+import { validateVariationConfigForCategory, promptOpenVariationTypes, showFeedbackAlert } from '../../src/utils/variationValidation';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -603,10 +604,41 @@ export default function AdminProdutosScreen() {
     }
   };
 
+  const checkVariationSetup = async (categoriaNome: string): Promise<boolean> => {
+    const catObj = categorias.find((c) => c.nome === categoriaNome);
+    const check = await validateVariationConfigForCategory({
+      categoriaId: catObj?.id,
+      categoriaNome,
+    });
+    if (!check.ok && check.message) {
+      promptOpenVariationTypes(check.message, () => {
+        setModalVisible(false);
+        router.push('/variacoes/tipos' as any);
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveProduct = async () => {
     if (!formData.nome || !formData.precoVenda || !formData.categoria) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios (Nome, Preço de Venda, Categoria)');
       return;
+    }
+
+    if (formData.temTamanhos) {
+      const validSizes = tamanhos.filter(t => t.nome && t.nome.trim() !== '');
+      if (validSizes.length === 0) {
+        showFeedbackAlert('Atenção', 'Adicione pelo menos 1 tamanho (ex.: P, M, G) ou desative a opção "Com Tamanhos".');
+        return;
+      }
+    }
+
+    if (formData.temVariacao) {
+      const variationOk = await checkVariationSetup(formData.categoria);
+      if (!variationOk) {
+        return;
+      }
     }
 
     setLoading(true);
@@ -1549,7 +1581,12 @@ export default function AdminProdutosScreen() {
                                   <View style={styles.switchOptionCompact}>
                                     <Switch
                                       value={formData.temVariacao}
-                                      onValueChange={(val) => setFormData(prev => ({ ...prev, temVariacao: val }))}
+                                      onValueChange={(val) => {
+                                        setFormData(prev => ({ ...prev, temVariacao: val }));
+                                        if (val) {
+                                          checkVariationSetup(formData.categoria);
+                                        }
+                                      }}
                                       trackColor={{ false: '#CBD5E1', true: '#8B5CF6' }}
                                       thumbColor="#fff"
                                     />

@@ -1785,6 +1785,9 @@ export default function AdminConfiguracoesScreen() {
              </Text>
 
             <Text style={[styles.sectionHeader, { marginTop: 20 }]}>Estágios de Tempo e Cores</Text>
+            <Text style={styles.helperText}>
+              Formato HH:MM:SS (Horas:Minutos:Segundos) — Ex.: 00:00:10 (10 seg), 00:01:00 (1 min), 00:45:00 (45 min), 01:00:00 (1 hora).
+            </Text>
             {idleConfig.estagios && idleConfig.estagios.map((estagio: any, index: number) => (
                <View key={index} style={[styles.estagioRow, { opacity: idleConfig.ativo ? 1 : 0.5 }]}>
                   <Text style={styles.estagioLabel}>Estágio {index + 1}:</Text>
@@ -1818,7 +1821,7 @@ export default function AdminConfiguracoesScreen() {
                       />
                        {/* Predefined Colors Dropdown could go here, for now simple hex input or preset list */}
                       <View style={styles.colorPresets}>
-                          {['#FFFF00', '#FFA500', '#FF4500', '#FF0000', '#4CAF50', '#2196F3'].map(c => (
+                          {['#FDE047', '#FDBA74', '#FB923C', '#FCA5A5', '#86EFAC', '#93C5FD'].map(c => (
                               <TouchableOpacity 
                                   key={c}
                                   style={[styles.colorPreset, { backgroundColor: c }]}

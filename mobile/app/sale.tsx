@@ -31,6 +31,7 @@ import ScreenIdentifier from '../src/components/ScreenIdentifier';
 import SaleItemsModal from '../src/components/SaleItemsModal';
 
 import VariationSelectorModal from '../src/components/VariationSelectorModal';
+import { extractApiErrorMessage, showFeedbackAlert } from '../src/utils/variationValidation';
 import SizeSelectorModal from '../src/components/SizeSelectorModal';
 import { Product, CartItem, Sale, PaymentMethod, ProductSize } from '../src/types/index';
 import { useAuth } from '../src/contexts/AuthContext';
@@ -1174,9 +1175,10 @@ export default function SaleScreen() {
       setSale(response.data);
       setCart(response.data.itens || []);
       Alert.alert('Sucesso', `${product.nome} (${size.nome}) adicionado!`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      Alert.alert('Erro', 'Falha ao adicionar produto com tamanho');
+      const msg = extractApiErrorMessage(e, 'Falha ao adicionar produto com tamanho. Verifique se o tamanho está cadastrado corretamente.');
+      showFeedbackAlert('Não foi possível adicionar à venda', msg);
     } finally {
       setSizeProduct(null);
       setSelectedSize(null);
@@ -1202,8 +1204,9 @@ export default function SaleScreen() {
       setSale(response.data);
       setCart(response.data.itens || []);
       Alert.alert('Sucesso', `${variationProduct.nome} foi adicionado com variação!`);
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível adicionar com variação');
+    } catch (e: any) {
+      const msg = extractApiErrorMessage(e, 'Não foi possível adicionar o produto com variação. Verifique a configuração em Tipos de Variação.');
+      showFeedbackAlert('Não foi possível adicionar à venda', msg);
     } finally {
       setVariationVisible(false);
       setVariationProduct(null);
@@ -1228,8 +1231,9 @@ export default function SaleScreen() {
       setSale(response.data);
       setCart(response.data.itens || []);
       Alert.alert('Sucesso', `${variationProduct.nome} foi adicionado inteiro!`);
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível adicionar o produto.');
+    } catch (e: any) {
+      const msg = extractApiErrorMessage(e, 'Não foi possível adicionar o produto inteiro à venda.');
+      showFeedbackAlert('Não foi possível adicionar à venda', msg);
     } finally {
       setVariationVisible(false);
       setVariationProduct(null);

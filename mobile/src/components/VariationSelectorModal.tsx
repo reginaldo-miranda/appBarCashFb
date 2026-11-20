@@ -212,6 +212,13 @@ export default function VariationSelectorModal({
     return selectedSize ? `${nameWithFracs} (${selectedSize.nome})` : nameWithFracs;
   }, [product, selectedTipo, selectedOpcoes, optionsProducts, selectedSize]);
 
+  const isPizza = useMemo(() => {
+    const cat = String(product?.categoria || '').toLowerCase();
+    const nome = String(product?.nome || '').toLowerCase();
+    const tipoNome = String(selectedTipo?.nome || '').toLowerCase();
+    return cat.includes('pizza') || nome.includes('pizza') || tipoNome.includes('pizza');
+  }, [product, selectedTipo]);
+
   const displayedOptions = useMemo(() => {
     const arr = Array.isArray(optionsProducts) ? optionsProducts : [];
     const q = String(searchText || '').toLowerCase().trim();
@@ -263,7 +270,9 @@ export default function VariationSelectorModal({
             <Ionicons name="close" size={24} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Montar Pizza Meio a Meio</Text>
+            <Text style={styles.headerTitle}>
+              {isPizza ? 'Montar Pizza Meio a Meio' : 'Montar Meio a Meio'}
+            </Text>
             {selectedSize && (
               <View style={styles.sizeBadgeHeader}>
                 <Text style={styles.sizeBadgeHeaderText}>Tamanho: {selectedSize.nome}</Text>
@@ -275,12 +284,14 @@ export default function VariationSelectorModal({
 
         {/* Scrollable Content */}
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-          {/* Card de Destaque do 1º Sabor (Base) */}
+          {/* Card de Destaque da 1ª Opção / Sabor (Base) */}
           <View style={styles.baseFlavorCard}>
             <View style={styles.baseFlavorHeader}>
               <View style={styles.baseTag}>
-                <Ionicons name="pizza" size={14} color="#15803D" style={{ marginRight: 4 }} />
-                <Text style={styles.baseTagText}>1º SABOR (BASE ESCOLHIDA)</Text>
+                <Ionicons name={isPizza ? 'pizza' : 'restaurant'} size={14} color="#15803D" style={{ marginRight: 4 }} />
+                <Text style={styles.baseTagText}>
+                  {isPizza ? '1º SABOR (BASE ESCOLHIDA)' : '1ª OPÇÃO (BASE ESCOLHIDA)'}
+                </Text>
               </View>
               <View style={styles.fractionTag}>
                 <Text style={styles.fractionTagText}>½ (50%)</Text>
@@ -288,14 +299,14 @@ export default function VariationSelectorModal({
             </View>
             <View style={styles.baseFlavorBody}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.baseFlavorName}>{formatFlavorName(product?.nome || 'Pizza')}</Text>
+                <Text style={styles.baseFlavorName}>{formatFlavorName(product?.nome || (isPizza ? 'Pizza' : 'Item'))}</Text>
                 <Text style={styles.baseFlavorSub}>
                   {selectedSize ? `Tamanho ${selectedSize.nome} • ` : ''}R$ {baseFlavorPrice.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.baseCheckBadge}>
                 <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                <Text style={styles.baseCheckText}>1º Sabor</Text>
+                <Text style={styles.baseCheckText}>{isPizza ? '1º Sabor' : '1ª Opção'}</Text>
               </View>
             </View>
           </View>
@@ -317,7 +328,7 @@ export default function VariationSelectorModal({
                       }}
                     >
                       <Text style={[styles.tipoPillText, isSel && styles.tipoPillTextActive]}>
-                        {t.nome} ({t.maxOpcoes} sabores)
+                        {t.nome} ({t.maxOpcoes} {isPizza ? 'sabores' : 'opções'})
                       </Text>
                     </TouchableOpacity>
                   );
@@ -326,18 +337,22 @@ export default function VariationSelectorModal({
             </View>
           )}
 
-          {/* Seção do 2º Sabor */}
+          {/* Seção da 2ª Opção / Sabor */}
           {selectedTipo && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>
                   {additionalNeeded === 1
-                    ? 'Escolha o 2º Sabor'
-                    : `Escolha os Sabores Adicionais (${selectedOpcoes.length}/${additionalNeeded})`}
+                    ? (isPizza ? 'Escolha o 2º Sabor' : 'Escolha a 2ª Opção')
+                    : (isPizza
+                        ? `Escolha os Sabores Adicionais (${selectedOpcoes.length}/${additionalNeeded})`
+                        : `Escolha as Opções Adicionais (${selectedOpcoes.length}/${additionalNeeded})`)}
                 </Text>
                 <View style={[styles.stepBadge, selectedOpcoes.length === additionalNeeded && styles.stepBadgeDone]}>
                   <Text style={[styles.stepBadgeText, selectedOpcoes.length === additionalNeeded && styles.stepBadgeTextDone]}>
-                    {selectedOpcoes.length === additionalNeeded ? '✓ Sabor Selecionado' : 'Aguardando seleção'}
+                    {selectedOpcoes.length === additionalNeeded
+                      ? (isPizza ? '✓ Sabor Selecionado' : '✓ Opção Selecionada')
+                      : 'Aguardando seleção'}
                   </Text>
                 </View>
               </View>
@@ -347,7 +362,7 @@ export default function VariationSelectorModal({
                 <Ionicons name="search" size={18} color="#64748B" />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Buscar sabor (ex: calabresa, mussarela, palmito...)"
+                  placeholder={isPizza ? 'Buscar sabor (ex: calabresa, mussarela, palmito...)' : 'Buscar opção...'}
                   value={searchText}
                   onChangeText={setSearchText}
                   placeholderTextColor="#94A3B8"
@@ -360,16 +375,20 @@ export default function VariationSelectorModal({
                 )}
               </View>
 
-              {/* Lista de Sabores */}
+              {/* Lista de Opções / Sabores */}
               {loadingOptions ? (
                 <View style={styles.loadingBox}>
                   <ActivityIndicator size="small" color="#2563EB" />
-                  <Text style={styles.loadingText}>Carregando sabores...</Text>
+                  <Text style={styles.loadingText}>
+                    {isPizza ? 'Carregando sabores...' : 'Carregando opções...'}
+                  </Text>
                 </View>
               ) : displayedOptions.length === 0 ? (
                 <View style={styles.emptyBox}>
                   <Ionicons name="alert-circle-outline" size={32} color="#94A3B8" />
-                  <Text style={styles.emptyTitle}>Nenhum sabor encontrado</Text>
+                  <Text style={styles.emptyTitle}>
+                    {isPizza ? 'Nenhum sabor encontrado' : 'Nenhuma opção encontrada'}
+                  </Text>
                   <Text style={styles.emptySub}>Verifique o texto digitado ou as categorias de produtos.</Text>
                 </View>
               ) : (
@@ -430,7 +449,9 @@ export default function VariationSelectorModal({
           <View style={styles.pricingSummaryRow}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <View style={styles.pricingTitleRow}>
-                <Text style={styles.pricingLabel}>Preço Final da Pizza:</Text>
+                <Text style={styles.pricingLabel}>
+                  {isPizza ? 'Preço Final da Pizza:' : 'Preço Final:'}
+                </Text>
                 {selectedOpcoes.length === additionalNeeded && (
                   <Text style={styles.selectedPizzaNameText}>
                     {selectedPizzaName}
@@ -440,9 +461,9 @@ export default function VariationSelectorModal({
               <Text style={styles.pricingRuleHint}>
                 {selectedOpcoes.length === additionalNeeded
                   ? selectedTipo?.regraPreco === 'mais_caro'
-                    ? 'Cobrado pelo sabor mais caro'
-                    : 'Média dos sabores'
-                  : 'Aguardando escolha do 2º sabor'}
+                    ? (isPizza ? 'Cobrado pelo sabor mais caro' : 'Cobrado pela opção mais cara')
+                    : (isPizza ? 'Média dos sabores' : 'Média das opções')
+                  : (isPizza ? 'Aguardando escolha do 2º sabor' : 'Aguardando escolha da 2ª opção')}
               </Text>
             </View>
             <Text style={styles.pricingValue}>R$ {precoCalculado.toFixed(2)}</Text>
@@ -455,8 +476,8 @@ export default function VariationSelectorModal({
 
             {onConfirmWhole && (
               <TouchableOpacity style={styles.wholeButton} onPress={onConfirmWhole}>
-                <Ionicons name="pizza-outline" size={16} color="#2563EB" style={{ marginRight: 6 }} />
-                <Text style={styles.wholeButtonText}>Pizza Inteira</Text>
+                <Ionicons name={isPizza ? 'pizza-outline' : 'checkmark-circle-outline'} size={16} color="#2563EB" style={{ marginRight: 6 }} />
+                <Text style={styles.wholeButtonText}>{isPizza ? 'Pizza Inteira' : 'Item Inteiro'}</Text>
               </TouchableOpacity>
             )}
 

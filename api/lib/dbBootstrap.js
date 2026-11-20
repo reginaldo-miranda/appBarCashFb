@@ -1,3 +1,5 @@
+import bcrypt from 'bcryptjs';
+
 /**
  * dbBootstrap.js
  * 
@@ -934,6 +936,63 @@ async function runSeeds(prisma) {
     }
   } catch (err) {
     console.error('❌ [dbBootstrap] Erro ao inserir setores padrões:', err.message);
+  }
+
+  // 5. Usuário Administrador padrão (instalação nova / tabela User vazia)
+  try {
+    const countUsers = await prisma.user.count();
+    if (countUsers === 0) {
+      console.log('🌱 [dbBootstrap] Inserindo usuário administrador padrão (admin@barapp.com)...');
+
+      let adminEmployee = await prisma.employee.findFirst({
+        where: {
+          OR: [{ email: 'admin@barapp.com' }, { cpf: '000.000.000-00' }]
+        }
+      });
+
+      if (!adminEmployee) {
+        adminEmployee = await prisma.employee.create({
+          data: {
+            nome: 'Administrador Sistema',
+            cpf: '000.000.000-00',
+            email: 'admin@barapp.com',
+            cargo: 'Admin',
+            salario: 0,
+            dataAdmissao: new Date(),
+            ativo: true
+          }
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await prisma.user.create({
+        data: {
+          email: 'admin@barapp.com',
+          senha: hashedPassword,
+          nome: 'Administrador',
+          tipo: 'admin',
+          employeeId: adminEmployee.id,
+          permissoes: {
+            vendas: true,
+            produtos: true,
+            clientes: true,
+            funcionarios: true,
+            relatorios: true,
+            configuracoes: true,
+            comandas: true,
+            delivery: true,
+            nfce: true,
+            dashboard: true,
+            caixa: true
+          },
+          ativo: true
+        }
+      });
+
+      console.log('🌱 [dbBootstrap] Usuário administrador padrão criado (admin@barapp.com / admin123).');
+    }
+  } catch (err) {
+    console.error('❌ [dbBootstrap] Erro ao inserir usuário admin padrão:', err.message);
   }
 }
 

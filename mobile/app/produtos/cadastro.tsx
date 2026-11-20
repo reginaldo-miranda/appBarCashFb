@@ -23,6 +23,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { useProduct } from '../../src/contexts/ProductContext';
 import api, { productService, typeService, unidadeMedidaService, categoryService, setorImpressaoService } from '../../src/services/api';
 import BulkProductModal from '../../src/components/BulkProductModal';
+import { validateVariationConfigForCategory, promptOpenVariationTypes, showFeedbackAlert } from '../../src/utils/variationValidation';
 
 
 interface Categoria {
@@ -525,6 +526,21 @@ export default function CadastroProduto() {
     );
   }
 
+  const checkVariationSetup = async (catId: string): Promise<boolean> => {
+    const catObj = categorias.find((c) => String(c.id) === String(catId));
+    const check = await validateVariationConfigForCategory({
+      categoriaId: catId,
+      categoriaNome: catObj?.nome,
+    });
+    if (!check.ok && check.message) {
+      promptOpenVariationTypes(check.message, () => {
+        router.push('/variacoes/tipos' as any);
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
     console.log('[DEBUG] handleSave setores:', selectedSetores);
     // Marcar todos os campos como interagidos para mostrar erros
@@ -539,6 +555,18 @@ export default function CadastroProduto() {
     if (!isFormValid) {
       setSaveError('Por favor, corrija os erros no formulário antes de continuar.');
       return;
+    }
+
+    if (temTamanhos && tamanhos.filter(t => t.nome.trim() !== '').length === 0) {
+      showFeedbackAlert('Atenção', 'Adicione pelo menos 1 tamanho (ex.: P, M, G) ou desative a opção "Produto com tamanhos".');
+      return;
+    }
+
+    if (temVariacao) {
+      const variationOk = await checkVariationSetup(categoriaId);
+      if (!variationOk) {
+        return;
+      }
     }
 
     setLoading(true);
@@ -1012,7 +1040,12 @@ export default function CadastroProduto() {
               <Text style={styles.label}>Produto com variação</Text>
               <Switch
                 value={temVariacao}
-                onValueChange={(value) => handleFieldChange(setTemVariacao, value)}
+                onValueChange={(value) => {
+                  handleFieldChange(setTemVariacao, value);
+                  if (value) {
+                    checkVariationSetup(categoriaId);
+                  }
+                }}
                 trackColor={{ false: '#ccc', true: '#4CAF50' }}
                 thumbColor={temVariacao ? '#fff' : '#f4f3f4'}
               />

@@ -34,6 +34,7 @@ import ReceiptModal from '../../src/components/ReceiptModal';
 import PixModal from '../../src/components/PixModal';
 import CashbackPromptModal from '../../src/components/CashbackPromptModal';
 import { useFocusEffect } from '@react-navigation/native';
+import { getSoftIdleCardStyle } from '../../src/utils/idleColor';
 
 interface Funcionario {
   _id: string;
@@ -435,10 +436,9 @@ export default function MesasScreen() {
     setSelectedStatus(filterKey === 'todas' ? null : filterKey);
   };
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    loadMesas();
-    loadFuncionarios();
+  const [idleTick, setIdleTick] = useState(0);
+
+  const loadIdleConfig = useCallback(() => {
     idleTimeConfigService.get().then(res => {
       let d = res.data;
       if (d && typeof d.estagios === 'string') {
@@ -447,6 +447,21 @@ export default function MesasScreen() {
       setIdleConfig(d);
     }).catch(() => {});
   }, []);
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadMesas();
+    loadFuncionarios();
+    loadIdleConfig();
+    const timer = setInterval(() => setIdleTick((t) => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, [loadIdleConfig]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadIdleConfig();
+    }, [loadIdleConfig])
+  );
 
   useEffect(() => {
     const w = Dimensions.get('window').width;
@@ -630,7 +645,7 @@ export default function MesasScreen() {
       });
 
     } catch {}
-  }, [mesas, idleConfig]);
+  }, [mesas, idleConfig, idleTick]);
 
   async function loadFuncionarios() {
     try {
@@ -1596,7 +1611,7 @@ useEffect(() => {
            style={[
               styles.mesaCard, 
               { borderLeftColor: getStatusColor(item.status) },
-              isOccupied && mesaIdleStatus[item._id] && { backgroundColor: mesaIdleStatus[item._id] },
+              isOccupied && mesaIdleStatus[item._id] && getSoftIdleCardStyle(mesaIdleStatus[item._id]),
               isTarget && { borderColor: '#2196F3', borderWidth: 2, transform: [{scale: 1.02}], elevation: 8 },
               isSource && { borderColor: '#FF9800', borderWidth: 2, transform: [{scale: 1.02}], elevation: 8 },
               (mergeMode && !isOccupied) && { opacity: 0.5 }

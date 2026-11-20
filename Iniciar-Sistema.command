@@ -45,6 +45,7 @@ echo " [1/5] Verificando Node.js..."
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh" 2>/dev/null
 [ -s "$HOME/.volta/bin/volta" ] && export PATH="$HOME/.volta/bin:$PATH"
+[ -d "$HOME/.nodejs/current/bin" ] && export PATH="$HOME/.nodejs/current/bin:$PATH"
 export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
 
 if ! command -v node &>/dev/null; then
