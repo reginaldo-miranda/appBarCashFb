@@ -48,29 +48,54 @@ export default function HomeScreen() {
     openTables: 0,
     openComandas: 0,
   });
+  const [statsPeriod, setStatsPeriod] = useState<'today' | 'week' | 'month' | 'all'>('today');
   const [showRevenue, setShowRevenue] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadStats = async () => {
+  const loadStats = React.useCallback(async () => {
     try {
       if (!isAuthenticated) {
         setStats({ totalSales: 0, totalRevenue: 0, openTables: 0, openComandas: 0 });
         return;
       }
-      
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date();
+
+      const listParams: any = {
+        status: 'finalizada',
+        filtrarPorFinalizacao: 'true',
+      };
+
+      const now = new Date();
+      const endOfDay = new Date(now);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const [salesHojeRes, openSalesRes, mesasResponse] = await Promise.all([
-        saleService.list({ dataInicio: startOfDay.toISOString(), dataFim: endOfDay.toISOString() }),
+      if (statsPeriod === 'today') {
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        listParams.dataInicio = startOfDay.toISOString();
+        listParams.dataFim = endOfDay.toISOString();
+      } else if (statsPeriod === 'week') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - 7);
+        startOfWeek.setHours(0, 0, 0, 0);
+        listParams.dataInicio = startOfWeek.toISOString();
+        listParams.dataFim = endOfDay.toISOString();
+      } else if (statsPeriod === 'month') {
+        const startOfMonth = new Date(now);
+        startOfMonth.setMonth(now.getMonth() - 1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        listParams.dataInicio = startOfMonth.toISOString();
+        listParams.dataFim = endOfDay.toISOString();
+      }
+
+      const [salesPeriodoRes, openSalesRes, mesasResponse] = await Promise.all([
+        saleService.list(listParams),
         saleService.list({ status: 'aberta' }),
         mesaService.list(),
       ]);
 
-      const todaySales = salesHojeRes?.data || [];
+      const finalizedSales = (salesPeriodoRes?.data || []).filter((sale: any) =>
+        sale.status === 'finalizada' || sale.status === 'fechada'
+      );
       const openSales = openSalesRes?.data || [];
 
       // Contar mesas ocupadas
@@ -82,11 +107,6 @@ export default function HomeScreen() {
       const openComandas = openSales.filter(
         (sale: any) => sale.tipoVenda === 'comanda'
       ).length;
-
-      // Calcular vendas finalizadas (todas as vendas fechadas do dia)
-      const finalizedSales = todaySales.filter((sale: any) => 
-        sale.status === 'finalizada' || sale.status === 'fechada'
-      );
 
       // Calcular receita total sem duplicação
       const totalRevenue = finalizedSales.reduce((sum: number, sale: any) => {
@@ -108,7 +128,7 @@ export default function HomeScreen() {
       }
       console.error('Erro ao carregar estatísticas:', error);
     }
-  };
+  }, [isAuthenticated, statsPeriod]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -259,7 +279,38 @@ export default function HomeScreen() {
         {/* Status Rápido - Apenas Web ou Tablet Grande */}
         {(Platform.OS === 'web' || Dimensions.get('window').width > 600) && (
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Visão Geral de Hoje</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+              {statsPeriod === 'today'
+                ? 'Visão Geral de Hoje'
+                : statsPeriod === 'week'
+                ? 'Visão Geral (7 dias)'
+                : statsPeriod === 'month'
+                ? 'Visão Geral (30 dias)'
+                : 'Visão Geral (Todos)'}
+            </Text>
+            <View style={styles.periodChipsRow}>
+              {[
+                { key: 'today', label: 'Hoje' },
+                { key: 'week', label: 'Semana' },
+                { key: 'month', label: 'Mês' },
+                { key: 'all', label: 'Todos' },
+              ].map((item) => {
+                const active = statsPeriod === item.key;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[styles.periodChip, active && styles.periodChipActive]}
+                    onPress={() => setStatsPeriod(item.key as 'today' | 'week' | 'month' | 'all')}
+                  >
+                    <Text style={[styles.periodChipText, active && styles.periodChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
           <View style={styles.statsGrid}>
             <View style={[styles.statCard]}>
               <View style={[styles.statIconBox, { backgroundColor: '#E8F5E8' }]}>
@@ -440,6 +491,37 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 8,
     marginLeft: 4,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  periodChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  periodChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+  },
+  periodChipActive: {
+    backgroundColor: '#2196F3',
+  },
+  periodChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  periodChipTextActive: {
+    color: '#FFFFFF',
   },
   statsGrid: {
     flexDirection: 'row',

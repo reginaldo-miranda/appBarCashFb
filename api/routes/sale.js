@@ -387,7 +387,7 @@ router.get('/open-min', async (req, res) => {
 router.get('/list', async (req, res) => {
   try {
     const prisma = getActivePrisma();
-    const { status, funcionario, cliente, dataInicio, dataFim, isDelivery } = req.query;
+    const { status, funcionario, cliente, dataInicio, dataFim, isDelivery, filtrarPorFinalizacao } = req.query;
     const where = {};
 
     if (status) {
@@ -402,9 +402,18 @@ router.get('/list', async (req, res) => {
     if (isDelivery !== undefined) where.isDelivery = isDelivery === 'true';
 
     if (dataInicio || dataFim) {
-      where.dataVenda = {};
-      if (dataInicio) where.dataVenda.gte = new Date(String(dataInicio));
-      if (dataFim) where.dataVenda.lte = new Date(String(dataFim));
+      const dateRange = {};
+      if (dataInicio) dateRange.gte = new Date(String(dataInicio));
+      if (dataFim) dateRange.lte = new Date(String(dataFim));
+
+      if (filtrarPorFinalizacao === 'true') {
+        where.OR = [
+          { dataFinalizacao: dateRange },
+          { dataFinalizacao: null, dataVenda: dateRange }
+        ];
+      } else {
+        where.dataVenda = dateRange;
+      }
     }
 
     const vendas = await prisma.sale.findMany({
@@ -418,7 +427,7 @@ router.get('/list', async (req, res) => {
         itens: { include: { product: { select: { id: true, nome: true, precoVenda: true, ncm: true, cfop: true, csosn: true } } } },
         caixaVendas: true,
       },
-      orderBy: { dataVenda: 'desc' },
+      orderBy: filtrarPorFinalizacao === 'true' ? { dataFinalizacao: 'desc' } : { dataVenda: 'desc' },
       take: 500,
     });
 

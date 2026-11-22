@@ -513,70 +513,68 @@ export default function CardapioCliente() {
       
       {/* HEADER PREMIUM */}
       <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            {router.canGoBack() && (
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.backHeaderBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="arrow-back" size={24} color="#FF8C00" />
-              </TouchableOpacity>
-            )}
-            <Text style={styles.headerTitle}>appBarCash 🍻</Text>
-          </View>
-          <View style={styles.mesaCol}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <View style={styles.mesaBadge}>
-                <Ionicons name="receipt" size={14} color="#FFF" style={{ marginRight: 4 }} />
-                <Text style={styles.mesaBadgeText}>
-                  {comandaInfo ? `COMANDA ${String(comandaInfo.nome).toUpperCase()}` : "COMANDA DIGITAL"}
-                </Text>
-              </View>
-              {(() => {
-                const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
-                if (totalVal > 0) {
-                  const jaPediu = Boolean(comandaInfo?.vendaAtual?.pediuConta);
-                  return (
-                    <TouchableOpacity
-                      onPress={() => setMostrarContaModal(true)}
-                      style={{
-                        backgroundColor: jaPediu ? "#F57C00" : "#2E7D32",
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderRadius: 20,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Ionicons name={jaPediu ? "notifications" : "receipt-outline"} size={13} color="#FFF" />
-                      <Text style={{ color: "#FFF", fontWeight: "bold", fontSize: 11 }}>
-                        {jaPediu ? "Conta Solicitada" : "Pedir a Conta"}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-                return null;
-              })()}
-            </View>
-            {(() => {
-              const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
-              if (totalVal > 0) {
-                return (
-                  <TouchableOpacity onPress={() => setMostrarContaModal(true)}>
-                    <Text style={styles.mesaTotalText}>
-                      Total: R$ {totalVal.toFixed(2).replace('.', ',')} (Ver Extrato)
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-              return null;
-            })()}
-          </View>
+        {/* Linha 1: Título centralizado com botão voltar à esquerda */}
+        <View style={styles.headerTitleRow}>
+          {router.canGoBack() && (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backHeaderBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FF8C00" />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.headerTitle}>appBarCash 🍻</Text>
         </View>
+
+        {/* Linha 2: Subtítulo centralizado */}
         <Text style={styles.headerSubtitle}>Auto-atendimento prático e sem filas</Text>
+
+        {/* Linha 3: Badges e Ações na linha abaixo (Comanda e Pedir Conta) */}
+        <View style={styles.headerActionsRow}>
+          <View style={styles.mesaBadge}>
+            <Ionicons name="receipt" size={14} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={styles.mesaBadgeText}>
+              {comandaInfo ? `COMANDA ${String(comandaInfo.nome).toUpperCase()}` : "COMANDA DIGITAL"}
+            </Text>
+          </View>
+          {(() => {
+            const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
+            if (totalVal > 0) {
+              const jaPediu = Boolean(comandaInfo?.vendaAtual?.pediuConta);
+              return (
+                <TouchableOpacity
+                  onPress={() => setMostrarContaModal(true)}
+                  style={[
+                    styles.pedirContaBtn,
+                    { backgroundColor: jaPediu ? "#F57C00" : "#2E7D32" }
+                  ]}
+                >
+                  <Ionicons name={jaPediu ? "notifications" : "receipt-outline"} size={13} color="#FFF" />
+                  <Text style={styles.pedirContaBtnText}>
+                    {jaPediu ? "Conta Solicitada" : "Pedir a Conta"}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }
+            return null;
+          })()}
+        </View>
+
+        {/* Linha 4: Total da Conta */}
+        {(() => {
+          const totalVal = comandaInfo?.vendaAtual?.total ? Number(comandaInfo.vendaAtual.total) : 0;
+          if (totalVal > 0) {
+            return (
+              <TouchableOpacity onPress={() => setMostrarContaModal(true)} style={styles.mesaTotalContainer}>
+                <Text style={styles.mesaTotalText}>
+                  Total: R$ {totalVal.toFixed(2).replace('.', ',')} (Ver Extrato)
+                </Text>
+              </TouchableOpacity>
+            );
+          }
+          return null;
+        })()}
       </View>
 
       {/* BUSCA E FILTROS */}
@@ -1271,20 +1269,39 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   },
   header: {
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     backgroundColor: "#1A1A1A",
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A"
-  },
-  headerInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    borderBottomColor: "#2A2A2A",
     alignItems: "center"
+  },
+  headerTitleRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative"
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#FF8C00"
+    color: "#FF8C00",
+    textAlign: "center"
+  },
+  headerSubtitle: {
+    color: "#888",
+    fontSize: 13,
+    marginTop: 3,
+    textAlign: "center"
+  },
+  headerActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10
   },
   mesaBadge: {
     flexDirection: "row",
@@ -1299,19 +1316,28 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 12
   },
-  mesaCol: {
-    alignItems: "flex-end"
+  pedirContaBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4
+  },
+  pedirContaBtnText: {
+    color: "#FFF",
+    fontWeight: "bold",
+    fontSize: 11
+  },
+  mesaTotalContainer: {
+    marginTop: 6,
+    alignItems: "center"
   },
   mesaTotalText: {
     color: "#4CAF50",
     fontSize: 14,
     fontWeight: "bold",
-    marginTop: 4
-  },
-  headerSubtitle: {
-    color: "#888",
-    fontSize: 13,
-    marginTop: 4
+    textAlign: "center"
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -1750,7 +1776,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   },
   backHeaderBtn: {
-    marginRight: 8,
+    position: "absolute",
+    left: 0,
+    zIndex: 10,
     padding: 4
   },
   continuarEscolhendoBtn: {
