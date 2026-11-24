@@ -22,6 +22,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import ScreenIdentifier from '../../src/components/ScreenIdentifier';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
+import { getInfinitePayEnabled, setInfinitePayEnabled, getInfinitePayHandle, setInfinitePayHandle } from '../../src/services/infinitePayService';
 
 interface Employee {
   _id: string;
@@ -122,6 +123,8 @@ export default function AdminConfiguracoesScreen() {
   const [modalResetVisible, setModalResetVisible] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetUsername, setResetUsername] = useState('');
+  const [infinitePayEnabled, setInfinitePayEnabledState] = useState(false);
+  const [infinitePayHandle, setInfinitePayHandleState] = useState('');
   const [resetPassword, setResetPassword] = useState('');
   const [resetConfirmWord, setResetConfirmWord] = useState('');
   const [resetOptions, setResetOptions] = useState({
@@ -202,6 +205,8 @@ export default function AdminConfiguracoesScreen() {
   const navigation = useNavigation();
 
   useEffect(() => {
+    getInfinitePayEnabled().then(setInfinitePayEnabledState).catch(() => {});
+    getInfinitePayHandle().then(setInfinitePayHandleState).catch(() => {});
     if (!isAdmin()) {
       Alert.alert('Acesso Negado', 'Apenas administradores podem acessar as configurações');
       return;
@@ -966,7 +971,7 @@ export default function AdminConfiguracoesScreen() {
                 <View style={styles.settingInfo}>
                   <Text style={styles.settingTitle}>Configurações do App</Text>
                   <Text style={styles.settingDescription}>
-                    Impressoras, WiFi, API e NFC-e
+                    Impressoras, WiFi, API, NFC-e e InfinitePay
                   </Text>
                 </View>
               </View>
@@ -995,6 +1000,62 @@ export default function AdminConfiguracoesScreen() {
               </View>
               <SafeIcon name="chevron-forward" size={20} color="#ccc" fallbackText="›" />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── Seção InfinitePay (Pagamentos por Celular / InfiniteTap) ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>InfinitePay (Pagamentos por Celular)</Text>
+          <View style={styles.settingsCard}>
+            <View style={[styles.settingItem, { borderLeftWidth: 4, borderLeftColor: '#00C853', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 }]}>
+              <View style={[styles.settingContent, { flex: 1, paddingRight: 12 }]}>
+                <SafeIcon name="card" size={24} color="#00C853" fallbackText="💳" />
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Habilitar InfinitePay / InfiniteTap</Text>
+                  <Text style={styles.settingDescription}>
+                    Aciona o app da InfinitePay no cartão para receber por aproximação (NFC) no celular
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={infinitePayEnabled}
+                onValueChange={async (val) => {
+                  setInfinitePayEnabledState(val);
+                  await setInfinitePayEnabled(val);
+                }}
+                trackColor={{ false: '#ccc', true: '#A5D6A7' }}
+                thumbColor={infinitePayEnabled ? '#00C853' : '#f4f3f4'}
+              />
+            </View>
+
+            <View style={{ padding: 14, borderTopWidth: 1, borderColor: '#eee', backgroundColor: '#F9FFF9' }}>
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#2E7D32', marginBottom: 4 }}>
+                Usuário ou Link da InfinitePay (para uso no iPhone/Safari):
+              </Text>
+              <TextInput
+                placeholder="Ex: @meuestabelecimento ou seunome"
+                value={infinitePayHandle}
+                onChangeText={async (text) => {
+                  setInfinitePayHandleState(text);
+                  await setInfinitePayHandle(text);
+                }}
+                autoCapitalize="none"
+                style={{
+                  backgroundColor: '#fff',
+                  borderWidth: 1,
+                  borderColor: '#A5D6A7',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 14,
+                  color: '#333',
+                  marginTop: 4,
+                }}
+              />
+              <Text style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+                Garante que o Safari no iPhone abra a página segura da InfinitePay com Apple Pay sem o erro de URL inválida. No Android, o app continuará abrindo direto por aproximação.
+              </Text>
+            </View>
           </View>
         </View>
 

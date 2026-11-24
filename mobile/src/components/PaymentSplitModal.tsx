@@ -21,6 +21,8 @@ import { caixaService, saleService, companyService } from '../services/api';
 import { events } from '../utils/eventBus';
 import PixModal from './PixModal';
 import CpfModal from './CpfModal';
+import InfinitePayCardModal from './InfinitePayCardModal';
+import { getInfinitePayEnabled, InfinitePayReturnData } from '../services/infinitePayService';
 import { customerService } from '../services/api';
 
 interface PaymentSplitModalProps {
@@ -55,6 +57,8 @@ export default function PaymentSplitModal({
   const [emitirNfce, setEmitirNfce] = useState(false);
   const [pixModalVisible, setPixModalVisible] = useState(false);
   const [pixAmount, setPixAmount] = useState(0);
+  const [infinitePayCardModalVisible, setInfinitePayCardModalVisible] = useState(false);
+  const [isInfinitePayActive, setIsInfinitePayActive] = useState(false);
   const [cpfModalVisible, setCpfModalVisible] = useState(false);
   const [pendingConfirmAction, setPendingConfirmAction] = useState<(() => void) | null>(null);
 
@@ -79,6 +83,7 @@ export default function PaymentSplitModal({
     }
     if (visible) {
       setEmitirNfce(false);
+      getInfinitePayEnabled().then(setIsInfinitePayActive).catch(() => {});
     }
   }, [sale, visible]);
 
@@ -350,8 +355,8 @@ export default function PaymentSplitModal({
     setSelectedItems(newMap);
   };
 
-  // Função central desvinculada do botão para permitir reuso (ex: pós-PIX)
-  const submitPayment = async () => {
+  // Função central desvinculada do botão para permitir reuso (ex: pós-PIX ou pós-InfinitePay)
+  const submitPayment = async (extraPaymentInfo?: any) => {
     if (!sale) {
         Alert.alert('Erro', 'Venda não identificada.');
         return;
@@ -394,7 +399,8 @@ export default function PaymentSplitModal({
       await saleService.payItems(saleId, {
         paymentInfo: {
           method: paymentMethod,
-          totalAmount: Math.max(0, totalSelected - discountPoints) // Cobra apenas o que sobrou
+          totalAmount: Math.max(0, totalSelected - discountPoints), // Cobra apenas o que sobrou
+          ...(extraPaymentInfo || {})
         },
         items: itemsPayload
       });
@@ -550,7 +556,28 @@ export default function PaymentSplitModal({
           return; 
       }
 
+      // Intercept Cartão InfinitePay se habilitado neste dispositivo
+      if (paymentMethod === 'cartao' && isInfinitePayActive && totalSelected > 0.05) {
+          setInfinitePayCardModalVisible(true);
+          return;
+      }
+
       await submitPayment();
+  };
+
+  const handleInfinitePaySuccess = async (returnData?: InfinitePayReturnData) => {
+    setInfinitePayCardModalVisible(false);
+    await submitPayment({
+      nsu: returnData?.transactionNsu,
+      autorizacao: returnData?.authCode,
+      bandeira: returnData?.cardBrand,
+      origem: 'infinitepay_tap'
+    });
+  };
+
+  const handleInfinitePayManual = async () => {
+    setInfinitePayCardModalVisible(false);
+    await submitPayment();
   };
 
   const handleConfirm = async () => {
@@ -910,6 +937,15 @@ export default function PaymentSplitModal({
               // O pagamento já foi feito "visualmente" no modal (QR Code), agora registramos no sistema.
               submitPayment();
           }}
+      />
+
+      <InfinitePayCardModal
+          visible={infinitePayCardModalVisible}
+          amount={totalSelected}
+          orderId={sale && ((sale as any).id || sale._id) ? `PEDIDO-${(sale as any).id || sale._id}` : `VENDA-${Date.now()}`}
+          onClose={() => setInfinitePayCardModalVisible(false)}
+          onManualPayment={handleInfinitePayManual}
+          onPaymentSuccess={handleInfinitePaySuccess}
       />
       
       <CpfModal

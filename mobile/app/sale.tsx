@@ -40,6 +40,8 @@ import PaymentSplitModal from '../src/components/PaymentSplitModal';
 import ImpressaoNfceModal from '../src/components/ImpressaoNfceModal';
 import NfceService from '../src/services/NfceService';
 import PixModal from '../src/components/PixModal';
+import InfinitePayCardModal from '../src/components/InfinitePayCardModal';
+import { getInfinitePayEnabled, InfinitePayReturnData } from '../src/services/infinitePayService';
 import PaymentPromptModal from '../src/components/PaymentPromptModal';
 import CashbackPromptModal from '../src/components/CashbackPromptModal';
 import FiscalDataValidationModal from '../src/components/FiscalDataValidationModal';
@@ -381,6 +383,8 @@ export default function SaleScreen() {
   const [cashbackPromptVisible, setCashbackPromptVisible] = useState(false);
   const [afterCashbackAction, setAfterCashbackAction] = useState<'modal' | 'split'>('modal');
   const [pixModalVisible, setPixModalVisible] = useState(false);
+  const [infinitePayCardModalVisible, setInfinitePayCardModalVisible] = useState(false);
+  const [isInfinitePayActive, setIsInfinitePayActive] = useState(false);
 
   // Helper para calcular o saldo restante da venda
   const calcSaleRemaining = (s: any, c: any[]): number => {
@@ -449,6 +453,10 @@ export default function SaleScreen() {
 
   // API Key for Maps
   const [googleMapsKey, setGoogleMapsKey] = useState(Constants.expoConfig?.android?.config?.googleMaps?.apiKey || Constants.expoConfig?.ios?.config?.googleMapsApiKey || '');
+
+  useEffect(() => {
+    getInfinitePayEnabled().then(setIsInfinitePayActive).catch(() => {});
+  }, [modalVisible]);
 
   useEffect(() => {
      // Load Google Maps Key from Storage (User Config) override
@@ -1699,6 +1707,54 @@ export default function SaleScreen() {
     }
   };
 
+  const handleInfinitePaySaleSuccess = async (returnData?: InfinitePayReturnData) => {
+    setInfinitePayCardModalVisible(false);
+    try {
+      setFinalizing(true);
+      const itemsPayload = calculateRemainingItemsPayload(sale, totalRemaining);
+      const payPayload = {
+        paymentInfo: {
+          method: 'cartao',
+          totalAmount: totalRemaining,
+          nsu: returnData?.transactionNsu,
+          autorizacao: returnData?.authCode,
+          bandeira: returnData?.cardBrand,
+          origem: 'infinitepay_tap'
+        },
+        items: itemsPayload
+      };
+      const saleId = (sale as any)?._id || (sale as any)?.id;
+      await saleService.payItems(saleId, payPayload);
+      await finalizeSale();
+    } catch (e: any) {
+      console.error('Erro ao processar retorno InfinitePay:', e);
+      Alert.alert('Erro ao processar', e?.message || 'Falha ao registrar pagamento.');
+      setFinalizing(false);
+    }
+  };
+
+  const handleInfinitePaySaleManual = async () => {
+    setInfinitePayCardModalVisible(false);
+    try {
+      setFinalizing(true);
+      const itemsPayload = calculateRemainingItemsPayload(sale, totalRemaining);
+      const payPayload = {
+        paymentInfo: {
+          method: 'cartao',
+          totalAmount: totalRemaining
+        },
+        items: itemsPayload
+      };
+      const saleId = (sale as any)?._id || (sale as any)?.id;
+      await saleService.payItems(saleId, payPayload);
+      await finalizeSale();
+    } catch (e: any) {
+      console.error('Erro na baixa manual:', e);
+      Alert.alert('Erro', e?.message || 'Falha ao registrar pagamento.');
+      setFinalizing(false);
+    }
+  };
+
   const handlePrintReceipt = async () => {
     if (!sale) return;
     try {
@@ -2422,6 +2478,12 @@ export default function SaleScreen() {
                       return;
                   }
 
+                  if (totalRemaining > 0.05 && paymentMethod === 'cartao' && isInfinitePayActive) {
+                      setModalVisible(false); // Fecha modal principal
+                      setInfinitePayCardModalVisible(true); // Abre modal InfinitePay
+                      return;
+                  }
+
                   // 🚨 PRE-CHECK FISCAL SE EMITIR NF-E ESTIVER HABILITADO
                   const isEverythingPaid = totalRemaining <= 0.05;
                   
@@ -3071,6 +3133,15 @@ export default function SaleScreen() {
             setPixModalVisible(false);
             finalizeSale();
         }}
+      />
+
+      <InfinitePayCardModal
+        visible={infinitePayCardModalVisible}
+        amount={totalRemaining}
+        orderId={sale ? String((sale as any).numeroVenda || (sale as any)._id || (sale as any).id || '').slice(-6) : `Venda-${Date.now()}`}
+        onClose={() => setInfinitePayCardModalVisible(false)}
+        onManualPayment={handleInfinitePaySaleManual}
+        onPaymentSuccess={handleInfinitePaySaleSuccess}
       />
     </SafeAreaView>
   );

@@ -12,6 +12,7 @@ import {
   Platform,
   FlatList,
   KeyboardAvoidingView,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -24,6 +25,7 @@ import { scanWifiNetworks, connectToWifi, isWifiConnectionRealPossible } from '.
 import { SafeIcon } from '../components/SafeIcon';
 import * as DocumentPicker from 'expo-document-picker';
 import NfceService, { NfceConfig } from '../src/services/NfceService';
+import { getInfinitePayEnabled, setInfinitePayEnabled, getInfinitePayHandle, setInfinitePayHandle } from '../src/services/infinitePayService';
 
 
 export default function ConfiguracoesScreen() {
@@ -83,6 +85,8 @@ export default function ConfiguracoesScreen() {
   const [serverPath, setServerPath] = useState(''); // Current path being browsed
   const [dirList, setDirList] = useState<any[]>([]);
   const [loadingDirs, setLoadingDirs] = useState(false);
+  const [infinitePayEnabled, setInfinitePayEnabledState] = useState(false);
+  const [infinitePayHandle, setInfinitePayHandleState] = useState('');
 
 
   useEffect(() => {
@@ -139,6 +143,16 @@ export default function ConfiguracoesScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    getInfinitePayEnabled().then(setInfinitePayEnabledState);
+    getInfinitePayHandle().then(setInfinitePayHandleState);
+  }, []);
+
+  const handleToggleInfinitePay = async (val: boolean) => {
+    setInfinitePayEnabledState(val);
+    await setInfinitePayEnabled(val);
+  };
 
   const carregarConfiguracoesCardapio = async () => {
     try {
@@ -1060,6 +1074,56 @@ const getEnvApiUrl = (): string | undefined => {
              </>
            )}
         </TouchableOpacity>
+      </View>
+
+      {/* Seção InfinitePay (Cobrança no Celular) */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="card" size={20} color="#00C853" />
+          <Text style={styles.sectionTitle}>InfinitePay (Pagamento no Celular)</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>
+              Cobrança por Cartão / InfiniteTap
+            </Text>
+            <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              Ao cobrar no cartão, aciona o app InfinitePay para receber por aproximação (NFC) diretamente no celular.
+            </Text>
+          </View>
+          <Switch
+            value={infinitePayEnabled}
+            onValueChange={handleToggleInfinitePay}
+            trackColor={{ false: '#ccc', true: '#A5D6A7' }}
+            thumbColor={infinitePayEnabled ? '#00C853' : '#f4f3f4'}
+          />
+        </View>
+
+        <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F9FFF9', borderRadius: 8, borderWidth: 1, borderColor: '#DCEDC8' }}>
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#2E7D32', marginBottom: 4 }}>
+            Usuário ou Link da InfinitePay (Para uso no iPhone/Safari):
+          </Text>
+          <TextInput
+            placeholder="Ex: @meuestabelecimento ou seunome"
+            style={[styles.input, { backgroundColor: '#fff', borderColor: '#A5D6A7' }]}
+            value={infinitePayHandle}
+            onChangeText={async (text) => {
+              setInfinitePayHandleState(text);
+              await setInfinitePayHandle(text);
+            }}
+            autoCapitalize="none"
+          />
+          <Text style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+            Permite que o Safari no iPhone abra a página segura da InfinitePay com Apple Pay sem erros de URL. No Android, o app continuará abrindo direto por aproximação.
+          </Text>
+        </View>
+
+        <View style={{ marginTop: 8, padding: 10, backgroundColor: '#E8F5E9', borderRadius: 8 }}>
+          <Text style={{ fontSize: 12, color: '#2E7D32' }}>
+            💡 <Text style={{ fontWeight: 'bold' }}>Dica PIX:</Text> Para o QR Code do Pix cair direto na sua conta InfinitePay, basta cadastrar a sua chave Pix da InfinitePay no campo &quot;Chave PIX (Para QR Code)&quot; acima.
+          </Text>
+        </View>
       </View>
 
       <ConfiguracaoFidelidade />
