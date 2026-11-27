@@ -138,17 +138,21 @@ export const INFINITEPAY_IOS_SCHEME = 'infinitepaydash://infinitetap-app';
 
 /**
  * Retorna o link oficial para acionar o InfiniteTap (aproximação):
- * - No iOS / iPhone: Esquema nativo de pagamento do app InfinitePay (infinitepaydash://pay)
- *   Envia valor, método, order_id e return_url para travar e pré-preencher a cobrança.
+ * - No iOS / iPhone: Esquema nativo de pagamento do app InfinitePay (infinitepaydash://infinitetap-app)
+ *   Envia valor, método, parcelas (opcional no crédito), order_id e result_url.
  * - No Android: Deep Link customizado (infinitepay://pay)
  */
 export function getInfinitePayTapUrl(
   amount: number,
   method: 'credit' | 'debit' = 'credit',
-  orderId = ''
+  orderId = '',
+  installments?: number | null
 ): string {
   const amountInCents = Math.round(Number(amount || 0) * 100);
-  const returnUrl = typeof window !== 'undefined' ? window.location.href : 'mobile://infinitepay-callback';
+  const returnUrl =
+    typeof window !== 'undefined' && window.location?.href
+      ? window.location.href
+      : 'mobile://infinitepay-callback';
   const encodedReturn = encodeURIComponent(returnUrl);
 
   if (isAppleDevice()) {
@@ -156,20 +160,62 @@ export function getInfinitePayTapUrl(
     // infinitepaydash://infinitetap-app?amount=100&payment_method=credit&installments=1&order_id=...
     //   &result_url=...&app_client_referrer=...&af_force_deeplink=true
     // amount = inteiro em centavos (mínimo 100 = R$ 1,00)
-    const query = [
+    const queryParams = [
       `amount=${amountInCents}`,
       `payment_method=${method}`,
-      `installments=1`,
+    ];
+
+    if (method === 'debit') {
+      queryParams.push('installments=1');
+    } else if (typeof installments === 'number' && Number.isFinite(installments) && installments >= 1) {
+      queryParams.push(`installments=${Math.min(12, Math.floor(installments))}`);
+    }
+
+    queryParams.push(
       `order_id=${encodeURIComponent(orderId)}`,
       `result_url=${encodedReturn}`,
       `app_client_referrer=AppBarCash`,
-      `af_force_deeplink=true`,
-    ].join('&');
+      `af_force_deeplink=true`
+    );
 
-    return `${INFINITEPAY_IOS_SCHEME}?${query}`;
+    return `${INFINITEPAY_IOS_SCHEME}?${queryParams.join('&')}`;
   }
 
   return `infinitepay://pay?amount=${amountInCents}&payment_method=${method}&order_id=${encodeURIComponent(orderId)}&return_url=${encodedReturn}`;
+}
+
+/**
+ * Abre o app oficial da InfinitePay diretamente na tela principal/cobrança (sem forçar o Tap imediato),
+ * copiando o valor para a área de transferência para que o operador possa configurar parcelas, taxas, etc.
+ */
+export function openInfinitePayNormalApp(amount: number): { launched: boolean; copied: boolean } {
+  const formatted = Number(amount || 0).toFixed(2).replace('.', ',');
+  let copied = false;
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(formatted).catch(() => {});
+      copied = true;
+    }
+  } catch {
+    // Clipboard opcional
+  }
+
+  const url = isAppleDevice() ? 'infinitepaydash://' : 'infinitepay://';
+
+  try {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = url;
+    } else {
+      Linking.openURL(url).catch(() => {
+        Linking.openURL('infinitepay://').catch(() => {});
+      });
+    }
+  } catch (err) {
+    console.error('Erro ao abrir app InfinitePay normal:', err);
+  }
+
+  return { launched: true, copied };
 }
 
 /**
@@ -179,7 +225,8 @@ export function getInfinitePayTapUrl(
 export function openInfinitePayAppForTap(
   amount: number,
   method: 'credit' | 'debit' = 'credit',
-  orderId = ''
+  orderId = '',
+  installments?: number | null
 ): { launched: boolean; copied: boolean } {
   const formatted = Number(amount || 0).toFixed(2).replace('.', ',');
   let copied = false;
@@ -194,7 +241,7 @@ export function openInfinitePayAppForTap(
     // Clipboard opcional
   }
 
-  const url = getInfinitePayTapUrl(amount, method, orderId);
+  const url = getInfinitePayTapUrl(amount, method, orderId, installments);
 
   try {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -35,15 +36,33 @@ export default function InfinitePayCardModal({
   onPaymentSuccess,
 }: InfinitePayCardModalProps) {
   const [waitingReturn, setWaitingReturn] = useState(false);
+  const [choosingInstallments, setChoosingInstallments] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [copiedAmount, setCopiedAmount] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'credit' | 'debit'>('credit');
+  const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
+
+  // Calcula as opções de parcelamento no crédito (1x até 12x, mínimo R$ 1,00 por parcela)
+  const installmentOptions = useMemo(() => {
+    const total = Number(amount || 0);
+    const options: { count: number; perInstallment: string }[] = [];
+    for (let i = 1; i <= 12; i++) {
+      const per = total / i;
+      if (i === 1 || per >= 1.0) {
+        options.push({
+          count: i,
+          perInstallment: per.toFixed(2).replace('.', ','),
+        });
+      }
+    }
+    return options;
+  }, [amount]);
 
   useEffect(() => {
     if (!visible) {
       setWaitingReturn(false);
+      setChoosingInstallments(false);
       setErrorMessage(null);
-      setCopiedAmount(false);
+      setSelectedInstallments(1);
       return;
     }
 
@@ -51,6 +70,7 @@ export default function InfinitePayCardModal({
     const unsubscribe = listenForInfinitePayReturn((data) => {
       if (data.success) {
         setWaitingReturn(false);
+        setChoosingInstallments(false);
         onPaymentSuccess(data);
       } else if (data.message) {
         Alert.alert('Pagamento Não Concluído', data.message || 'Transação cancelada ou não autorizada.');
@@ -63,21 +83,53 @@ export default function InfinitePayCardModal({
     };
   }, [visible, onPaymentSuccess]);
 
-  const handleSelectMethod = (method: 'credit' | 'debit') => {
+  // Dispara o pagamento no Débito (direto para aproximação 1x)
+  const handleSelectDebit = () => {
     setErrorMessage(null);
-    setCopiedAmount(false);
-    setSelectedMethod(method);
+    setSelectedMethod('debit');
+    setSelectedInstallments(1);
+    setChoosingInstallments(false);
     setWaitingReturn(true);
 
     if (shouldUseInfinitePayWebFlow()) {
-      const result = openInfinitePayAppForTap(amount, method, orderId);
-      setCopiedAmount(result.copied);
+      openInfinitePayAppForTap(amount, 'debit', orderId, 1);
       return;
     }
 
     openInfinitePayTap({
       amount,
-      method,
+      method: 'debit',
+      orderId,
+    }).then((result) => {
+      if (!result.launched) {
+        setWaitingReturn(false);
+        setErrorMessage(result.message || result.reason || 'Não foi possível iniciar o pagamento.');
+      }
+    });
+  };
+
+  // Abre a tela de escolha de parcelas no Crédito
+  const handleSelectCredit = () => {
+    setErrorMessage(null);
+    setSelectedMethod('credit');
+    setChoosingInstallments(true);
+  };
+
+  // Confirma a parcela e aciona a InfinitePay
+  const handleConfirmInstallment = (installments: number) => {
+    setErrorMessage(null);
+    setSelectedInstallments(installments);
+    setChoosingInstallments(false);
+    setWaitingReturn(true);
+
+    if (shouldUseInfinitePayWebFlow()) {
+      openInfinitePayAppForTap(amount, 'credit', orderId, installments);
+      return;
+    }
+
+    openInfinitePayTap({
+      amount,
+      method: 'credit',
       orderId,
     }).then((result) => {
       if (!result.launched) {
@@ -89,7 +141,6 @@ export default function InfinitePayCardModal({
 
   const handleOpenWebCheckout = async () => {
     setErrorMessage(null);
-    setCopiedAmount(false);
     setWaitingReturn(true);
 
     const result = await openInfinitePayTap({
@@ -136,8 +187,48 @@ export default function InfinitePayCardModal({
             </Text>
           </View>
 
-          {!waitingReturn ? (
-            /* Seleção da Cobrança conforme a plataforma */
+          {/* Estado 1: Seleção de Parcelas no Crédito */}
+          {choosingInstallments && !waitingReturn ? (
+            <View style={styles.body}>
+              <Text style={styles.subtitle}>Escolha o número de parcelas no Crédito:</Text>
+              
+              <ScrollView style={styles.installmentList} showsVerticalScrollIndicator={false}>
+                {installmentOptions.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.count}
+                    style={[
+                      styles.installmentRow,
+                      opt.count === 1 ? styles.installmentRowSingle : styles.installmentRowMultiple,
+                    ]}
+                    onPress={() => handleConfirmInstallment(opt.count)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.installmentRowLeft}>
+                      <Ionicons
+                        name={opt.count === 1 ? 'card-outline' : 'calendar-outline'}
+                        size={20}
+                        color={opt.count === 1 ? '#1E88E5' : '#455A64'}
+                      />
+                      <Text style={styles.installmentTitle}>
+                        {opt.count === 1 ? '1x À vista' : `${opt.count}x`}
+                      </Text>
+                    </View>
+                    <Text style={styles.installmentAmount}>R$ {opt.perInstallment}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.manualButton}
+                onPress={() => setChoosingInstallments(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back-outline" size={18} color="#666" />
+                <Text style={styles.manualButtonText}>Voltar para Débito / Crédito</Text>
+              </TouchableOpacity>
+            </View>
+          ) : !waitingReturn ? (
+            /* Estado 2: Seleção Inicial de Modalidade (Crédito ou Débito) */
             <View style={styles.body}>
               {errorMessage ? (
                 <View
@@ -155,25 +246,27 @@ export default function InfinitePayCardModal({
                   </Text>
                 </View>
               ) : null}
-              {/* Seleção da modalidade do cartão (Crédito / Débito) */}
+
               <Text style={styles.subtitle}>Selecione a modalidade do cartão:</Text>
 
+              {/* Botão Crédito */}
               <TouchableOpacity
                 style={[styles.methodButton, styles.creditButton]}
-                onPress={() => handleSelectMethod('credit')}
+                onPress={handleSelectCredit}
                 activeOpacity={0.8}
               >
                 <Ionicons name="card-outline" size={24} color="#fff" />
                 <View style={styles.methodTextContainer}>
                   <Text style={styles.methodButtonText}>Crédito (Aproximação)</Text>
-                  <Text style={styles.methodButtonSubtext}>InfiniteTap / Cartão de Crédito</Text>
+                  <Text style={styles.methodButtonSubtext}>Escolher parcelas (1x a 12x)</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#fff" />
               </TouchableOpacity>
 
+              {/* Botão Débito */}
               <TouchableOpacity
                 style={[styles.methodButton, styles.debitButton]}
-                onPress={() => handleSelectMethod('debit')}
+                onPress={handleSelectDebit}
                 activeOpacity={0.8}
               >
                 <Ionicons name="wallet-outline" size={24} color="#fff" />
@@ -211,20 +304,22 @@ export default function InfinitePayCardModal({
               </TouchableOpacity>
             </View>
           ) : (
-            /* Aguardando confirmação do app da InfinitePay */
+            /* Estado 3: Aguardando aproximação no app da InfinitePay */
             <View style={styles.waitingContainer}>
               <ActivityIndicator size="large" color="#00C853" style={{ marginBottom: 16 }} />
               <Text style={styles.waitingTitle}>Aguardando InfinitePay...</Text>
               <Text style={styles.waitingDesc}>
-                {shouldUseInfinitePayWebFlow()
-                  ? `Abrindo InfinitePay para cobrar R$ ${Number(amount || 0).toFixed(2).replace('.', ',')} no ${selectedMethod === 'debit' ? 'Débito' : 'Crédito'}. Aproxime o cartão no app e confirme abaixo.`
-                  : 'Conclua a aproximação do cartão no app da InfinitePay.'}
+                {selectedMethod === 'credit'
+                  ? `Cobrança de R$ ${Number(amount || 0).toFixed(2).replace('.', ',')} no Crédito (${selectedInstallments === 1 ? '1x À vista' : `${selectedInstallments}x`}) enviada ao app. Aproxime o cartão na InfinitePay para concluir.`
+                  : `Cobrança de R$ ${Number(amount || 0).toFixed(2).replace('.', ',')} no Débito enviada ao app. Aproxime o cartão na InfinitePay para concluir.`}
               </Text>
 
               {shouldUseInfinitePayWebFlow() ? (
                 <TouchableOpacity
                   style={[styles.confirmFallbackButton, { backgroundColor: '#1565C0', marginBottom: 10 }]}
-                  onPress={() => openInfinitePayAppForTap(amount, selectedMethod, orderId)}
+                  onPress={() =>
+                    openInfinitePayAppForTap(amount, selectedMethod, orderId, selectedInstallments)
+                  }
                   activeOpacity={0.8}
                 >
                   <Ionicons name="open-outline" size={18} color="#fff" />
@@ -252,7 +347,10 @@ export default function InfinitePayCardModal({
 
               <TouchableOpacity
                 style={styles.cancelWaitingButton}
-                onPress={() => setWaitingReturn(false)}
+                onPress={() => {
+                  setWaitingReturn(false);
+                  setChoosingInstallments(false);
+                }}
                 activeOpacity={0.7}
               >
                 <Text style={styles.cancelWaitingText}>Voltar às opções</Text>
@@ -370,6 +468,43 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     marginTop: 2,
   },
+  installmentList: {
+    maxHeight: 260,
+    marginBottom: 12,
+  },
+  installmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  installmentRowSingle: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#90CAF9',
+  },
+  installmentRowMultiple: {
+    backgroundColor: '#FAFAFA',
+    borderColor: '#E0E0E0',
+  },
+  installmentRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  installmentTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#263238',
+  },
+  installmentAmount: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1565C0',
+  },
   manualButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,13 +529,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 6,
   },
   waitingDesc: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
     marginBottom: 20,
+    lineHeight: 20,
   },
   confirmFallbackButton: {
     flexDirection: 'row',
