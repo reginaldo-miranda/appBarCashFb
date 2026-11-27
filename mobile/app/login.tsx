@@ -13,6 +13,7 @@ import {
   Modal,
   Dimensions,
   Image,
+  ScrollView,
 } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../src/contexts/AuthContext";
@@ -690,8 +691,11 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.centerContent}>
-          
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Top Switcher (Posicionado no Canto mas discreto) */}
           <View style={styles.topRightSwitcher}>
             <TouchableOpacity
@@ -714,7 +718,7 @@ export default function LoginScreen() {
               <View style={styles.logoCircle}>
                 <SafeIcon
                   name="restaurant"
-                  size={42}
+                  size={32}
                   color="#2196F3"
                   fallbackText="🍽"
                 />
@@ -728,7 +732,7 @@ export default function LoginScreen() {
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Email</Text>
                 <View style={styles.modernInputContainer}>
-                  <SafeIcon name="mail" size={20} color="#909090" fallbackText="@" style={styles.inputIcon} />
+                  <SafeIcon name="mail" size={18} color="#909090" fallbackText="@" style={styles.inputIcon} />
                   <TextInput
                     ref={emailRef}
                     style={styles.modernInput}
@@ -751,7 +755,7 @@ export default function LoginScreen() {
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Senha</Text>
                 <View style={styles.modernInputContainer}>
-                  <SafeIcon name="lock-closed" size={20} color="#909090" fallbackText="🔒" style={styles.inputIcon} />
+                  <SafeIcon name="lock-closed" size={18} color="#909090" fallbackText="🔒" style={styles.inputIcon} />
                   <TextInput
                     ref={passwordRef}
                     style={styles.modernInput}
@@ -772,7 +776,7 @@ export default function LoginScreen() {
                   >
                     <SafeIcon
                       name={showPassword ? "eye-off" : "eye"}
-                      size={20}
+                      size={18}
                       color="#909090"
                       fallbackText={showPassword ? "🙈" : "👁"}
                     />
@@ -797,7 +801,7 @@ export default function LoginScreen() {
                 activeOpacity={0.8}
               >
                 {loginLoading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.ctaButtonText}>Acessar Sistema</Text>
                 )}
@@ -828,11 +832,10 @@ export default function LoginScreen() {
           </View>
           
           <Text style={styles.footerVersion}>Versão 2.1.0 • BarApp Inc.</Text>
+        </ScrollView>
 
-          {/* QR Code para acesso via navegador mobile — só aparece na web (desktop) */}
-          {Platform.OS === 'web' && <QrCodeAcessoMobile />}
-
-        </View>
+        {/* QR Code para acesso via navegador mobile — só aparece na web (desktop) */}
+        {Platform.OS === 'web' && <QrCodeAcessoMobile />}
 
         {/* Modal de seleção de base de dados - Estilo Mantido mas limpo */}
         <Modal
@@ -929,127 +932,129 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  centerContent: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   topRightSwitcher: {
     position: "absolute",
-    top: Platform.OS === 'ios' ? 60 : 40,
-    right: 24,
+    top: Platform.OS === 'ios' ? 50 : 16,
+    right: 16,
     zIndex: 10,
   },
   connectionBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    elevation: 3,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    elevation: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
   connectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     marginRight: 6,
   },
   connectionText: {
-    fontSize: 12,
-    color: "#444",
+    fontSize: 11,
+    color: "#475569",
     fontWeight: "600",
     marginRight: 4,
   },
   loginCard: {
     width: "100%",
-    maxWidth: 400,
+    maxWidth: 380,
     backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 32,
-    elevation: 8,
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+    elevation: 6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     alignItems: "center",
   },
   logoSection: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 18,
   },
   logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: "#E3F2FD",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
     color: "#1565C0",
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#64748B",
-    marginTop: 4,
+    marginTop: 2,
   },
   formSection: {
     width: "100%",
   },
   inputWrapper: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#334155",
     fontWeight: "600",
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: 6,
+    marginLeft: 2,
   },
   modernInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F1F5F9",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 56,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 46,
     borderWidth: 1,
     borderColor: "transparent",
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   modernInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: "#1E293B",
     height: "100%",
   },
   eyeBtn: {
-    padding: 8,
+    padding: 6,
   },
   ctaButton: {
     backgroundColor: "#2196F3",
-    height: 56,
-    borderRadius: 28,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 12,
-    elevation: 4,
+    marginTop: 8,
+    elevation: 3,
     shadowColor: "#2196F3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
   ctaButtonDisabled: {
     backgroundColor: "#94A3B8",
@@ -1058,27 +1063,27 @@ const styles = StyleSheet.create({
   },
   ctaButtonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF2F2',
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#FCA5A5',
   },
   errorBannerText: {
     color: '#B91C1C',
-    fontSize: 13,
+    fontSize: 12,
     marginLeft: 8,
     flex: 1,
   },
   debugLink: {
-    marginTop: 24,
+    marginTop: 16,
     alignItems: "center",
   },
   debugLinkText: {
@@ -1086,9 +1091,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   footerVersion: {
-    marginTop: 32,
-    color: "#CBD5E1",
-    fontSize: 12,
+    marginTop: 18,
+    color: "#94A3B8",
+    fontSize: 11,
   },
   // Modal Styles
   modalOverlay: {

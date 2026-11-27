@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import { ProductProvider } from "../src/contexts/ProductContext";
 
@@ -9,6 +9,8 @@ import VoiceAssistantButton from "../src/components/VoiceAssistantButton";
 
 // Versão ultra-simplificada para garantir que o app carregue
 export default function RootLayout() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const [ready, setReady] = useState(false);
   useEffect(() => {
     const onRejection = (e: any) => {
@@ -51,7 +53,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ProductProvider>
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1, paddingHorizontal: isMobile ? 10 : 0 }}>
           <Stack>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="login-simples" options={{ title: 'Login Simples' }} />
