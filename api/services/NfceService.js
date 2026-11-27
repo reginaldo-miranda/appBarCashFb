@@ -586,15 +586,18 @@ class NfceService {
             if (val <= 0.005) return;
             
             if (forma === 'dinheiro') tPag = '01';
-            else if (forma.includes('credito') || forma.includes('crédito')) tPag = '03';
+            else if (forma === 'cartao' || forma.includes('credito') || forma.includes('crédito')) tPag = '03';
             else if (forma.includes('debito') || forma.includes('débito')) tPag = '04';
             else if (forma === 'pix') tPag = '17';
             else if (forma === 'cashback') tPag = '19'; // Fidelidade/Cashback
-            else tPag = '99'; // Outros
+            else {
+                tPag = '99'; // Outros
+                xPag = 'Outros';
+            }
 
             const key = `${tPag}`; // Agrupar apenas por tPag
             if (!paymentsAgg[key]) {
-                paymentsAgg[key] = { tPag, xPag: null, val: 0 };
+                paymentsAgg[key] = { tPag, xPag, val: 0 };
             }
             paymentsAgg[key].val += val;
         });
@@ -605,7 +608,13 @@ class NfceService {
             if (val > 0.005) {
                 const detPag = pag.ele('detPag');
                 detPag.ele('tPag').txt(p.tPag).up();
+                if (p.tPag === '99') {
+                    detPag.ele('xPag').txt(p.xPag || 'Outros').up();
+                }
                 detPag.ele('vPag').txt(val.toFixed(2)).up();
+                if (p.tPag === '03' || p.tPag === '04') {
+                    detPag.ele('card').ele('tpIntegra').txt('2').up().up();
+                }
                 detPag.up();
                 paymentAdded = true;
             }

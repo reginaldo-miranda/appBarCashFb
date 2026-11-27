@@ -30,6 +30,7 @@ app.listen(PORT, () => {
 */
 
 import dotenv from "dotenv";
+import axios from "axios";
 dotenv.config();
 
 process.on('uncaughtException', (err) => {
@@ -356,6 +357,30 @@ app.use("/api/roles", authenticate, roleRoutes);
 app.use("/api/config", authenticate, configRoutes); // FIM ROTAS API
 app.use("/api/stock", authenticate, stockRoutes);
 app.use("/api/voice", authenticate, voiceRoutes);
+
+// Proxy para geração de link de Checkout Integrado da InfinitePay (evita bloqueio de CORS no Safari/Web)
+app.post('/api/infinitepay/checkout-link', async (req, res) => {
+  try {
+    const { handle, order_nsu, redirect_url, items } = req.body || {};
+    if (!handle || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ ok: false, message: 'InfiniteTag (handle) e itens são obrigatórios.' });
+    }
+
+    const response = await axios.post(
+      'https://api.checkout.infinitepay.io/links',
+      { handle, order_nsu, redirect_url, items },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 15000 }
+    );
+
+    return res.status(response.status).json(response.data);
+  } catch (err) {
+    const status = err?.response?.status || 500;
+    const data = err?.response?.data || {};
+    const message = data?.message || data?.error || err?.message || 'Erro ao gerar link na InfinitePay.';
+    console.error('❌ Erro proxy InfinitePay:', status, data || err?.message);
+    return res.status(status).json({ ok: false, message, details: data });
+  }
+});
 
 // Tratamento de 404 para rotas da API que não existem
 app.all('/api/*', (req, res) => {

@@ -1030,10 +1030,10 @@ export default function AdminConfiguracoesScreen() {
 
             <View style={{ padding: 14, borderTopWidth: 1, borderColor: '#eee', backgroundColor: '#F9FFF9' }}>
               <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#2E7D32', marginBottom: 4 }}>
-                Usuário ou Link da InfinitePay (para uso no iPhone/Safari):
+                InfiniteTag da InfinitePay (para uso no iPhone/Safari):
               </Text>
               <TextInput
-                placeholder="Ex: @meuestabelecimento ou seunome"
+                placeholder="Ex: $meuestabelecimento ou seunome"
                 value={infinitePayHandle}
                 onChangeText={async (text) => {
                   setInfinitePayHandleState(text);

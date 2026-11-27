@@ -1102,10 +1102,10 @@ const getEnvApiUrl = (): string | undefined => {
 
         <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F9FFF9', borderRadius: 8, borderWidth: 1, borderColor: '#DCEDC8' }}>
           <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#2E7D32', marginBottom: 4 }}>
-            Usuário ou Link da InfinitePay (Para uso no iPhone/Safari):
+            InfiniteTag da InfinitePay (Para uso no iPhone/Safari):
           </Text>
           <TextInput
-            placeholder="Ex: @meuestabelecimento ou seunome"
+            placeholder="Ex: $meuestabelecimento ou seunome"
             style={[styles.input, { backgroundColor: '#fff', borderColor: '#A5D6A7' }]}
             value={infinitePayHandle}
             onChangeText={async (text) => {

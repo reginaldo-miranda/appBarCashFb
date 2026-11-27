@@ -11,9 +11,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   openInfinitePayTap,
+  openInfinitePayAppForTap,
   listenForInfinitePayReturn,
   InfinitePayReturnData,
-  isAppleDevice,
+  shouldUseInfinitePayWebFlow,
 } from '../services/infinitePayService';
 
 interface InfinitePayCardModalProps {
@@ -34,10 +35,15 @@ export default function InfinitePayCardModal({
   onPaymentSuccess,
 }: InfinitePayCardModalProps) {
   const [waitingReturn, setWaitingReturn] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedAmount, setCopiedAmount] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<'credit' | 'debit'>('credit');
 
   useEffect(() => {
     if (!visible) {
       setWaitingReturn(false);
+      setErrorMessage(null);
+      setCopiedAmount(false);
       return;
     }
 
@@ -57,17 +63,44 @@ export default function InfinitePayCardModal({
     };
   }, [visible, onPaymentSuccess]);
 
-  const handleSelectMethod = async (method: 'credit' | 'debit') => {
+  const handleSelectMethod = (method: 'credit' | 'debit') => {
+    setErrorMessage(null);
+    setCopiedAmount(false);
+    setSelectedMethod(method);
+    setWaitingReturn(true);
+
+    if (shouldUseInfinitePayWebFlow()) {
+      const result = openInfinitePayAppForTap(amount, method, orderId);
+      setCopiedAmount(result.copied);
+      return;
+    }
+
+    openInfinitePayTap({
+      amount,
+      method,
+      orderId,
+    }).then((result) => {
+      if (!result.launched) {
+        setWaitingReturn(false);
+        setErrorMessage(result.message || result.reason || 'Não foi possível iniciar o pagamento.');
+      }
+    });
+  };
+
+  const handleOpenWebCheckout = async () => {
+    setErrorMessage(null);
+    setCopiedAmount(false);
     setWaitingReturn(true);
 
     const result = await openInfinitePayTap({
       amount,
-      method,
+      method: 'credit',
       orderId,
     });
 
     if (!result.launched) {
       setWaitingReturn(false);
+      setErrorMessage(result.message || result.reason || 'Não foi possível gerar o link de pagamento.');
     }
   };
 
@@ -96,7 +129,7 @@ export default function InfinitePayCardModal({
           {/* Valor da Cobrança */}
           <View style={styles.amountContainer}>
             <Text style={styles.amountLabel}>
-              {isAppleDevice() ? 'Valor da Cobrança:' : 'Valor a Cobrar por Aproximação:'}
+              {shouldUseInfinitePayWebFlow() ? 'Valor da Cobrança:' : 'Valor a Cobrar por Aproximação:'}
             </Text>
             <Text style={styles.amountValue}>
               R$ {Number(amount || 0).toFixed(2).replace('.', ',')}
@@ -106,56 +139,63 @@ export default function InfinitePayCardModal({
           {!waitingReturn ? (
             /* Seleção da Cobrança conforme a plataforma */
             <View style={styles.body}>
-              {isAppleDevice() ? (
-                /* FLUXO OTIMIZADO PARA IPHONE / SAFARI */
-                <>
-                  <Text style={styles.subtitle}>Pagamento via InfinitePay no iPhone:</Text>
+              {errorMessage ? (
+                <View
+                  style={{
+                    backgroundColor: '#FFEBEE',
+                    borderWidth: 1,
+                    borderColor: '#EF9A9A',
+                    borderRadius: 10,
+                    padding: 12,
+                    marginBottom: 14,
+                  }}
+                >
+                  <Text style={{ color: '#B71C1C', fontSize: 13, lineHeight: 18 }}>
+                    {errorMessage}
+                  </Text>
+                </View>
+              ) : null}
+              {/* Seleção da modalidade do cartão (Crédito / Débito) */}
+              <Text style={styles.subtitle}>Selecione a modalidade do cartão:</Text>
 
-                  <TouchableOpacity
-                    style={[styles.methodButton, styles.creditButton, { backgroundColor: '#00C853' }]}
-                    onPress={() => handleSelectMethod('credit')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="card" size={24} color="#fff" />
-                    <View style={styles.methodTextContainer}>
-                      <Text style={styles.methodButtonText}>Pagar com InfinitePay</Text>
-                      <Text style={styles.methodButtonSubtext}>Apple Pay, Cartão ou Pix sem erros</Text>
-                    </View>
-                    <Ionicons name="open-outline" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </>
-              ) : (
-                /* FLUXO NATIVO ANDROID (InfiniteTap / NFC) */
-                <>
-                  <Text style={styles.subtitle}>Selecione a modalidade do cartão:</Text>
+              <TouchableOpacity
+                style={[styles.methodButton, styles.creditButton]}
+                onPress={() => handleSelectMethod('credit')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="card-outline" size={24} color="#fff" />
+                <View style={styles.methodTextContainer}>
+                  <Text style={styles.methodButtonText}>Crédito (Aproximação)</Text>
+                  <Text style={styles.methodButtonSubtext}>InfiniteTap / Cartão de Crédito</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#fff" />
+              </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.methodButton, styles.creditButton]}
-                    onPress={() => handleSelectMethod('credit')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="card-outline" size={24} color="#fff" />
-                    <View style={styles.methodTextContainer}>
-                      <Text style={styles.methodButtonText}>Crédito (Aproximação)</Text>
-                      <Text style={styles.methodButtonSubtext}>InfiniteTap / Cartão de Crédito</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#fff" />
-                  </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.methodButton, styles.debitButton]}
+                onPress={() => handleSelectMethod('debit')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="wallet-outline" size={24} color="#fff" />
+                <View style={styles.methodTextContainer}>
+                  <Text style={styles.methodButtonText}>Débito (Aproximação)</Text>
+                  <Text style={styles.methodButtonSubtext}>InfiniteTap / Cartão de Débito</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#fff" />
+              </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.methodButton, styles.debitButton]}
-                    onPress={() => handleSelectMethod('debit')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="wallet-outline" size={24} color="#fff" />
-                    <View style={styles.methodTextContainer}>
-                      <Text style={styles.methodButtonText}>Débito (Aproximação)</Text>
-                      <Text style={styles.methodButtonSubtext}>InfiniteTap / Cartão de Débito</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </>
-              )}
+              {shouldUseInfinitePayWebFlow() ? (
+                <TouchableOpacity
+                  style={[styles.manualButton, { marginTop: 6 }]}
+                  onPress={handleOpenWebCheckout}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="link-outline" size={18} color="#1565C0" />
+                  <Text style={[styles.manualButtonText, { color: '#1565C0' }]}>
+                    Link de Pagamento / Apple Pay (Online)
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
 
               {/* Botão de contingência / Baixa Manual */}
               <TouchableOpacity
@@ -176,10 +216,23 @@ export default function InfinitePayCardModal({
               <ActivityIndicator size="large" color="#00C853" style={{ marginBottom: 16 }} />
               <Text style={styles.waitingTitle}>Aguardando InfinitePay...</Text>
               <Text style={styles.waitingDesc}>
-                Conclua a aproximação do cartão no app da InfinitePay.
+                {shouldUseInfinitePayWebFlow()
+                  ? `Abrindo InfinitePay para cobrar R$ ${Number(amount || 0).toFixed(2).replace('.', ',')} no ${selectedMethod === 'debit' ? 'Débito' : 'Crédito'}. Aproxime o cartão no app e confirme abaixo.`
+                  : 'Conclua a aproximação do cartão no app da InfinitePay.'}
               </Text>
 
-              {/* Confirmação manual caso o callback do Android demore ou não retorne */}
+              {shouldUseInfinitePayWebFlow() ? (
+                <TouchableOpacity
+                  style={[styles.confirmFallbackButton, { backgroundColor: '#1565C0', marginBottom: 10 }]}
+                  onPress={() => openInfinitePayAppForTap(amount, selectedMethod, orderId)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="open-outline" size={18} color="#fff" />
+                  <Text style={styles.confirmFallbackText}>Reabrir App da InfinitePay</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {/* Confirmação manual caso o callback demore ou não retorne */}
               <TouchableOpacity
                 style={styles.confirmFallbackButton}
                 onPress={() => {

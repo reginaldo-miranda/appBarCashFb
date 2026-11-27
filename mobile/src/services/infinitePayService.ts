@@ -1,5 +1,6 @@
 import { Linking, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBaseURL } from './api';
 
 export const INFINITEPAY_STORAGE_KEY = '@appbarcash:use_infinitepay';
 export const INFINITEPAY_HANDLE_KEY = '@appbarcash:infinitepay_handle';
@@ -41,6 +42,26 @@ export function isAppleDevice(): boolean {
 }
 
 /**
+ * Detecta se o dispositivo atual é Android (app nativo ou navegador Android)
+ */
+export function isAndroidDevice(): boolean {
+  if (Platform.OS === 'android') return true;
+  if (typeof navigator !== 'undefined') {
+    const ua = navigator.userAgent || '';
+    if (/Android/i.test(ua)) return true;
+  }
+  return false;
+}
+
+/**
+ * Indica se o dispositivo deve usar o fluxo Web (iPhone/iPad/Safari ou Desktop Windows/Mac/Linux).
+ * Apenas Android (app ou navegador Android) usa o deep link infinitepay:// (InfiniteTap).
+ */
+export function shouldUseInfinitePayWebFlow(): boolean {
+  return isAppleDevice() || !isAndroidDevice();
+}
+
+/**
  * Consulta se o uso da InfinitePay está habilitado neste dispositivo
  */
 export async function getInfinitePayEnabled(): Promise<boolean> {
@@ -74,68 +95,208 @@ export async function getInfinitePayHandle(): Promise<string> {
   }
 }
 
+export const INFINITEPAY_CHECKOUT_API_URL = 'https://api.checkout.infinitepay.io/links';
+
+/**
+ * Normaliza a InfiniteTag/handle removendo espaços, prefixos (@ ou $) e eventuais URLs coladas.
+ */
+export function sanitizeInfinitePayHandle(raw: string): string {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+
+  let value = trimmed;
+  // Se o usuário colou uma URL (ex: https://infinitepay.io/$loja ou checkout.infinitepay.io/loja)
+  if (/^https?:\/\//i.test(value) || value.includes('infinitepay.io/')) {
+    const withoutProtocol = value.replace(/^https?:\/\//i, '');
+    const pathPart = withoutProtocol.split('/').slice(1).join('/');
+    value = pathPart.split(/[?#]/)[0] || '';
+  }
+
+  return value.replace(/^[@$]+/, '').replace(/\s+/g, '').trim();
+}
+
 /**
  * Salva o identificador/usuário da InfinitePay
  */
 export async function setInfinitePayHandle(handle: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(INFINITEPAY_HANDLE_KEY, handle.trim());
+    await AsyncStorage.setItem(INFINITEPAY_HANDLE_KEY, sanitizeInfinitePayHandle(handle));
   } catch (e) {
     console.error('Erro ao salvar handle InfinitePay:', e);
   }
 }
 
+function showInfinitePayAlert(title: string, message: string): void {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.alert === 'function') {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message, [{ text: 'OK' }]);
+}
+
+export const INFINITEPAY_IOS_SCHEME = 'infinitepaydash://infinitetap-app';
+
+/**
+ * Retorna o link oficial para acionar o InfiniteTap (aproximação):
+ * - No iOS / iPhone: Esquema nativo de pagamento do app InfinitePay (infinitepaydash://pay)
+ *   Envia valor, método, order_id e return_url para travar e pré-preencher a cobrança.
+ * - No Android: Deep Link customizado (infinitepay://pay)
+ */
+export function getInfinitePayTapUrl(
+  amount: number,
+  method: 'credit' | 'debit' = 'credit',
+  orderId = ''
+): string {
+  const amountInCents = Math.round(Number(amount || 0) * 100);
+  const returnUrl = typeof window !== 'undefined' ? window.location.href : 'mobile://infinitepay-callback';
+  const encodedReturn = encodeURIComponent(returnUrl);
+
+  if (isAppleDevice()) {
+    // Contrato OFICIAL do InfiniteTap (https://www.infinitepay.io/checkout-tap):
+    // infinitepaydash://infinitetap-app?amount=100&payment_method=credit&installments=1&order_id=...
+    //   &result_url=...&app_client_referrer=...&af_force_deeplink=true
+    // amount = inteiro em centavos (mínimo 100 = R$ 1,00)
+    const query = [
+      `amount=${amountInCents}`,
+      `payment_method=${method}`,
+      `installments=1`,
+      `order_id=${encodeURIComponent(orderId)}`,
+      `result_url=${encodedReturn}`,
+      `app_client_referrer=AppBarCash`,
+      `af_force_deeplink=true`,
+    ].join('&');
+
+    return `${INFINITEPAY_IOS_SCHEME}?${query}`;
+  }
+
+  return `infinitepay://pay?amount=${amountInCents}&payment_method=${method}&order_id=${encodeURIComponent(orderId)}&return_url=${encodedReturn}`;
+}
+
+/**
+ * Abre o app oficial da InfinitePay diretamente no InfiniteTap (aproximação NFC).
+ * No iPhone, utiliza o esquema nativo infinitepaydash://infinitetap-app.
+ */
+export function openInfinitePayAppForTap(
+  amount: number,
+  method: 'credit' | 'debit' = 'credit',
+  orderId = ''
+): { launched: boolean; copied: boolean } {
+  const formatted = Number(amount || 0).toFixed(2).replace('.', ',');
+  let copied = false;
+
+  // Copia o valor em segundo plano
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(formatted).catch(() => {});
+      copied = true;
+    }
+  } catch {
+    // Clipboard opcional
+  }
+
+  const url = getInfinitePayTapUrl(amount, method, orderId);
+
+  try {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = url;
+    } else {
+      Linking.openURL(url).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Erro ao acionar InfinitePay:', err);
+  }
+
+  return { launched: true, copied };
+}
+
 /**
  * Aciona a cobrança no celular.
  * No Android: Aciona o app InfinitePay via Deep Link (InfiniteTap por aproximação).
- * No iPhone: Aciona a URL segura HTTPS oficial da InfinitePay (evita erro do Safari e suporta Apple Pay).
+ * No iPhone: Gera um link oficial via API de Checkout Integrado da InfinitePay e abre no Safari.
  */
 export async function openInfinitePayTap({
   amount,
   method,
   orderId,
   returnScheme = 'mobile://infinitepay-callback',
-}: InfinitePayPaymentParams): Promise<{ launched: boolean; reason?: string }> {
+}: InfinitePayPaymentParams): Promise<{ launched: boolean; reason?: string; message?: string }> {
   const amountInCents = Math.round(amount * 100);
 
   if (amountInCents <= 0) {
-    return { launched: false, reason: 'Valor de cobrança inválido.' };
+    return { launched: false, reason: 'Valor de cobrança inválido.', message: 'Valor de cobrança inválido.' };
   }
 
-  const isApple = isAppleDevice();
+  const useWebFlow = shouldUseInfinitePayWebFlow();
 
-  // ─── FLUXO IPHONE / SAFARI (iOS) ───
-  if (isApple) {
+  // ─── FLUXO WEB (iPhone / Safari / Desktop Windows e Mac) ───
+  if (useWebFlow) {
     const rawHandle = await getInfinitePayHandle();
-    const cleanHandle = rawHandle.replace('@', '').trim();
+    const cleanHandle = sanitizeInfinitePayHandle(rawHandle);
 
-    if (cleanHandle) {
-      // Monta o Link Oficial HTTPS da InfinitePay com valor pré-preenchido
-      // O Safari abre com 100% de sucesso sem nenhum erro de URL inválida!
-      const webPaymentUrl = `https://infinitepay.io/${cleanHandle}?amount=${amountInCents}&order_id=${encodeURIComponent(orderId)}`;
-      try {
-        await Linking.openURL(webPaymentUrl);
-        return { launched: true };
-      } catch (err: any) {
-        console.error('Erro ao abrir link web InfinitePay no iPhone:', err);
-      }
+    if (!cleanHandle) {
+      const msg = 'Para cobrar no iPhone pelo Safari, informe a sua InfiniteTag (ex: $seunome ou seunome) nas Configurações.';
+      showInfinitePayAlert('Configuração InfinitePay no iPhone', msg);
+      return { launched: false, reason: 'MISSING_HANDLE', message: msg };
     }
 
-    // Se não tiver handle configurado ou se preferir link de checkout direto
-    const defaultWebUrl = `https://app.infinitepay.io/pay?amount=${amountInCents}&order_id=${encodeURIComponent(orderId)}`;
+    const isWebRuntime = Platform.OS === 'web';
+    const endpoint = isWebRuntime
+      ? `${getBaseURL()}/infinitepay/checkout-link`
+      : INFINITEPAY_CHECKOUT_API_URL;
+    const redirectUrl =
+      isWebRuntime && typeof window !== 'undefined' ? window.location.href : returnScheme;
+
     try {
-      await Linking.openURL(defaultWebUrl);
-      return { launched: true };
-    } catch {
-      // Fallback
-    }
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          handle: cleanHandle,
+          order_nsu: orderId,
+          redirect_url: redirectUrl,
+          items: [
+            {
+              description: `Pedido ${orderId}`,
+              price: amountInCents,
+              quantity: 1,
+            },
+          ],
+        }),
+      });
 
-    Alert.alert(
-      'Configuração InfinitePay no iPhone',
-      'Para abrir cobranças automáticas no iPhone sem erro do Safari, informe o seu usuário da InfinitePay (ex: @seunome) nas Configurações.',
-      [{ text: 'OK' }]
-    );
-    return { launched: false, reason: 'MISSING_HANDLE' };
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.url) {
+        if (isWebRuntime && typeof window !== 'undefined') {
+          const opened = window.open(data.url, '_blank', 'noopener,noreferrer');
+          // Safari iOS bloqueia window.open após chamada assíncrona; faz fallback na aba atual
+          if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+            window.location.href = data.url;
+          }
+          return { launched: true };
+        }
+
+        await Linking.openURL(data.url);
+        return { launched: true };
+      }
+
+      const apiMessage =
+        data?.message ||
+        data?.error ||
+        `Não foi possível gerar o link de pagamento (HTTP ${response.status}).`;
+
+      const fullMsg = `${apiMessage}\n\nVerifique se a InfiniteTag "${cleanHandle}" está correta e se o Checkout Integrado está habilitado no app da InfinitePay.`;
+      console.error('Erro na API Checkout InfinitePay:', response.status, data);
+      showInfinitePayAlert('Erro ao gerar link InfinitePay', fullMsg);
+      return { launched: false, reason: 'CHECKOUT_API_ERROR', message: fullMsg };
+    } catch (err: any) {
+      const netMsg = 'Não foi possível conectar à InfinitePay para gerar o link de pagamento. Verifique sua internet ou faça a baixa manual.';
+      console.error('Erro ao chamar API Checkout InfinitePay no iPhone:', err);
+      showInfinitePayAlert('Erro de conexão com InfinitePay', netMsg);
+      return { launched: false, reason: err?.message || 'NETWORK_ERROR', message: netMsg };
+    }
   }
 
   // ─── FLUXO ANDROID (InfiniteTap / NFC direto) ───
